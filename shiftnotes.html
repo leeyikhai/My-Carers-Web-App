@@ -1,0 +1,379 @@
+<!-- shiftnotes.html -->
+<div class="inner-container">
+
+  <!-- Page header & tabs -->
+  <div class="page-header">
+    <h1>Shift Notes</h1>
+    <div class="radio-inputs">
+      <div class="radio">
+        <input type="radio" id="tab-view" name="tab" checked>
+        <label class="name" for="tab-view" onclick="showSection('view')">Shift Notes</label>
+      </div>
+      <div class="radio">
+        <input type="radio" id="tab-add" name="tab">
+        <label class="name" for="tab-add" onclick="showSection('add')">Add Note</label>
+      </div>
+    </div>
+  </div>
+
+  <!-- View Tab -->
+  <div id="section-view" class="section active">
+
+    <!-- From / To filters side-by-side -->
+    <div class="SN-form-field SN-form-row">
+      <div class="SN-form-half">
+        <label for="filterAfter">From</label>
+        <input type="date" id="filterAfter" onchange="resetAndFilter()">
+      </div>
+      <div class="SN-form-half">
+        <label for="filterBefore">To</label>
+        <input type="date" id="filterBefore" onchange="resetAndFilter()">
+      </div>
+    </div>
+
+    <!-- Participant filter -->
+    <div class="SN-form-field">
+      <label for="filterParticipant">Participant</label>
+      <select id="filterParticipant" onchange="resetAndFilter()">
+        <option value="">All</option>
+      </select>
+    </div>
+
+    <!-- Notes list -->
+    <div id="existing-notes" class="SN-existing-notes"></div>
+
+    <!-- Pagination -->
+    <div class="pagination">
+      <button id="prevPage" onclick="prevPage()">Prev</button>
+      <span id="pageInfo"></span>
+      <button id="nextPage" onclick="nextPage()">Next</button>
+    </div>
+  </div>
+
+  <!-- Add-Note Tab -->
+  <div id="section-add" class="section" style="display:none;">
+    <div class="SN-new-note-form">
+      <h3 class="SN-subtitle">New Note</h3>
+
+      <!-- Staff field with suggestions container added -->
+      <div class="SN-form-field">
+        <label for="snStaff">Staff</label>
+        <input type="text" id="snStaff" disabled>
+        <div id="staffSuggestions" class="suggestions-list"></div>
+      </div>
+
+    <div class="SN-form-field">
+      <label for="snDate">Date</label>
+      <input type="date" id="snDate" disabled>
+    </div>
+    <div class="SN-form-field">
+      <label for="snTime">Time</label>
+      <input type="time" id="snTime" disabled>
+    </div>
+
+    <div class="SN-form-field">
+      <label for="snParticipant">Participant</label>
+      <select id="snParticipant">
+        <option value="">Select Participant</option>
+      </select>
+    </div>
+
+    <div class="SN-form-field">
+      <label for="snNote">Notes</label>
+      <textarea id="snNote" rows="5" placeholder="Enter your shift note…"></textarea>
+    </div>
+
+    <div class="SN-form-field">
+      <label for="snImage">Upload Image</label>
+      <input type="file" id="snImage" accept="image/*" multiple>
+    </div>
+
+    <div class="SN-form-buttons">
+      <button id="saveNoteBtn" onclick="saveShiftNote()">Submit</button>
+    </div>
+  </div>
+</div>
+
+  <!-- Image-Carousel Popup (if you still use it) -->
+  <div id="image-carousel-popup" class="popup-overlay" style="display:none;">
+    <div class="carousel-container">
+      <button class="carousel-close" onclick="closeImageCarousel()">×</button>
+      <button class="carousel-prev" onclick="carouselPrev()">‹</button>
+      <div id="carousel-image-wrapper"></div>
+      <button class="carousel-next" onclick="carouselNext()">›</button>
+    </div>
+  </div>
+
+</div>
+<script>
+(function(){
+  let SN_allNotes     = [];
+  let SN_participants = [];
+  let filteredNotes   = [];
+  let currentPage     = 1;
+  
+  const pageSize      = 5;
+
+ function showSection(tab) {
+  showLoader('Loading…');
+
+  ['view','add'].forEach(t => {
+    const section = document.getElementById('section-' + t);
+    const radio = document.getElementById('tab-' + t);
+    if (section) section.style.display = (t === tab ? 'block' : 'none');
+    if (radio)   radio.checked = (t === tab);
+  });
+
+  if (tab === 'add') {
+   // ← populate the disabled staff field
+      document.getElementById('snStaff').value = sessionStorage.getItem('userName') || '';
+      hideLoader();
+      return;
+    }
+
+
+  setTimeout(() => {
+    resetAndFilter();
+  }, 0);
+}
+window.showSection = showSection;
+
+
+function init_shiftnotes() {
+  showLoader('Loading shift notes…');
+  const staff = sessionStorage.getItem('userName') || '';
+
+  // 1) Pre-populate Staff, Date & Time fields
+  const snStaffEl = document.getElementById('snStaff');
+  const snDateEl  = document.getElementById('snDate');
+  const snTimeEl  = document.getElementById('snTime');
+  if (snStaffEl) snStaffEl.value = staff;
+  const now      = new Date();
+  const isoDate  = now.toISOString().split('T')[0];
+  const isoTime  = now.toTimeString().slice(0,5);
+  if (snDateEl) snDateEl.value = isoDate;
+  if (snTimeEl) snTimeEl.value = isoTime;
+
+  // 2) Fetch ALL notes from the server
+  google.script.run
+    .withSuccessHandler(notes => {
+      // — on success: store them in two places (global & local)
+      window.allShiftNotes = SN_allNotes = Array.isArray(notes) ? notes : [];
+      console.log('🔍 Loaded notes:', SN_allNotes);
+
+      // 3) Now fetch the list of participants for this user
+      google.script.run
+        .withSuccessHandler(parts => {
+          window.shiftNoteParticipants = Array.isArray(parts) ? parts : [];
+          console.log('👥 Loaded participants:', shiftNoteParticipants);
+
+          // 4) Build the participant-dropdowns, filter & render
+          buildParticipantDropdowns(shiftNoteParticipants, staff);
+          resetAndFilter();   // → calls filterNotes() → renderNotesPage()
+          hideLoader();
+        })
+        .withFailureHandler(err => {
+          console.error('Failed to load participants:', err);
+          alert('Could not load Participants list.');
+          hideLoader();
+        })
+        .getParticipantsForUser(staff);
+    })
+    .withFailureHandler(err => {
+      console.error('Failed to load shift notes:', err);
+      alert('Could not load Shift Notes.');
+      hideLoader();
+    })
+    .getAllShiftNotes();
+}
+window.init_shiftnotes = init_shiftnotes;
+
+document.addEventListener('DOMContentLoaded', init_shiftnotes);
+
+function renderNotesPage() {
+  showLoader('Rendering shift notes…');
+  
+  const out      = document.getElementById('existing-notes');
+  const pageInfo = document.getElementById('pageInfo');
+  const prevBtn  = document.getElementById('prevPage');
+  const nextBtn  = document.getElementById('nextPage');
+
+  console.log('renderNotesPage() elements:', { out, pageInfo, prevBtn, nextBtn });
+  if (!out || !pageInfo || !prevBtn || !nextBtn) {
+    console.warn('renderNotesPage bailing; missing DOM elements');
+    return hideLoader();
+  }
+
+  // Clear out any existing cards
+  out.innerHTML = '';
+  const total = filteredNotes.length;
+
+  if (total === 0) {
+    // If there are no notes to show after filter:
+    out.innerHTML         = '<p class="no-shifts">No shift notes found.</p>';
+    pageInfo.innerText    = 'Page 0 of 0';
+    prevBtn.disabled      = true;
+    nextBtn.disabled      = true;
+    return hideLoader();
+  }
+
+  // Otherwise, figure out pagination
+  const totalPages = Math.ceil(total / pageSize);
+  currentPage      = Math.min(Math.max(1, currentPage), totalPages);
+  const start      = (currentPage - 1) * pageSize;
+
+  // Slice out just this page’s notes, create a card for each
+  filteredNotes.slice(start, start + pageSize).forEach(n => {
+    const card = document.createElement('div');
+    card.className = 'shift-note-card';
+    card.innerHTML = `
+      <div class="note-participant"><strong>${n.participant}</strong></div>
+      <div class="note-meta">${n.date} by ${n.staff}</div>
+      <p class="note-text">${n.note.replace(/\n/g, '<br>')}</p>
+      ${renderLinks(n.image)}
+    `;
+    out.appendChild(card);
+  });
+
+  // Update “Page X of Y” and enable/disable Prev/Next buttons
+  pageInfo.innerText    = `Page ${currentPage} of ${totalPages}`;
+  prevBtn.disabled      = currentPage === 1;
+  nextBtn.disabled      = currentPage === totalPages;
+
+  hideLoader();
+}
+window.renderNotesPage = renderNotesPage;
+
+
+
+// ── Filter Shift Notes with Guards & Logging ────────────────
+function filterNotes() {
+  const selP = document.getElementById('filterParticipant');
+  const selA = document.getElementById('filterAfter');
+  const selB = document.getElementById('filterBefore');
+  const out  = document.getElementById('existing-notes');
+
+  console.log('filterNotes() elements:', { selP, selA, selB, out });
+  if (!selP || !selA || !selB || !out) {
+    console.warn('filterNotes bailing; missing DOM elements');
+    return;
+  }
+
+  const participantFilter = selP.value.trim().toLowerCase();
+  const after             = selA.value;   // ISO 'yyyy-MM-dd'
+  const before            = selB.value;
+
+  filteredNotes = SN_allNotes.filter(n => {
+    if (participantFilter && n.participant.toLowerCase() !== participantFilter) return false;
+    if (after  && n.date < after)   return false;
+    if (before && n.date > before)  return false;
+    return true;
+  });
+
+  currentPage = 1;
+  renderNotesPage();
+}
+window.filterNotes = filterNotes;
+
+
+
+
+  // ── FILTER + PAGINATION ──────────────────────────────────────
+  function resetAndFilter() {
+    currentPage = 1;
+    filterNotes();
+  }
+  window.resetAndFilter = resetAndFilter;
+
+  function renderLinks(csv) {
+    if (!csv) return '';
+    return `<div class="note-links">`
+      + csv.split(',')
+           .map(u=>u.trim())
+           .filter(u=>u)
+           .map((url,i)=>`<a href="${url}" target="_blank" rel="noopener">Image ${i+1}</a>`)
+           .join(' ')
+      + `</div>`;
+  }
+
+function saveShiftNote() {
+  const btn = document.getElementById('saveNoteBtn');
+  if (btn) btn.disabled = true;
+  showLoader('Saving note…');
+
+  const dateVal     = document.getElementById('snDate').value;
+  const timeVal     = document.getElementById('snTime').value;
+  const staffVal    = document.getElementById('snStaff').value;
+  const participant = document.getElementById('snParticipant').value;
+  const noteText    = document.getElementById('snNote').value;
+  const files       = Array.from(document.getElementById('snImage').files);
+
+  function finish() {
+    if (btn) btn.disabled = false;
+    hideLoader();
+  }
+
+  if (!dateVal || !timeVal || !participant || !noteText) {
+    alert('Date, time, participant and note are all required.');
+    finish();
+    return;
+  }
+
+  const readOne = file => new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload  = e => res({ name: file.name, b64: e.target.result.split(',')[1] });
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+
+  Promise.all(files.map(readOne))
+    .then(results => {
+      const filenames = results.map(r => r.name);
+      const base64s   = results.map(r => r.b64);
+      const timestamp = `${dateVal} ${timeVal}`;
+
+      google.script.run
+        .withSuccessHandler(() => {
+          finish();
+          // *** NEW: force-reload notes from server ***
+          google.script.run
+            .withSuccessHandler(notes => {
+              window.allShiftNotes = SN_allNotes = Array.isArray(notes) ? notes : [];
+              resetAndFilter();
+              renderNotesPage();
+              renderPage('shiftnotes');
+              showSection('view');
+            })
+            .withFailureHandler(err => {
+              console.error('Failed to reload notes after save:', err);
+              renderPage('shiftnotes');
+              showSection('view');
+            })
+            .getAllShiftNotes();
+        })
+        .withFailureHandler(err => {
+          console.error('Save failed:', err);
+          alert('Could not save note. Please try again.');
+          finish();
+        })
+        .saveShiftNoteWithImages(
+          timestamp,
+          staffVal,
+          participant,
+          noteText,
+          filenames,
+          base64s
+        );
+    })
+    .catch(err => {
+      console.error('File read error:', err);
+      alert('Couldn’t read your images. Please try again.');
+      finish();
+    });
+}
+window.saveShiftNote = saveShiftNote;
+
+})();
+document.addEventListener('DOMContentLoaded', init_shiftnotes);
+
+</script>
