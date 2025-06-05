@@ -1,0 +1,246 @@
+<!-- report.html -->
+<div class="report-page">
+  <div class="page-header">
+    <h1>Report</h1>
+    <div class="week-nav">
+      <button id="prevPeriodBtn" class="btn-nav">◀</button>
+      <span id="periodLabel">Period: ...</span>
+      <button id="nextPeriodBtn" class="btn-nav">▶</button>
+    </div>
+  </div>
+
+<!-- Team Leader selector (only shown to TLs) -->
+<div id="team-leader-selector" style="display:none; margin-bottom:1rem;">
+  <label for="reportParticipant">View Report for:</label>
+  <select id="reportParticipant" onchange="onReportParticipantChange()">
+    <option value="">My Shifts</option>
+    <!-- populated by populateTeamLeaderDropdowns() -->
+  </select>
+</div>
+
+  <div class="report-table-container">
+    <table class="report-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Base Hours<br>(06:00–20:00)</th>
+          <th>Evening Hours<br>(20:00–24:00)</th>
+          <th>Night Hours<br>(00:00–06:00)</th>
+          <th>Saturday Hours</th>
+          <th>Sunday Hours</th>
+          <th>Sleepovers</th>
+          <th>Total Daily Hours</th>
+        </tr>
+      </thead>
+      <tbody id="reportBody">
+        <!-- rows injected here -->
+      </tbody>
+      <tfoot>
+        <tr class="summary-row">
+          <td>Period Total</td>
+          <td id="sumBase"></td>
+          <td id="sumEve"></td>
+          <td id="sumNight"></td>
+          <td id="sumSat"></td>
+          <td id="sumSun"></td>
+          <td id="sumSleep"></td>
+          <td id="sumTotal"></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <p class="report-note">Data based on confirmed shifts in this pay period.</p>
+</div>
+
+<!-- Period Detail Popup -->
+<div id="period-detail-popup" class="popup-overlay" style="display:none">
+  <div class="popup-container">
+    <div class="popup-header"><h2>Pay Period Detail</h2></div>
+    <div id="period-detail-content" class="popup-content"></div>
+    <div class="popup-footer">
+      <button onclick="closePeriodDetail()">Close</button>
+    </div>
+  </div>
+</div>
+
+<style>
+  .week-nav { display:flex; align-items:center; gap:1em; margin-bottom:1em; }
+  .report-table-container { overflow-x:auto; }
+  .report-table { width:100%; border-collapse:collapse; border:1px solid #ccc; }
+  .report-table th, .report-table td { padding:0.5em; text-align:center; border:1px solid #ccc; }
+  .report-table th { background:#004080; color:#fff; }
+  .report-table tbody tr:nth-child(even) { background:#e6f2ff; }
+  .report-table tbody tr:nth-child(odd)  { background:#f9f9f9; }
+  .summary-row { font-weight:600; background:#cce0ff; }
+  .btn-nav { padding:0.5em 1em; background:#FFB74D; border:none; border-radius:4px; cursor:pointer; }
+  .report-note { font-size:0.9rem; color:#555; margin-top:1em; }
+  .popup-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:1000; }
+  .popup-container { background:#fff; padding:1.5em; border-radius:8px; max-width:90%; max-height:90%; overflow:auto; }
+  .popup-header h2 { margin:0 0 1em; }
+  .popup-content { margin-bottom:1em; }
+  .popup-footer { text-align:right; }
+</style>
+
+<script>
+(function(){
+  const PERIOD_START = new Date('2025-05-05T00:00');
+  let periodStart = new Date(PERIOD_START);
+
+  document.getElementById('prevPeriodBtn').onclick = () => changePeriod(-1);
+  document.getElementById('nextPeriodBtn').onclick = () => changePeriod(1);
+
+  function changePeriod(delta) {
+    periodStart.setDate(periodStart.getDate() + delta * 14);
+    renderReport();
+  }
+
+  function getPeriodEnd(start) {
+    const d = new Date(start);
+    d.setDate(d.getDate() + 13);
+    d.setHours(23,59,59,999);
+    return d;
+  }
+
+function init_report() {
+  const user = sessionStorage.getItem('userName');
+  if (!user) return;
+
+  // ensure your cached participants are filled
+  if (!window.__cachedParticipants) {
+    // defer until cache is ready
+    google.script.run
+      .withSuccessHandler(() => init_report())
+      .getParticipantsForUser(user);
+    return;
+  }
+
+  const role = (sessionStorage.getItem('userRole') || '').trim().toLowerCase();
+  const isTL = /team\s*[- ]?\s*leader/i.test(role);
+
+  // only show the dropdown if team leader
+  const wrap = document.getElementById('report-selector');
+  if (wrap) wrap.style.display = isTL ? 'block' : 'none';
+  
+  // populate all TL dropdowns (roster + report)
+  populateTeamLeaderDropdowns();
+
+  // when they change the report target, re-render
+  const reportSel = document.getElementById('reportParticipant');
+  if (reportSel) {
+    reportSel.addEventListener('change', () => {
+      sessionStorage.setItem('reportParticipant', reportSel.value);
+      renderReport(reportSel.value || user);
+    });
+  }
+
+  // initial render
+  renderReport(sessionStorage.getItem('reportParticipant') || user);
+}
+window.init_report = init_report;
+
+// make sure you only bind once
+document.addEventListener('DOMContentLoaded', init_report);
+  // overlap helper
+  function overlap(s,e,rs,re){ return Math.max(0, Math.min(e,re) - Math.max(s,rs)); }
+
+  // format number or blank
+  function fmt(n){ return (!n && n!==0) || n===0 ? (n===0? '': '') : (n%1===0? n : n.toFixed(1)); }
+
+  // format dates as DD/MM Ddd
+  function fmtDate(d){
+    if(!(d instanceof Date)) d = new Date(d);
+    const dd = String(d.getDate()).padStart(2,'0');
+    const mm = String(d.getMonth()+1).padStart(2,'0');
+    const wd = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()];
+    return `${dd}/${mm} ${wd}`;
+  }
+
+  function renderReport() {
+    const start = new Date(periodStart);
+    const end   = getPeriodEnd(start);
+    document.getElementById('periodLabel').innerText =
+      `${fmtDate(start)} – ${fmtDate(end)}`;
+
+    const shifts = (window.completedShifts||[]).filter(s=>{
+      const d=new Date(s.date);
+      return d>=start && d<=end;
+    });
+
+    const dates=[];
+    for(let d=new Date(start); d<=end; d.setDate(d.getDate()+1)){
+      dates.push(new Date(d));
+    }
+
+    let sb=0,se=0,sn=0,ssat=0,ssun=0, sp=0;
+    const tbody=document.getElementById('reportBody'); tbody.innerHTML='';
+
+    dates.forEach(dateObj=>{
+      const dateStr = dateObj.toISOString().split('T')[0];
+      const dl = shifts.filter(s=>s.date===dateStr);
+      let base=0,eve=0,night=0,sleep=0;
+      const wd = dateObj.getDay();
+      dl.forEach(s=>{
+        if(/sleepover/i.test(s.duty)) { sleep++; return; }
+        const [h0,m0]=s.start.split(':').map(Number);
+        const [h1,m1]=s.end.split(':').map(Number);
+        let sm=h0*60+m0, em=h1*60+m1;
+        if(em<=sm) em+=24*60;
+        if(wd===6){ base += (em-sm)/60; }
+        else if(wd===0){ eve += (em-sm)/60; }
+        else {
+          base  += overlap(sm,em,6*60,20*60)/60;
+          eve   += overlap(sm,em,20*60,24*60)/60;
+          night += overlap(sm,em,0,6*60)/60;
+        }
+      });
+      const dailyWeekday = base + eve + night;
+      const dailyWeekend = wd===6? base: wd===0? eve: 0;
+      const total = (wd>=1&&wd<=5? dailyWeekday : dailyWeekend) + sleep*2;
+      sb+=base; se+=eve; sn+=night; ssat+= wd===6? dailyWeekend:0; ssun+= wd===0? dailyWeekend:0; sp+=sleep;
+
+      const tr=document.createElement('tr'); tr.style.cursor='pointer';
+      tr.onclick = () => openPeriodDetail(shifts);
+      let html = `<td>${fmtDate(dateObj)}</td>`;
+      if(wd===6) {
+        html+=`<td></td><td></td><td></td><td>${fmt(dailyWeekend)}</td><td></td>`;
+      } else if(wd===0) {
+        html+=`<td></td><td></td><td></td><td></td><td>${fmt(dailyWeekend)}</td>`;
+      } else {
+        html+=`<td>${fmt(base)}</td><td>${fmt(eve)}</td><td>${fmt(night)}</td><td></td><td></td>`;
+      }
+      html+=`<td>${sleep? sleep : ''}</td><td>${fmt(total)}</td>`;
+      tr.innerHTML = html;
+      tbody.appendChild(tr);
+    });
+
+    document.getElementById('sumBase').innerText  = fmt(sb);
+    document.getElementById('sumEve').innerText   = fmt(se);
+    document.getElementById('sumNight').innerText = fmt(sn);
+    document.getElementById('sumSat').innerText   = fmt(ssat);
+    document.getElementById('sumSun').innerText   = fmt(ssun);
+    document.getElementById('sumSleep').innerText = sp? sp : '';
+    document.getElementById('sumTotal').innerText = fmt(sb+se+sn + ssat + ssun + sp*2);
+  }
+
+  function openPeriodDetail(shifts) {
+    if(!shifts.length) return;
+    const content = shifts.map(s=>{
+      const date = fmtDate(s.date);
+      const part = s.participant;
+      if(/sleepover/i.test(s.duty)) {
+        return `<div><strong>${part}</strong> ${date} – <em>${s.duty}</em></div>`;
+      } else {
+        const time = `${formatTime(s.start)}–${formatTime(s.end)}`;
+        return `<div><strong>${part}</strong> ${date} – ${time}${s.duty!=='Active Shift'?` <em>${s.duty}</em>`:''}</div>`;
+      }
+    }).join('<hr>');
+    document.getElementById('period-detail-content').innerHTML = content;
+    document.getElementById('period-detail-popup').style.display = 'flex';
+  }
+  window.closePeriodDetail = ()=>{
+    document.getElementById('period-detail-popup').style.display='none';
+  };
+
+  window.init_report = renderReport;
+})();
