@@ -1,0 +1,1125 @@
+<!-- roster.html (partial only) -->
+<div class="page-header">
+  <h1>Roster</h1>
+
+  <!-- Team Leader “View Shifts for…” selector -->
+  <div id="team-leader-selector" style="display:none; margin-bottom:1rem;">
+    <label for="viewParticipant">View Shifts for:</label>
+    <select id="viewParticipant" onchange="refreshRosterView()">
+      <option value="">My Shifts</option>
+      <!-- dynamic participant options will be injected -->
+    </select>
+  </div>
+
+  <div class="radio-inputs">
+    <div class="radio">
+      <input type="radio" id="tab-upcoming" name="tab" checked>
+      <label class="name" for="tab-upcoming" onclick="showSection('upcoming')">
+        Upcoming
+      </label>
+    </div>
+    <div class="radio">
+      <input type="radio" id="tab-pending" name="tab">
+      <label class="name" for="tab-pending" onclick="showSection('pending')">
+        Pending (<span id="pending-count">0</span>)
+      </label>
+    </div>
+    <div class="radio">
+      <input type="radio" id="tab-completed" name="tab">
+      <label class="name" for="tab-completed" onclick="showSection('completed')">
+        Completed
+      </label>
+    </div>
+  </div>
+</div>
+
+<div id="upcoming" class="section active">
+  <!-- TL Add Shift Button -->
+  <button id="tl-add-shift-btn"
+          class="btn btn-lightblue"
+          style="display:none; margin-bottom:1rem;"
+          onclick="openAddShiftForm(true)">
+    + Add Shift (TL)
+  </button>
+
+  <!-- Staff Add Shift Button -->
+  <button id="add-shift-btn"
+          class="btn-add"
+          onclick="openAddShiftForm()">
+    + Add Shift
+  </button>
+
+  <!-- TL Add Unconfirmed (legacy, optional) -->
+  <button id="tl-add-unconfirmed"
+          class="btn-tl-unconfirmed"
+          style="display:none; margin-left:1rem;"
+          onclick="openTeamLeaderShiftForm('pending')">
+    + TL Add Shift
+  </button>
+
+  <div id="upcoming-container"></div>
+</div>
+<!-- Pending -->
+<div id="pending" class="section">
+  <div id="pending-container"></div>
+</div>
+
+
+<!-- Completed -->
+<div id="completed" class="section">
+  <!-- Only shown if team leader -->
+  <button id="tl-add-completed"
+          class="btn-tl-completed"
+          style="display:none"
+          onclick="openTeamLeaderShiftForm('completed')">
+    + TL Add Completed
+  </button>
+
+  <div class="week-nav">
+    <button id="prevWeekBtn" class="btn-nav" onclick="changeWeek(-1)">←</button>
+    <span class="week-label">5 May – 18 May</span>
+    <button id="nextWeekBtn" class="btn-nav" onclick="changeWeek(1)">→</button>
+  </div>
+
+  <div id="completed-container"></div>
+</div>
+
+
+<!-- Detail / Note Popup -->
+<div id="detail-popup" class="popup-overlay" style="display:none;">
+  <div class="popup-container">
+    <div class="popup-header">
+      <h2 id="popup-participant"></h2>
+      <div id="popup-date"></div>
+    </div>
+    <div id="popup-content" class="popup-content"></div>
+    <div class="popup-footer">
+      <button onclick="closeDetail()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Adjustment Popup -->
+<div id="adjust-popup" class="popup-overlay" style="display:none;">
+  <div class="popup-container" style="min-height: 350px;">
+    <div class="popup-header">Request Adjustment</div>
+    <div class="popup-content">
+      <textarea id="adjust-reason"
+        placeholder="• Swap with another staff? Provide name
+• Change start/end time? Give the new times and short reason
+• Cancel the shift? Provide reason"
+        style="width:100%; height:220px; font-size:1rem; line-height:1.4; padding:8px;"
+      ></textarea>
+    </div>
+    <div class="popup-footer">
+      <button class="btn-confirm" onclick="submitAdjustment(event)">Submit</button>
+      <button onclick="closeAdjust()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- …existing code above… -->
+<div id="add-shift-popup" class="popup-overlay" style="display:none">
+  <div class="popup-container">
+    <h2>Add Shift</h2>
+    <h3>Request a shift not in the roster</h3>
+
+    <div class="popup-content">
+
+<!-- no more <select id="newShiftStaff"> -->
+<div id="newShiftStaffRow" style="display:none; position:relative;">
+  <label>Staff:</label>
+  <input
+    id="staffSearchInput"
+    placeholder="– Select/Search Staff –"
+    autocomplete="off"
+    oninput="onStaffNameChange(event)"
+  />
+  <div id="staffSuggestions" class="suggestions"></div>
+</div>
+      <label>Date: 
+        <input type="date" id="newShiftDate">
+      </label>
+      <label>Shift Type: 
+        <select id="newShiftDuty" onchange="populateEndTimes()">
+          <option value="Active Shift" selected>Active Shift</option>
+          <option value="Training">Training</option>
+          <option value="SLEEPOVER">SLEEPOVER</option>
+        </select>
+      </label>
+      <label>Start: 
+        <select id="newShiftStart" onchange="populateEndTimes()"></select>
+      </label>
+      <label>End: 
+        <select id="newShiftEnd"></select>
+      </label>
+      <label>Participant:
+        <select id="newShiftParticipant"></select>
+      </label>
+    </div>
+    <div class="popup-footer">
+      <button id="saveShiftBtn" onclick="submitNewShift(event)">Save</button>
+      <button onclick="closeAddShift()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+ <script>
+(function(){
+const state = { currentWeekStart: getFortnightStart(new Date()), selectedParticipant: '' };
+const prev = document.getElementById('prevWeekBtn');
+if (prev) prev.onclick = () => changeWeek(-1);
+window.__cachedParticipants = null;
+
+const next = document.getElementById('nextWeekBtn');
+if (next) next.onclick = () => changeWeek(1);
+
+let allShifts       = window.allShifts       || [];
+let completedShifts = window.completedShifts || [];
+let adjustShiftId  = null;
+let rosterParticipants = [];
+let rosterStaff = [];
+
+let inParticipantView = false;
+const user = sessionStorage.getItem('userName');
+
+  // ── RENDER HELPERS ───────────────────────────────────────────
+  function makeDivider(label) {
+    const h = document.createElement('h2');
+    h.className = 'shift-section-heading';
+    h.innerText = label;
+    return h;
+  }
+
+function dayBorderClass(iso) {
+  if (!iso) return '';
+  const wd = new Date(iso).toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+  return 'day-border-' + wd;
+}
+
+function makeCard(s, clickable = true) {
+  const c = document.createElement('div');
+  c.className = 'shift-card ' + dayBorderClass(s.date);
+
+  // ── Dot‐colour logic ──────────────────────────────────────
+  let dotClass = '';
+  const now     = new Date();
+  const startDt = new Date(`${s.date}T${s.start || '00:00'}`);
+
+  if (s.confReason) {
+    // shift with an adjustment reason
+    dotClass = /\*shift requested\*/i.test(s.confReason)
+      ? 'dot-blue'
+      : 'dot-purple';
+  } else if (s.confDate) {
+    // confirmed shift (no confReason) → green
+    dotClass = 'dot-green';
+  } else if (startDt < now) {
+    // unconfirmed past-due → yellow
+    dotClass = 'dot-yellow';
+  }
+
+  const dotHtml = dotClass
+    ? `<span class="dot ${dotClass}"></span>`
+    : '';
+
+  // ── Time display (hide for sleepovers) ─────────────────
+  const timeHtml = s.duty.toUpperCase() === 'SLEEPOVER'
+    ? ''
+    : (s.start === s.end
+        ? ''
+        : `<span class="shift-time">${formatTime(s.start)}–${formatTime(s.end)}</span>`
+      );
+
+  // ── Date + dot markup ───────────────────────────────────
+  const dateHtml = `
+    <div class="shift-date-container">
+      <span class="shift-date">${formatDate(s.date)}</span>
+      ${dotHtml}
+    </div>`;
+
+  // ── Name to show ────────────────────────────────────────
+  const showName = inParticipantView && state.selectedParticipant
+    ? s.staffName
+    : s.participant;
+
+  // ── Build the card ──────────────────────────────────────
+  c.innerHTML = `
+    <div class="shift-header">
+      ${dateHtml}
+      ${timeHtml}
+      <span class="shift-type">${s.duty}</span>
+    </div>
+    <div class="shift-participant">${showName}</div>
+  `;
+
+  // ── Click to open detail (if allowed) ───────────────────
+  if (clickable) {
+    c.onclick = () => openDetailFor(s.participant, s.date);
+  }
+
+  return c;
+}
+window.makeCard = makeCard;
+
+function openTeamLeaderShiftForm(target) {
+  sessionStorage.setItem('tlTargetSection', target);  // "pending" or "completed"
+  openAddShiftForm(true); // pass true if it's TL-triggered
+}
+window.openTeamLeaderShiftForm = openTeamLeaderShiftForm;
+
+ function renderUpcomingSections(todayList, tomorrowList, laterList, inParticipantView) {
+  const out = document.getElementById('upcoming-container');
+  out.innerHTML = '';
+  const total = todayList.length + tomorrowList.length + laterList.length;
+  if (!total) {
+    out.innerHTML = '<p class="no-shifts">No scheduled shifts.</p>';
+    return;
+  }
+
+  // Always remove any dot on Upcoming
+  function appendGroup(list, heading) {
+    if (!list.length) return;
+    out.appendChild(makeDivider(heading));
+    list.forEach(s => {
+      const card = makeCard(s);
+      const dot = card.querySelector('.dot');
+      if (dot) dot.remove();
+      // TL edit/delete
+      const role      = (sessionStorage.getItem('userRole')||'').trim().toLowerCase();
+      const isTL      = /team\s*[- ]?\s*leader/i.test(role);
+      if (isTL && inParticipantView) {
+        const btns = document.createElement('div');
+        btns.className = 'card-buttons';
+        btns.innerHTML = `
+          <button class="btn-adjust" title="Edit"
+                  onclick="openEditShift('${s.id}', event)">
+            <i class="material-icons">edit</i>
+          </button>
+          <button class="btn-delete" title="Delete"
+                  onclick="confirmDeleteShift('${s.id}', event)">
+            <i class="material-icons">delete</i>
+          </button>
+        `;
+        card.appendChild(btns);
+      }
+      out.appendChild(card);
+    });
+  }
+
+  appendGroup(todayList,    'Today');
+  appendGroup(tomorrowList, 'Tomorrow');
+  appendGroup(laterList,    'Upcoming Shifts');
+}
+window.renderUpcomingSections = renderUpcomingSections;
+
+function openAddShiftForm(isTeamLeader = false) {
+  document.getElementById('add-shift-popup').style.display = 'flex';
+  document.getElementById('newShiftDate').value =
+    new Date().toISOString().slice(0, 10);
+
+  populateStartTimes();
+  populateEndTimes();
+
+  const participantList = window.rosterParticipants || window.__cachedParticipants || [];
+  const sel = document.getElementById('newShiftParticipant');
+  sel.innerHTML =
+    '<option value="">Select Participant</option>' +
+    participantList.map(p => `<option value="${p}">${p}</option>`).join('');
+
+  // Auto-select participant if TL view
+  if (isTeamLeader && state.selectedParticipant) {
+    sel.value = state.selectedParticipant;
+  }
+
+  document.getElementById('newShiftDuty').value = 'Active Shift';
+
+  // Show/hide staff-search only for TL, and populate datalist
+  const staffRow   = document.getElementById('newShiftStaffRow');
+  const staffInput = document.getElementById('staffSearchInput');
+  if (staffRow) {
+    staffRow.style.display = isTeamLeader ? 'block' : 'none';
+    if (isTeamLeader && staffInput) {
+      staffInput.value = sessionStorage.getItem('userName') || '';
+      initShiftPopup();   // populate #staffList
+    }
+  }
+} 
+window.openAddShiftForm = openAddShiftForm;
+
+
+function changeWeek(delta) {
+  // delta = ±1 fortnight
+  const msPerDay = 24 * 60 * 60 * 1000;
+  state.currentWeekStart = new Date(
+    state.currentWeekStart.getTime() + delta * 14 * msPerDay
+  );
+  renderCompleted(inParticipantView);
+}
+window.changeWeek = changeWeek;
+
+// ── COMPLETED TAB ─────────────────────────────────────────────
+function renderCompleted(inParticipantView) {
+  const container = document.getElementById('completed-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const role    = (sessionStorage.getItem('userRole') || '').trim().toLowerCase();
+  const isTL    = /team\s*[- ]?\s*leader/i.test(role);
+  const weekStart = state.currentWeekStart;
+  const weekEnd   = new Date(weekStart.getTime() + 13 * 24 * 60 * 60 * 1000);
+
+  // Update the fortnight label
+  const weekLabel = document.querySelector('#completed .week-nav .week-label');
+  if (weekLabel) {
+    const fmt = d => `${d.getDate()} ${d.toLocaleString('en-AU',{month:'short'})}`;
+    weekLabel.innerText = `${fmt(weekStart)} – ${fmt(weekEnd)}`;
+  }
+
+  // 1) Build list from *only confirmed* shifts
+  let list = completedShifts.slice();
+  // 2) If TL is looking at a particular participant...
+  if (inParticipantView) {
+    list = list.filter(s => s.participant === state.selectedParticipant);
+  }
+
+  // 3) Filter by the CONF_DATE range
+  list = list.filter(s => {
+    const d = new Date(s.date);   // s.date here is the CONF_DATE string
+    return d >= weekStart && d <= weekEnd;
+  });
+
+  if (!list.length) {
+    container.innerHTML = `<p class="no-shifts">
+      ${inParticipantView ? 'No shifts this fortnight.' : 'No completed shifts.'}
+    </p>`;
+    return;
+  }
+
+  // ── Team Leader, Participant-View: show summary cards ──────
+  if (isTL && inParticipantView) {
+    const byDate = {};
+    list.forEach(s => {
+      (byDate[s.date] = byDate[s.date] || []).push(s);
+    });
+    Object.keys(byDate).sort().forEach(dateStr => {
+      const dayList = byDate[dateStr];
+      const confirmedCount = dayList.length;
+      // pending & requests only make sense if you also want to show them here;
+      // otherwise you can drop those counts
+      const sleepovers = dayList.filter(s => s.duty === 'SLEEPOVER').length;
+      const totalHours = dayList.reduce((sum, s) =>
+        sum + ((toMinutes(s.end) - toMinutes(s.start)) / 60), 0);
+
+      const card = document.createElement('div');
+      card.className = 'shift-card ' + dayBorderClass(dateStr);
+      card.style.cursor = 'pointer';
+      card.innerHTML = `
+        <div class="shift-header">
+          <div class="shift-date-container">
+            <span class="shift-date">${formatDate(dateStr)}</span>
+          </div>
+          <span class="shift-type">Confirmed (${confirmedCount})</span>
+        </div>
+        <div class="shift-participant">${state.selectedParticipant}</div>
+        <div class="shift-summary">
+          Total Hours: ${totalHours.toFixed(1)}<br>
+          Total Sleepovers: ${sleepovers}
+        </div>`;
+      card.onclick = () => openDetail(dayList);
+      container.appendChild(card);
+    });
+  }
+  // ── Staff or TL Viewing “My Shifts”: show one card per shift ─
+  else {
+    // Sort by date then time
+    list.sort((a, b) => new Date(a.date) - new Date(b.date) || toMinutes(a.start) - toMinutes(b.start));
+    list.forEach(s => {
+      const card = makeCard(s, false);  // makeCard now picks confDate/confStart/etc
+      // And if there's a note (but not raw '*shift requested*'), let them tap it
+      if (s.note && !/^\*shift requested\*/i.test(s.note)) {
+        card.onclick = () => openNote(s.note);
+      }
+      container.appendChild(card);
+    });
+  }
+
+  // ── Show/hide nav arrows ────────────────────────────────────
+  const dates = list.map(s => new Date(s.date));
+  const earliest = getFortnightStart(new Date(Math.min(...dates)));
+  const latest   = getFortnightStart(new Date(Math.max(...dates)));
+  document.querySelector('#completed .week-nav button:first-child')
+    .style.display = weekStart <= earliest ? 'none' : 'inline-block';
+  document.querySelector('#completed .week-nav button:last-child')
+    .style.display = weekStart >= latest   ? 'none' : 'inline-block';
+}
+window.renderCompleted = renderCompleted;
+
+
+// Helper (if you haven’t already added it)
+function getDotClass(s) {
+  const now   = new Date();
+  const endDt = new Date(`${s.date}T${s.end || s.start || '00:00'}`);
+
+  if (s.confReason) {
+    return /^\*shift requested\*/i.test(s.confReason)
+      ? 'dot-blue'
+      : 'dot-purple';
+  }
+  if (s.confDate) {
+    return 'dot-green';
+  }
+  if (endDt <= now) {
+    return 'dot-yellow';
+  }
+  return '';
+}
+
+// ── POPUP ─────────────────────────────────────────────────────
+function openDetail(shifts) {
+  if (!Array.isArray(shifts) || shifts.length === 0) return;
+
+  document.getElementById('popup-participant').innerText =
+  shifts[0].staffName || shifts[0].participant || '';
+  document.getElementById('popup-date').innerText = formatDate(shifts[0].date);
+
+  const now = new Date();
+  const html = shifts.map(s => {
+    // Use CONF_* values if available
+    const date  = s.confDate || s.date;
+    const start = s.confStart || s.start;
+    const end   = s.confEnd || s.end;
+    const duty  = s.confDuty || s.duty;
+    const staff = s.confStaff || s.staffName;
+    const part  = s.confParticipant || s.participant;
+    const reason = s.confReason;
+
+    const endTime = (end && end !== start ? end : start) || "00:00";
+    const endDt = new Date(`${date || "1970-01-01"}T${endTime}`);
+
+    let color = '';
+    if (reason && /[*]shift requested[*]/i.test(reason)) {
+      color = 'blue';
+    } else if (reason) {
+      color = 'purple';
+    } else if (s.confDate) {
+      color = 'green';
+    } else if (endDt <= now) {
+      color = 'yellow';
+    }
+
+    const dot = color
+      ? `<span class="dot dot-${color}" style="float:right;"></span>`
+      : '';
+
+    const timeHtml = duty?.toUpperCase() === 'SLEEPOVER'
+      ? ''
+      : ` <span class="shift-time">${formatTime(start)}–${formatTime(end)}</span>`;
+
+    const dutyHtml = duty
+      ? `<em class="shift-duty">${duty}</em>`
+      : '';
+
+    const noteHtml = color === 'purple'
+      ? `<div class="shift-note">${reason}</div>`
+      : '';
+
+    return `
+      <div class="popup-shift-card">
+        <strong>${staff || ''}</strong>${timeHtml} ${dot}
+        <div>${dutyHtml}</div>
+        ${noteHtml}
+      </div>`;
+  }).join('<hr>');
+
+  document.getElementById('popup-content').innerHTML = html;
+  document.getElementById('detail-popup').style.display = 'flex';
+}
+window.openDetail = openDetail;
+
+
+function openDetailFor(participant, date) {
+  const data = allShifts.filter(s => s.participant === participant && s.date === date);
+  openDetail(data);
+}
+window.openDetailFor = openDetailFor;
+
+function confirmDeleteShift(shiftId, ev) {
+  ev.stopPropagation();     // don’t trigger card click
+  if (window.confirm('Are you sure you want to delete this shift?')) {
+    deleteShiftById(shiftId);
+  }
+}
+window.confirmDeleteShift = confirmDeleteShift;
+
+// Stub for editing an existing shift
+function openEditShift(shiftId, ev) {
+  ev.stopPropagation();
+  // TODO: look up the shift data by ID, populate your Add/Edit form,
+  // set state.editingShift = { id: shiftId, … }, then:
+  openAddShiftForm(/* isTeamLeader= */ true);
+}
+window.openEditShift = openEditShift;
+
+function getFortnightStart(today = new Date()) {
+  const anchor = new Date('2024-05-06'); // Must be a Monday
+  anchor.setHours(0, 0, 0, 0);
+
+  // Get current week's Monday
+  const currentMonday = new Date(today);
+  const day = currentMonday.getDay();
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  currentMonday.setDate(currentMonday.getDate() + diffToMonday);
+  currentMonday.setHours(0, 0, 0, 0);
+
+  // Calculate days difference from anchor
+  const daysDiff = Math.floor((currentMonday - anchor) / (1000 * 60 * 60 * 24));
+  const fortnightIndex = Math.floor(daysDiff / 14);
+
+  // Calculate new fortnight start from a *copy* of the anchor
+  const fortnightStart = new Date(anchor.getTime());
+  fortnightStart.setDate(fortnightStart.getDate() + fortnightIndex * 14);
+  return fortnightStart;
+}
+
+
+
+function updateAddShiftButtonVisibility(isTeamLeader, inParticipantView) {
+  const addBtn       = document.getElementById('add-shift-btn');
+  const tlUnconfirmed= document.getElementById('tl-add-unconfirmed');
+  const tlCompleted  = document.getElementById('tl-add-completed');
+
+  if (isTeamLeader) {
+    if (inParticipantView) {
+      // TL viewing a participant → show TL add buttons only
+      if (addBtn)       addBtn.style.display       = 'none';
+      if (tlUnconfirmed) tlUnconfirmed.style.display= 'inline-block';
+      if (tlCompleted)   tlCompleted.style.display  = 'inline-block';
+    } else {
+      // TL on their own / “My Shifts” → exactly like staff
+      if (addBtn)       addBtn.style.display       = 'inline-block';
+      if (tlUnconfirmed) tlUnconfirmed.style.display= 'none';
+      if (tlCompleted)   tlCompleted.style.display  = 'none';
+    }
+  } else {
+    // pure staff → only their Add-Shift
+    if (addBtn)       addBtn.style.display       = 'inline-block';
+    if (tlUnconfirmed) tlUnconfirmed.style.display= 'none';
+    if (tlCompleted)   tlCompleted.style.display  = 'none';
+  }
+}
+
+// ── PENDING TAB ─────────────────────────────────────────────
+function renderPending(pendingList, inParticipantView) {
+  const out = document.getElementById('pending-container');
+  out.innerHTML = '';
+
+  const role      = (sessionStorage.getItem('userRole')||'').trim().toLowerCase();
+  const isTL      = /team\s*[- ]?\s*leader/i.test(role);
+  // TL→participant: count only requests
+  const requests  = pendingList.filter(s => !!s.confReason);
+  const count     = (isTL && inParticipantView) ? requests.length : pendingList.length;
+  document.getElementById('pending-count').innerText = count;
+
+  if (isTL && inParticipantView) {
+    if (!requests.length) {
+      out.innerHTML = '<p class="no-shifts">No pending requests.</p>';
+      return;
+    }
+    out.appendChild(makeDivider('Pending Requests'));
+    requests.forEach(s => {
+      const card = makeCard(s, false);
+      // choose dot‐color
+      const dot = card.querySelector('.dot') || document.createElement('span');
+      if (s.confReason.toLowerCase().includes('*shift requested*')) {
+        dot.className = 'dot dot-blue';
+      } else {
+        dot.className = 'dot dot-purple';
+      }
+      if (!card.querySelector('.dot')) {
+        card.querySelector('.shift-date-container').appendChild(dot);
+      }
+      // show note only if not "*shift requested*"
+      if (!s.confReason.toLowerCase().includes('*shift requested*')) {
+        card.onclick = () => openNote(s.confReason);
+      }
+      const btns = document.createElement('div');
+      btns.className = 'card-buttons';
+      btns.innerHTML = `
+        <button class="btn-adjust" title="Edit"
+                onclick="openEditShift('${s.id}', event)"><i class="material-icons">edit</i></button>
+        <button class="btn-confirm" title="Confirm"
+                onclick="confirmShiftById('${s.id}', event)"><i class="material-icons">check</i></button>
+        <button class="btn-delete" title="Delete"
+                onclick="confirmDeleteShift('${s.id}', event)"><i class="material-icons">delete</i></button>
+      `;
+      card.appendChild(btns);
+      out.appendChild(card);
+    });
+  }
+  else {
+    // staff view: only past-due unconfirmed (no confReason), yellow dot
+    const pastDue = pendingList.filter(s => !s.confReason);
+    if (!pastDue.length) {
+      out.innerHTML = '<p class="no-shifts">No pending shifts.</p>';
+      return;
+    }
+    out.appendChild(makeDivider('Pending Confirmation'));
+    pastDue.forEach(s => {
+      const card = makeCard(s, false);
+      // strip any default dot & add yellow
+      const oldDot = card.querySelector('.dot');
+      if (oldDot) oldDot.remove();
+      const y = document.createElement('span');
+      y.className = 'dot dot-yellow';
+      card.querySelector('.shift-date-container').appendChild(y);
+      const btns = document.createElement('div');
+      btns.className = 'card-buttons';
+      btns.innerHTML = `
+        <button class="btn-adjust" title="Adjust"
+                onclick="openAdjust('${s.id}')"><i class="material-icons">edit</i></button>
+        <button class="btn-confirm" title="Confirm"
+                onclick="confirmShiftById('${s.id}', event)"><i class="material-icons">check</i></button>
+      `;
+      card.appendChild(btns);
+      out.appendChild(card);
+    });
+  }
+}
+window.renderPending = renderPending;
+
+
+
+
+function highlightShiftById(id) {
+  const el = document.querySelector(`[data-shift-id="${id}"]`);
+  if (!el) return;
+
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  el.classList.add('highlighted');
+
+  setTimeout(() => el.classList.remove('highlighted'), 2000);
+}
+
+  function openNote(note) {
+    document.getElementById('popup-participant').innerText = 'Note';
+    document.getElementById('popup-date').innerText        = '';
+    document.getElementById('popup-content').innerHTML     = `<p>${note||'No note.'}</p>`;
+    document.getElementById('detail-popup').style.display = 'flex';
+  }
+  function closeDetail() {
+    document.getElementById('detail-popup').style.display = 'none';
+  }
+  window.closeDetail = closeDetail;
+
+function splitUpcoming(user) {
+  const now = new Date();
+  const pad = n => n.toString().padStart(2, '0');
+  const today = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+  const tmr = new Date(now); tmr.setDate(tmr.getDate()+1);
+  const tomorrow = `${tmr.getFullYear()}-${pad(tmr.getMonth()+1)}-${pad(tmr.getDate())}`;
+
+  const todayList = [], tomorrowList = [], laterList = [], pendingList = [];
+
+  allShifts.forEach(s => {
+    // In participant-view, filter by s.participant; otherwise by staffName
+    if (inParticipantView) {
+      if (s.participant !== state.selectedParticipant) return;
+    } else {
+      if (s.staffName !== user) return;
+    }
+
+    const dt = new Date(`${s.date}T${s.start||'00:00'}`);
+    if (dt <= now) {
+      pendingList.push(s);
+    } else if (s.date === today) {
+      todayList.push(s);
+    } else if (s.date === tomorrow) {
+      tomorrowList.push(s);
+    } else {
+      laterList.push(s);
+    }
+  });
+
+  renderUpcomingSections(todayList, tomorrowList, laterList, inParticipantView);
+  renderPending(pendingList, inParticipantView);
+}
+window.splitUpcoming = splitUpcoming;
+
+
+function showSection(id) {
+  ['upcoming','pending','completed'].forEach(s => {
+    // show / hide panels
+    document.getElementById(s).style.display = s === id ? 'block' : 'none';
+    // check the radio
+    const r = document.getElementById('tab-' + s);
+    if (r) r.checked = (s === id);
+  });
+
+  // re-render as before
+  if (id === 'upcoming' || id === 'pending') splitUpcoming(inParticipantView ? state.selectedParticipant : user);
+
+}
+window.showSection = showSection;
+
+function refreshRosterView() {
+  const sel = document.getElementById('viewParticipant');
+  const val = sel ? sel.value : '';
+  state.selectedParticipant = val;
+  inParticipantView = !!val;
+  sessionStorage.setItem('viewParticipant', val);
+
+  // 1) Re-render Upcoming & Pending
+  splitUpcoming(inParticipantView ? val : user);
+
+  // 2) Re-render Completed
+  renderCompleted(inParticipantView);
+
+  // 3) Swap the Add-Shift buttons
+  const role       = (sessionStorage.getItem('userRole') || '').trim().toLowerCase();
+  const isTeamLeader = /team\s*[- ]?\s*leader/i.test(role);
+  updateAddShiftButtonVisibility(isTeamLeader, inParticipantView);
+}
+window.refreshRosterView = refreshRosterView;
+
+
+function onStaffNameChange(e) {
+  const input = e.target;
+  const val = input.value.trim().toLowerCase();
+  const container = document.getElementById('staffSuggestions');
+  container.innerHTML = '';
+  if (!val || !Array.isArray(window.__cachedStaffNames)) return;
+
+  // find up to 10 matches
+  const matches = window.__cachedStaffNames
+    .filter(n => n.toLowerCase().includes(val))
+    .slice(0,10);
+
+  if (!matches.length) return;
+
+  const list = document.createElement('div');
+  list.className = 'suggestions-list';
+  matches.forEach(name => {
+    const item = document.createElement('div');
+    item.innerText = name;
+    item.onclick = () => {
+      input.value = name;
+      container.innerHTML = '';
+    };
+    list.appendChild(item);
+  });
+  container.appendChild(list);
+}
+window.onStaffNameChange = onStaffNameChange;
+
+// hide suggestions when clicking outside
+document.addEventListener('click', e => {
+  if (!e.target.closest('#newShiftStaffRow')) {
+    document.getElementById('staffSuggestions').innerHTML = '';
+  }
+});
+
+
+  // ── Hide popup ───────────────────────────────────────────────
+  function closeAddShift() {
+    document.getElementById('add-shift-popup').style.display = 'none';
+  }
+  window.closeAddShift = closeAddShift;
+
+function initShiftPopup() {
+  google.script.run
+    .withSuccessHandler(names => {
+      window.__cachedStaffNames = names.slice();
+    })
+    .getStaffNames();
+}
+
+function init_roster() {
+  const user = sessionStorage.getItem('userName');
+  if (!user) return;
+
+  // 1) Determine role & participant‐view state
+  const role            = (sessionStorage.getItem('userRole') || '').trim().toLowerCase();
+  const isTeamLeader    = /team\s*[- ]?\s*leader/i.test(role);
+  const savedView       = sessionStorage.getItem('viewParticipant') || '';
+  inParticipantView     = !!savedView;
+  state.selectedParticipant = savedView;
+
+  // 2) Show/hide the “View Shifts for…” dropdown
+  document
+    .getElementById('team-leader-selector')
+    .style.display = isTeamLeader ? 'block' : 'none';
+  // ← New: if Team Leader, populate the staff-search datalist once
+  if (isTeamLeader) initShiftPopup();
+
+  // 3) Show/hide Add-Shift buttons in one go
+  updateAddShiftButtonVisibility(isTeamLeader, inParticipantView);
+
+  // 4) Initial render of Upcoming, Pending, and Completed
+  splitUpcoming(inParticipantView ? savedView : user);
+  renderCompleted(inParticipantView);
+
+  // 5) Populate & cache the participant list for TL view and report pages
+  if (!window.__cachedParticipants) {
+    google.script.run
+      .withSuccessHandler(list => {
+        if (!Array.isArray(list)) return;
+        const names = list
+          .map(p => p.toString().trim())
+          .filter(Boolean)
+          .sort();
+
+        // cache once
+        window.__cachedParticipants = names;
+
+        // populate local arrays and dropdowns
+        rosterParticipants = names.slice();
+        rosterStaff        = names.slice();
+
+        populateTeamLeaderDropdowns();
+      })
+      .getParticipantsForUser(user);
+  } else {
+    // reuse cache
+    rosterParticipants = window.__cachedParticipants.slice();
+    rosterStaff        = window.__cachedParticipants.slice();
+    populateTeamLeaderDropdowns();
+  }
+}
+window.init_roster = init_roster;
+
+
+// Only one DOMContentLoaded call:
+document.addEventListener('DOMContentLoaded', init_roster);
+
+function submitNewShift(ev) {
+  ev.preventDefault?.();  
+  const saveBtn = document.getElementById('saveShiftBtn') || { disabled: true };
+  saveBtn.disabled = true;
+
+  // 1) Grab & trim all inputs
+  const dateRaw   = document.getElementById('newShiftDate').value;
+  const duty      = document.getElementById('newShiftDuty').value;
+  const start     = document.getElementById('newShiftStart').value;
+  const end       = document.getElementById('newShiftEnd').value;
+  const rawStaff  = document.getElementById('staffSearchInput')?.value.trim();
+  const staff     = rawStaff && rawStaff.length ? rawStaff : sessionStorage.getItem('userName');
+  const part      = document.getElementById('newShiftParticipant').value;
+  
+  const role      = (sessionStorage.getItem('userRole') || '').toLowerCase();
+  const isTeamLeader = /team\s*[- ]?\s*leader/i.test(role);
+  const activeTab = document.querySelector('.section:not([style*="display: none"])')?.id || '';
+
+  // 2) Validate
+  if (![dateRaw, duty, start, end, staff, part].every(v => v && v.toString().trim())) {
+    console.warn('Missing field:', { dateRaw, duty, start, end, staff, part });
+    alert('Please fill out every field.');
+    saveBtn.disabled = false;
+    return;
+  }
+
+  console.log('submitNewShift →', { dateRaw, duty, start, end, staff, part });
+
+  showLoader('Saving new shift…');
+
+  // 3) Callback on success
+  const afterSave = () => {
+    closeAddShift();                  // auto-close immediately
+    renderCompleted(inParticipantView);
+    splitUpcoming(sessionStorage.getItem('userName'));
+    hideLoader();
+    saveBtn.disabled = false;
+  };
+
+  // 4) Callback on failure
+  const onFail = err => {
+    console.error('submitNewShift failed:', err);
+    alert('Could not save shift. Please try again.');
+    hideLoader();
+    saveBtn.disabled = false;
+  };
+
+  // 5) Dispatch to the correct server method
+  if (state.editingShift) {
+    google.script.run
+      .withSuccessHandler(afterSave)
+      .withFailureHandler(onFail)
+      .bulkUpdateShifts([{
+        id:        state.editingShift.id,
+        date:      dateRaw,
+        start,
+        end,
+        staffName: staff,
+        participant: part,
+        duty
+      }]);
+  }
+  else if (isTeamLeader && activeTab === 'completed') {
+    google.script.run
+      .withSuccessHandler(afterSave)
+      .withFailureHandler(onFail)
+      .addConfirmedShift({
+        date:      dateRaw,
+        start,
+        end,
+        staffName: staff,
+        participant: part,
+        duty
+      });
+  }
+  else {
+    google.script.run
+      .withSuccessHandler(afterSave)
+      .withFailureHandler(onFail)
+      .addShift(dateRaw, start, end, part, staff, duty, allShifts);
+  }
+}
+window.submitNewShift = submitNewShift;
+
+function populateTeamLeaderDropdowns() {
+  const saved = sessionStorage.getItem('viewParticipant')||'';
+  // Roster “View Shifts for…”
+  const view = document.getElementById('viewParticipant');
+  if (view) {
+    view.innerHTML = '<option value="">My Shifts</option>'
+      + window.__cachedParticipants.map(p=>`<option>${p}</option>`).join('');
+    view.value = saved;
+  }
+  // And in Report page do exactly the same:
+  const repView = document.getElementById('reportParticipant');
+  if (repView) {
+    repView.innerHTML = '<option value="">My Shifts</option>'
+      + window.__cachedParticipants.map(p=>`<option>${p}</option>`).join('');
+    repView.value = sessionStorage.getItem('reportParticipant')||'';
+  }
+}
+
+function getNewShiftPayload() {
+  const date      = document.getElementById('newShiftDate').value;
+  const duty      = document.getElementById('newShiftDuty').value;
+  const start     = document.getElementById('newShiftStart').value;
+  const end       = document.getElementById('newShiftEnd').value;
+  const participant = document.getElementById('newShiftParticipant').value;
+
+  if (!date || !start || !end || !participant) {
+    alert('Please fill out every field.');
+    return null;
+  }
+
+  return { date, start, end, duty, participant };
+}
+window.getNewShiftPayload = getNewShiftPayload;        // ← export to global
+
+
+
+function openAdjust(shiftId) {
+  adjustShiftId = shiftId;
+  document.getElementById('adjust-reason').value = '';
+  document.getElementById('adjust-popup').style.display = 'flex';
+}
+
+window.openAdjust = openAdjust;        // ← export to global
+// ── SUBMIT ADJUSTMENT ─────────────────────────────────────────
+
+function confirmShiftById(shiftId, ev) {
+  const btn = ev.currentTarget;
+  btn.disabled = true;
+  showLoader('Confirming…');
+
+  google.script.run
+    .withSuccessHandler(({ all, done }) => {
+      allShifts = all;
+      completedShifts = done;
+      splitUpcoming(inParticipantView ? state.selectedParticipant : user);
+
+      renderCompleted(inParticipantView);
+      hideLoader();
+      btn.disabled = false;
+    })
+    .withFailureHandler(err => {
+      console.error('Confirm by ID failed:', err);
+      alert('Could not confirm shift. Please try again.');
+      hideLoader();
+      btn.disabled = false;
+    })
+    .confirmShiftById(shiftId, user);
+}
+window.confirmShiftById = confirmShiftById;
+
+
+function submitAdjustment(ev) {
+  const btn = ev.currentTarget;
+  const reason = document.getElementById('adjust-reason').value.trim();
+  if (!reason) return alert('Enter a reason');
+
+  btn.disabled = true;
+  showLoader('Submitting adjustment…');
+
+  google.script.run
+    .withSuccessHandler(({all, done}) => {
+      allShifts = all;
+      completedShifts = done;
+      closeAdjust();
+      splitUpcoming(inParticipantView ? state.selectedParticipant : user);
+
+      renderCompleted(inParticipantView);
+      hideLoader();
+      btn.disabled = false;
+    })
+    .withFailureHandler(err => {
+      console.error('Adjustment failed:', err);
+      alert('Could not submit adjustment. Please try again.');
+      hideLoader();
+      btn.disabled = false;
+    })
+    .adjustShiftById(adjustShiftId, reason, user);
+}
+window.submitAdjustment = submitAdjustment;
+
+function adjustShiftById(shiftId, reason, userName) {
+  // reuse your addShiftAndReload pattern for adjustments
+  google.script.run
+    .withSuccessHandler(({all, done}) => {
+      allShifts       = all;
+      completedShifts = done;
+      splitUpcoming(inParticipantView ? state.selectedParticipant : user);
+      renderCompleted(inParticipantView);
+    })
+    .adjustShiftById(shiftId, reason, userName);
+}
+window.adjustShiftById = adjustShiftById;
+
+  function closeAdjust() {
+    document.getElementById('adjust-popup').style.display = 'none';
+  }
+  window.closeAdjust = closeAdjust;
+
+})();
+document.addEventListener('DOMContentLoaded', init_roster);
+
+(function bindStaffInputEvents() {
+  const input = document.getElementById('staffSearchInput');
+  if (!input || !Array.isArray(window.__cachedStaffNames)) return;
+
+  // On Enter, snap to closest match
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const term = input.value.trim().toLowerCase();
+      const match = window.__cachedStaffNames.find(n =>
+        n.toLowerCase().startsWith(term)
+      );
+      if (match) input.value = match;
+    }
+  });
+
+  // On focus, clear input and suggestions
+  input.addEventListener('focus', e => {
+    e.target.value = '';
+    const container = document.getElementById('staffSuggestions');
+    if (container) container.innerHTML = '';
+  });
+})();
+
+
+</script>
