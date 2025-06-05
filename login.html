@@ -1,0 +1,140 @@
+<!-- login.html -->
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <!-- Prevent pinch‐zoom, keep form phone‐friendly -->
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <title>Roster App — Login</title>
+
+  <?!= include('styles'); ?>
+  
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+
+<body>
+    <!-- loader overlay (copied from index.html) -->
+  <div id="loading-screen" class="popup-overlay" style="display:none">
+    <div class="loader"></div>
+    <div id="loader-text" style="margin-top:8px;color:white;font-size:1rem;"></div>
+  </div>
+
+  <div id="login-wrapper">
+    <div class="login-container">
+      <img
+        src="https://i.imgur.com/Fdu33bl.png"
+        alt="Company Logo"
+        class="login-logo"
+      />
+      <h3 class="heading" style="text-align: center;">My Shift Portal</h3>
+      <div id="error-message" class="error-message"></div>
+
+      <form id="login-form">
+        <input
+          type="text"
+          id="username"
+          class="input"
+          placeholder="Email"
+          autocomplete="username"
+          required
+        />
+        <input
+          type="password"
+          id="password"
+          class="input"
+          placeholder="Password"
+          autocomplete="current-password"
+          required
+        />
+        <button type="submit" class="login-button btn-block">
+          Login
+        </button>
+      </form>
+    </div>
+  </div>
+
+<script>
+  function toggleLoader(show, msg = '') {
+    const o    = document.getElementById('loading-screen');
+    const text = document.getElementById('loader-text');
+    if (text) text.innerText = msg;
+    if (o)    o.style.display = show ? 'flex' : 'none';
+  }
+  window.showLoader = m => toggleLoader(true, m);
+  window.hideLoader = () => toggleLoader(false);
+
+  function handleLogin(evt) {
+    evt.preventDefault();
+    const btn   = evt.submitter;
+    const errEl = document.getElementById('error-message');
+    const email = document.getElementById('username').value.trim();
+    const pass  = document.getElementById('password').value;
+
+    errEl.innerText = '';
+    btn.disabled    = true;
+    showLoader('Logging in…');
+
+    google.script.run
+      .withFailureHandler(error => {
+        console.error(error);
+        hideLoader();
+        errEl.innerText = 'Server error. Please try again.';
+        btn.disabled    = false;
+      })
+      .withSuccessHandler(result => {
+        hideLoader();
+        btn.disabled = false;
+        if (!result || !result.success) {
+          errEl.innerText = 'Invalid email or password.';
+          return;
+        }
+
+        // Map designation → role
+        const role = result.isTeamLeader
+          ? 'team leader'
+          : (result.designation || '').trim().toLowerCase() === 'manager'
+            ? 'manager'
+            : 'staff';
+
+        sessionStorage.clear();
+        sessionStorage.setItem('userName',  result.name.trim());
+        sessionStorage.setItem('userEmail', result.email || '');
+        sessionStorage.setItem('userRole',  role);
+
+        // Load the index shell
+        showLoader('Loading portal…');
+        google.script.run
+          .withSuccessHandler(html => {
+            document.open();
+            document.write(html);
+            document.close();
+          })
+          .getPage('index');
+      })
+      .processLogin(email, pass);
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const storedName = sessionStorage.getItem('userName');
+    const storedRole = sessionStorage.getItem('userRole');
+    const loginForm  = document.getElementById('login-form');
+
+    if (storedName && storedRole) {
+      // Already authenticated → resume session
+      showLoader('Resuming session…');
+      google.script.run
+        .withSuccessHandler(html => {
+          document.open();
+          document.write(html);
+          document.close();
+        })
+        .getPage('index');
+    } else if (loginForm) {
+      // No session yet → bind the login form
+      loginForm.addEventListener('submit', handleLogin);
+    }
+  });
+</script>
+
+</body>
+</html>
