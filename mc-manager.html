@@ -3331,10 +3331,9 @@ function renderTable() {
             </tr>
         `;
         
-        // Shifts for this day
-        dayShifts.forEach(shift => {
-            html += renderShiftRow(shift, date);
-        });
+        for (const shift of dayShifts) {
+    html += renderShiftRow(shift, date);  // No await needed if renderShiftRow is NOT async
+}
     });
 
     tbody.innerHTML = html;
