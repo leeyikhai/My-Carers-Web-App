@@ -15,6 +15,27 @@
 
       
         :root {
+
+            .participant-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    color: white;
+    white-space: nowrap;
+}
+
+.location-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    white-space: nowrap;
+}
           
 
           /* Add to your existing styles */
@@ -3288,83 +3309,15 @@ async function denyAdjustment(requestId) {
         availabilityContent.innerHTML = '<div class="error">Failed to load availability</div>';
     }
 }
-function renderTable() {
-    const tbody = document.getElementById('shiftsTableBody');
-    
-    if (!tbody) {
-        console.error('shiftsTableBody element not found');
-        return;
-    }
-    
-    if (filteredShifts.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="8" class="empty-state">
-                    <h3>No shifts found</h3>
-                    <p>Try adjusting your date range or filters</p>
-                    <button class="btn btn-outline btn-sm" onclick="clearAllFilters()">Clear Filters</button>
-                    <button class="btn btn-primary btn-sm" onclick="showAddShiftModal()" style="margin-left: 12px;">Add Shift</button>
-                </td>
-            </tr>
-        `;
-        return;
-    }
-
-    // Group shifts by date
-    const groupedShifts = groupShiftsByDate(filteredShifts);
-    
-    let html = '';
-    
-    Object.keys(groupedShifts).sort().forEach(date => {
-        const dayShifts = groupedShifts[date];
-        const dayStats = calculateDayStats(dayShifts);
-        
-        // Day header
-        html += `
-            <tr class="day-header">
-                <td colspan="8">
-                    ${formatDateLong(date)} 
-                    <span class="day-stats">
-                        ${dayStats.shifts} shifts | ${formatHours(dayStats.totalHours)}h | $${dayStats.totalPay.toFixed(2)}
-                    </span>
-                </td>
-            </tr>
-        `;
-        
-        for (const shift of dayShifts) {
-    html += renderShiftRow(shift, date);  // No await needed if renderShiftRow is NOT async
-}
-    });
-
-    tbody.innerHTML = html;
-}
-
-async function renderShiftRow(shift, date) {
+function renderShiftRow(shift, date) {  // <-- Remove async, back to regular function
     const staff = shift.staff || {};
     const participant = shift.participant || {};
     const location = shift.location || {};
     const dutyType = shift.duty_type || {};
     
-    // FIX #3: Check staff availability for leave indicator
+    // REMOVE THE PROBLEMATIC QUERY - just set leave indicator to empty
     let leaveIndicator = '';
-    try {
-        const { data: availabilityCheck } = await supabaseClient
-            .from('staff_availability')
-            .select('*')
-            .eq('staff_id', shift.staff_id)
-            .eq('date', shift.date)
-            .eq('available', false)
-            .single();
-        
-        if (availabilityCheck) {
-            const leaveType = availabilityCheck.reason || 'Leave';
-            const badgeColor = leaveType.toLowerCase().includes('sick') ? 'danger' : 
-                              leaveType.toLowerCase().includes('annual') ? 'info' : 'warning';
-            leaveIndicator = `<span class="badge badge-${badgeColor}" style="font-size: 10px; margin-left: 4px;" title="${leaveType}">ON LEAVE</span>`;
-        }
-    } catch (error) {
-        // No leave record found, continue without indicator
-    }
+    // Removed the try-catch block with the staff_availability query that was causing 406
     
     // Get participant color
     const participantColor = getParticipantColor(shift.participant_id);
@@ -3419,6 +3372,58 @@ async function renderShiftRow(shift, date) {
             <td class="actions-cell">${shiftActions}</td>
         </tr>
     `;
+}
+
+// Keep renderTable as it was originally (no async, no await needed)
+function renderTable() {
+    const tbody = document.getElementById('shiftsTableBody');
+    
+    if (!tbody) {
+        console.error('shiftsTableBody element not found');
+        return;
+    }
+    
+    if (filteredShifts.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" class="empty-state">
+                    <h3>No shifts found</h3>
+                    <p>Try adjusting your date range or filters</p>
+                    <button class="btn btn-outline btn-sm" onclick="clearAllFilters()">Clear Filters</button>
+                    <button class="btn btn-primary btn-sm" onclick="showAddShiftModal()" style="margin-left: 12px;">Add Shift</button>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    // Group shifts by date
+    const groupedShifts = groupShiftsByDate(filteredShifts);
+    
+    let html = '';
+    
+    Object.keys(groupedShifts).sort().forEach(date => {
+        const dayShifts = groupedShifts[date];
+        const dayStats = calculateDayStats(dayShifts);
+        
+        // Day header
+        html += `
+            <tr class="day-header">
+                <td colspan="8">
+                    ${formatDateLong(date)} 
+                    <span class="day-stats">
+                        ${dayStats.shifts} shifts | ${formatHours(dayStats.totalHours)}h | $${dayStats.totalPay.toFixed(2)}
+                    </span>
+                </td>
+            </tr>
+        `;
+        
+        for (const shift of dayShifts) {
+            html += renderShiftRow(shift, date);  // No await needed anymore
+        }
+    });
+
+    tbody.innerHTML = html;
 }
 
 async function loadParticipantTemplates(participantId) {
