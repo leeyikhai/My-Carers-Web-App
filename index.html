@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <meta name="description" content="NDIS Care Manager - Secure Login">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; connect-src 'self' https://*.supabase.co wss://*.supabase.co;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; img-src 'self' data: https://*.supabase.co https://gqchhsayqxttewthcsah.supabase.co;">
     <title>MC Manager - Login</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <meta charset="utf-8">
@@ -23,6 +23,13 @@
             margin: 0;
             padding: 20px;
         }
+
+        .login-container img {
+    display: block;
+    margin: 0 auto 30px auto;
+    max-width: 100%;
+    height: auto;
+}
         
         .login-container {
             max-width: 400px;
@@ -209,8 +216,9 @@
 </head>
 <body>
     <div class="login-container">
-        <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; img-src 'self' data: https://*.supabase.co https://gqchhsayqxttewthcsah.supabase.co;">
-        alt="My Carers Logo" width="200">
+     <img src="https://gqchhsayqxttewthcsah.supabase.co/storage/v1/object/public/Branding/LOGO%20No%20Background.png" 
+     alt="My Carers Logo" 
+     width="200">
         
         <div id="errorMessage" class="error-message"></div>
         <div id="successMessage" class="success-message"></div>
