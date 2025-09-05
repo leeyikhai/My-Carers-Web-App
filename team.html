@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1911,6 +1912,16 @@
             }
         }
 
+
+
+        function formatTime(time) {
+    if (!time) return '';
+    const [hours, minutes] = time.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${minutes} ${ampm}`;
+}
         // Load Reference Data
         async function loadReferenceData() {
             try {
@@ -2187,7 +2198,173 @@
     }
 }
 
+function changeMonth(direction) {
+    if (!window.currentMonthOffset) {
+        window.currentMonthOffset = 0;
+    }
+    window.currentMonthOffset += direction;
+    loadSchedule(); // This will reload with new month
+}
 
+function switchTransferTab(tab) {
+    // Update tab styling
+    document.querySelectorAll('.transfer-tab').forEach(t => {
+        t.classList.remove('active');
+    });
+    event.currentTarget.classList.add('active');
+    
+    // Hide all transfer content divs
+    document.getElementById('incomingTransfers').classList.remove('active');
+    document.getElementById('outgoingTransfers').classList.remove('active');
+    document.getElementById('availableTransfers').classList.remove('active');
+    
+    // Show selected tab content
+    if (tab === 'incoming') {
+        document.getElementById('incomingTransfers').classList.add('active');
+    } else if (tab === 'outgoing') {
+        document.getElementById('outgoingTransfers').classList.add('active');
+    } else if (tab === 'available') {
+        document.getElementById('availableTransfers').classList.add('active');
+        // Load available shifts if needed
+        if (typeof loadAvailableTransfers === 'function') {
+            loadAvailableTransfers();
+        }
+    }
+}
+
+function toggleTimesheetView(view) {
+    timesheetView = view; // Set global variable
+    
+    // Update button states
+    document.querySelectorAll('.view-toggle .toggle-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.currentTarget.classList.add('active');
+    
+    // Re-render timesheet with new view
+    renderTimesheetShifts(); // This function exists in your code
+}
+
+async function submitTransfer() {
+    try {
+        const shiftId = document.getElementById('transferShiftSelect').value;
+        const toStaffId = document.getElementById('transferToStaff').value;
+        const reason = document.getElementById('transferReason').value;
+
+        if (!shiftId || !reason) {
+            showToast('Please select a shift and provide a reason', 'error');
+            return;
+        }
+
+        // Create transfer request
+        const { error } = await supabaseClient
+            .from('transfer_requests')
+            .insert({
+                shift_id: parseInt(shiftId),
+                from_staff_id: currentStaff.id,
+                to_staff_id: toStaffId ? parseInt(toStaffId) : null,
+                reason: reason,
+                status: 'pending',
+                created_at: new Date().toISOString()
+            });
+
+        if (error) throw error;
+
+        showToast('Transfer request sent successfully', 'success');
+        closeModal('transferShiftModal');
+        
+        // Reload transfers if on that section
+        if (document.getElementById('transfers').classList.contains('active')) {
+            loadTransfers();
+        }
+
+    } catch (error) {
+        console.error('Error submitting transfer:', error);
+        showToast('Failed to submit transfer request', 'error');
+    }
+}
+
+// 6. ADD - openModal() - CONFIRMED MISSING (you have closeModal but not openModal)
+function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.add('active');
+    }
+}
+
+function toggleTimeFields() {
+    const dutyType = document.getElementById('shiftDutyType');
+    const timeFields = document.getElementById('timeFields');
+    
+    if (dutyType && timeFields) {
+        // Hide time fields for sleepover shifts
+        if (dutyType.options[dutyType.selectedIndex]?.text?.toLowerCase().includes('sleepover')) {
+            timeFields.style.display = 'none';
+        } else {
+            timeFields.style.display = 'block';
+        }
+    }
+}
+
+function showDocumentUploadModal() {
+    // Open the document upload modal
+    const modal = document.getElementById('documentUploadModal');
+    if (modal) {
+        modal.classList.add('active');
+    } else {
+        // If modal doesn't exist, show simple file input
+        document.getElementById('documentFile')?.click();
+    }
+}
+
+async function loadAvailableTransfers() {
+    try {
+        // Load shifts available for transfer (from other staff)
+        const { data: available } = await supabaseClient
+            .from('transfer_requests')
+            .select(`
+                *,
+                shift:shift_id(date, start_time, end_time, participant:participant_id(first_name, last_name)),
+                from_staff:from_staff_id(first_name, last_name)
+            `)
+            .is('to_staff_id', null) // Open to anyone
+            .eq('status', 'pending')
+            .neq('from_staff_id', currentStaff.id) // Not your own
+            .order('created_at', { ascending: false });
+
+        const container = document.getElementById('availableList');
+        if (!container) return;
+        
+        if (!available || available.length === 0) {
+            container.innerHTML = '<div class="text-center p-2" style="color: var(--text-light);">No available shifts to pick up</div>';
+            return;
+        }
+
+        container.innerHTML = available.map(transfer => `
+            <div class="transfer-item">
+                <div class="transfer-header">
+                    <div>
+                        <div class="transfer-date">${formatDateLong(transfer.shift.date)}</div>
+                        <div class="transfer-time">
+                            ${transfer.shift.start_time ? formatTime(transfer.shift.start_time) : 'Sleepover'} - 
+                            ${transfer.shift.end_time ? formatTime(transfer.shift.end_time) : ''}
+                        </div>
+                    </div>
+                </div>
+                <div class="transfer-from">
+                    From: ${transfer.from_staff.first_name} ${transfer.from_staff.last_name}
+                </div>
+                ${transfer.reason ? `<div class="transfer-reason">"${transfer.reason}"</div>` : ''}
+                <div class="transfer-actions">
+                    <button class="transfer-btn accept" onclick="acceptTransfer('${transfer.id}')">Pick Up Shift</button>
+                </div>
+            </div>
+        `).join('');
+
+    } catch (error) {
+        console.error('Error loading available transfers:', error);
+    }
+}
         async function loadPendingRequests() {
             const { data: requests } = await supabaseClient
                 .from('shift_adjustment_requests')
@@ -2331,61 +2508,82 @@
         }
 
         function calculateShiftHours(shift) {
-            const result = {
-                total: 0,
-                weekdayDay: 0,
-                weekdayEvening: 0,
-                weekdayNight: 0,
-                saturday: 0,
-                sunday: 0,
-                publicHoliday: 0,
-                sleepover: 0
-            };
+    const result = {
+        total: 0,
+        weekdayDay: 0,
+        weekdayEvening: 0,
+        weekdayNight: 0,
+        saturday: 0,
+        sunday: 0,
+        publicHoliday: 0,
+        sleepover: 0
+    };
 
-            // Check if sleepover
-            if (shift.duty_type?.name?.toLowerCase().includes('sleepover')) {
-                result.sleepover = 2;
-                result.total = 2;
-                return result;
-            }
+    // Check if sleepover
+    if (shift.duty_type?.name?.toLowerCase().includes('sleepover')) {
+        result.sleepover = 2;
+        result.total = 2;
+        return result;
+    }
 
-            // Calculate regular hours
-            if (shift.start_time && shift.end_time) {
-                const start = new Date(`2000-01-01T${shift.start_time}`);
-                let end = new Date(`2000-01-01T${shift.end_time}`);
-                
-                if (end <= start) {
-                    end.setDate(end.getDate() + 1);
-                }
-
-                const hours = (end - start) / (1000 * 60 * 60);
-                const shiftDate = new Date(shift.date);
-                const dayOfWeek = shiftDate.getDay();
-
-                result.total = hours;
-
-                if (dayOfWeek === 0) {
-                    result.sunday = hours;
-                } else if (dayOfWeek === 6) {
-                    result.saturday = hours;
-                } else {
-                    // Split weekday hours by time of day
-                    const startHour = parseInt(shift.start_time.split(':')[0]);
-                    const endHour = parseInt(shift.end_time.split(':')[0]);
-                    
-                    // Simplified hour calculation
-                    if (startHour >= 6 && endHour <= 14) {
-                        result.weekdayDay = hours;
-                    } else if (startHour >= 14 && endHour <= 22) {
-                        result.weekdayEvening = hours;
-                    } else {
-                        result.weekdayNight = hours;
-                    }
-                }
-            }
-
+    // Calculate regular hours
+    if (shift.start_time && shift.end_time) {
+        const shiftDate = new Date(shift.date);
+        const dayOfWeek = shiftDate.getDay();
+        
+        // Parse times
+        const startTime = new Date(`${shift.date}T${shift.start_time}`);
+        let endTime = new Date(`${shift.date}T${shift.end_time}`);
+        
+        // Handle overnight shifts
+        if (endTime <= startTime) {
+            endTime.setDate(endTime.getDate() + 1);
+        }
+        
+        // Check for weekend first
+        if (dayOfWeek === 0) {
+            result.sunday = (endTime - startTime) / (1000 * 60 * 60);
+            result.total = result.sunday;
+            return result;
+        } else if (dayOfWeek === 6) {
+            result.saturday = (endTime - startTime) / (1000 * 60 * 60);
+            result.total = result.saturday;
             return result;
         }
+        
+        // For weekdays, break down by time periods
+        let current = new Date(startTime);
+        while (current < endTime) {
+            const hour = current.getHours();
+            const nextHour = new Date(current);
+            nextHour.setHours(hour + 1);
+            
+            const periodEnd = nextHour > endTime ? endTime : nextHour;
+            const periodHours = (periodEnd - current) / (1000 * 60 * 60);
+            
+            if (hour >= 6 && hour < 20) {
+                result.weekdayDay += periodHours;
+            } else if (hour >= 20 && hour < 24) {
+                result.weekdayEvening += periodHours;
+            } else {
+                result.weekdayNight += periodHours;
+            }
+            
+            current = new Date(periodEnd);
+        }
+        
+        result.total = result.weekdayDay + result.weekdayEvening + result.weekdayNight;
+    }
+
+    return result;
+}
+
+function showLoading() {
+    document.body.classList.add('loading');
+}
+function hideLoading() {
+    document.body.classList.remove('loading');
+}
 
         function renderTimesheetShifts() {
             const container = document.getElementById('timesheetShifts');
@@ -3089,6 +3287,324 @@ async function loadProfile() {
                 </div>
             `).join('');
         }
+
+        async function approveTransfer(requestId) {
+    try {
+        // Show loading state
+        showNotification('Processing transfer request...', 'info');
+        
+        // 1. GET THE TRANSFER REQUEST WITH ALL RELATED DATA
+        const { data: request, error: requestError } = await supabaseClient
+            .from('transfer_requests')
+            .select(`
+                *,
+                shift:shifts!shift_id (
+                    *,
+                    participant:participants!participant_id (first_name, last_name),
+                    location:locations!location_id (name),
+                    duty_type:duty_types!duty_type_id (name)
+                ),
+                from_staff:staff!from_staff_id (first_name, last_name, email),
+                to_staff:staff!to_staff_id (first_name, last_name, email, pay_rate_id, limits)
+            `)
+            .eq('id', requestId)
+            .single();
+        
+        if (requestError) {
+            console.error('Error fetching transfer request:', requestError);
+            throw new Error('Failed to fetch transfer request');
+        }
+        
+        if (!request) {
+            throw new Error('Transfer request not found');
+        }
+        
+        // Check if already processed
+        if (request.status !== 'pending') {
+            showNotification(`This request has already been ${request.status}`, 'warning');
+            return;
+        }
+        
+        // 2. VALIDATE THE RECEIVING STAFF EXISTS
+        if (!request.to_staff_id) {
+            throw new Error('No receiving staff specified for this transfer');
+        }
+        
+        const shift = request.shift;
+        if (!shift) {
+            throw new Error('Associated shift not found');
+        }
+        
+        // 3. CHECK STAFF AVAILABILITY
+        const { data: availabilityCheck } = await supabaseClient
+            .from('staff_availability')
+            .select('*')
+            .eq('staff_id', request.to_staff_id)
+            .eq('date', shift.date)
+            .single();
+        
+        let proceedWithUnavailable = false;
+        if (availabilityCheck && !availabilityCheck.available) {
+            const toStaffName = request.to_staff ? 
+                `${request.to_staff.first_name} ${request.to_staff.last_name}` : 
+                'The receiving staff';
+            const leaveReason = availabilityCheck.reason || 'unavailable';
+            
+            const message = `⚠️ AVAILABILITY WARNING\n\n` +
+                `${toStaffName} is marked as ${leaveReason} on ${formatDateFriendly(shift.date)}.\n\n` +
+                `Do you want to approve this transfer anyway?`;
+            
+            if (!confirm(message)) {
+                showNotification('Transfer approval cancelled', 'info');
+                return;
+            }
+            proceedWithUnavailable = true;
+        }
+        
+        // 4. CHECK FOR SCHEDULING CONFLICTS
+        const { data: existingShifts } = await supabaseClient
+            .from('shifts')
+            .select('*')
+            .eq('staff_id', request.to_staff_id)
+            .eq('date', shift.date)
+            .is('deleted_at', null)
+            .neq('status', 'cancelled');
+        
+        if (existingShifts && existingShifts.length > 0) {
+            // Check for time conflicts
+            for (const existingShift of existingShifts) {
+                // Check for sleepover conflicts
+                const isDutyTypeSleepover = shift.duty_type?.name?.toLowerCase().includes('sleepover');
+                const isExistingSleepover = await checkIfSleepover(existingShift.duty_type_id);
+                
+                if (isDutyTypeSleepover && isExistingSleepover) {
+                    throw new Error('Staff already has a sleepover shift on this date');
+                }
+                
+                // Check for time overlap (if not sleepover)
+                if (!isDutyTypeSleepover && shift.start_time && shift.end_time && 
+                    existingShift.start_time && existingShift.end_time) {
+                    
+                    const newStart = parseTime(shift.start_time);
+                    const newEnd = parseTime(shift.end_time);
+                    const existingStart = parseTime(existingShift.start_time);
+                    const existingEnd = parseTime(existingShift.end_time);
+                    
+                    // Check for overlap
+                    if ((newStart < existingEnd && newEnd > existingStart)) {
+                        const message = `⚠️ TIME CONFLICT WARNING\n\n` +
+                            `${request.to_staff.first_name} already has a shift from ` +
+                            `${formatTime12Hour(existingShift.start_time)} to ${formatTime12Hour(existingShift.end_time)}.\n` +
+                            `This transfer is from ${formatTime12Hour(shift.start_time)} to ${formatTime12Hour(shift.end_time)}.\n\n` +
+                            `Do you want to approve anyway?`;
+                        
+                        if (!confirm(message)) {
+                            showNotification('Transfer approval cancelled due to conflict', 'info');
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+        
+        // 5. CHECK WEEKLY HOUR LIMITS
+        const weekStart = getWeekStart(new Date(shift.date));
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekEnd.getDate() + 6);
+        
+        const { data: weekShifts } = await supabaseClient
+            .from('shifts')
+            .select('*, duty_type:duty_types!duty_type_id(name)')
+            .eq('staff_id', request.to_staff_id)
+            .gte('date', weekStart.toISOString().split('T')[0])
+            .lte('date', weekEnd.toISOString().split('T')[0])
+            .is('deleted_at', null)
+            .neq('status', 'cancelled');
+        
+        let totalWeekHours = 0;
+        if (weekShifts) {
+            weekShifts.forEach(s => {
+                if (s.duty_type?.name?.toLowerCase().includes('sleepover')) {
+                    totalWeekHours += 2;
+                } else if (s.duration_hours) {
+                    totalWeekHours += s.duration_hours;
+                } else if (s.start_time && s.end_time) {
+                    const hours = calculateShiftDuration(s.start_time, s.end_time);
+                    totalWeekHours += hours;
+                }
+            });
+        }
+        
+        // Add the transfer shift hours
+        let transferShiftHours = 0;
+        if (shift.duty_type?.name?.toLowerCase().includes('sleepover')) {
+            transferShiftHours = 2;
+        } else if (shift.duration_hours) {
+            transferShiftHours = shift.duration_hours;
+        } else if (shift.start_time && shift.end_time) {
+            transferShiftHours = calculateShiftDuration(shift.start_time, shift.end_time);
+        }
+        
+        const newTotalHours = totalWeekHours + transferShiftHours;
+        const weeklyLimit = request.to_staff?.limits || 76;
+        
+        if (newTotalHours > weeklyLimit) {
+            const message = `⚠️ HOUR LIMIT WARNING\n\n` +
+                `${request.to_staff.first_name} will have ${newTotalHours.toFixed(1)} hours this week.\n` +
+                `Their limit is ${weeklyLimit} hours.\n\n` +
+                `Do you want to approve anyway?`;
+            
+            if (!confirm(message)) {
+                showNotification('Transfer approval cancelled due to hour limits', 'info');
+                return;
+            }
+        }
+        
+        // 6. PERFORM THE TRANSFER
+        // Start a transaction-like operation
+        const updates = [];
+        
+        // Update the shift with new staff
+        const shiftUpdate = supabaseClient
+            .from('shifts')
+            .update({
+                staff_id: request.to_staff_id,
+                transfer_status: 'completed',
+                transfer_approved_by: currentStaffData?.id || currentUser.id,
+                transfer_approved_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                // Preserve the pay rate of the receiving staff
+                pay_override_id: request.to_staff?.pay_rate_id || shift.pay_override_id
+            })
+            .eq('id', shift.id);
+        
+        // Update request status
+        const requestUpdate = supabaseClient
+            .from('transfer_requests')
+            .update({
+                status: 'approved',
+                responded_at: new Date().toISOString(),
+                responded_by: currentStaffData?.id || currentUser.id
+            })
+            .eq('id', requestId);
+        
+        // Execute both updates
+        const [shiftResult, requestResult] = await Promise.all([shiftUpdate, requestUpdate]);
+        
+        if (shiftResult.error) {
+            throw new Error('Failed to update shift: ' + shiftResult.error.message);
+        }
+        
+        if (requestResult.error) {
+            throw new Error('Failed to update request status: ' + requestResult.error.message);
+        }
+        
+        // 7. CREATE AUDIT LOG (optional but recommended)
+        const auditLog = {
+            action: 'transfer_approved',
+            shift_id: shift.id,
+            from_staff_id: request.from_staff_id,
+            to_staff_id: request.to_staff_id,
+            approved_by: currentStaffData?.id || currentUser.id,
+            notes: proceedWithUnavailable ? 'Approved despite availability warning' : null,
+            created_at: new Date().toISOString()
+        };
+        
+        // You might want to create an audit_logs table for this
+        // await supabaseClient.from('audit_logs').insert(auditLog);
+        
+        // 8. SUCCESS - Refresh the UI
+        showNotification('Transfer approved successfully', 'success');
+        
+        // Refresh the appropriate view
+        await loadShifts();
+        
+        if (currentView === 'requests') {
+            await renderRequests();
+        } else {
+            renderCurrentView();
+        }
+        
+        // Log success for debugging
+        console.log('Transfer approved:', {
+            requestId,
+            shiftId: shift.id,
+            fromStaff: `${request.from_staff.first_name} ${request.from_staff.last_name}`,
+            toStaff: `${request.to_staff.first_name} ${request.to_staff.last_name}`,
+            date: shift.date,
+            warnings: {
+                unavailable: proceedWithUnavailable,
+                overHourLimit: newTotalHours > weeklyLimit
+            }
+        });
+        
+    } catch (error) {
+        console.error('Error approving transfer:', error);
+        showNotification('Failed to approve transfer: ' + error.message, 'error');
+    }
+}
+
+// Helper function to check if a duty type is a sleepover
+async function checkIfSleepover(dutyTypeId) {
+    if (!dutyTypeId) return false;
+    
+    const dutyType = dutyTypes.find(dt => dt.id === dutyTypeId);
+    if (dutyType) {
+        return dutyType.name?.toLowerCase().includes('sleepover');
+    }
+    
+    // Fallback to database query if not in cache
+    const { data } = await supabaseClient
+        .from('duty_types')
+        .select('name')
+        .eq('id', dutyTypeId)
+        .single();
+    
+    return data?.name?.toLowerCase().includes('sleepover') || false;
+}
+
+// Helper function to parse time string to minutes for comparison
+function parseTime(timeString) {
+    const [hours, minutes] = timeString.split(':').map(Number);
+    return hours * 60 + minutes;
+}
+
+// Helper function to calculate shift duration in hours
+function calculateShiftDuration(startTime, endTime) {
+    const start = parseTime(startTime);
+    const end = parseTime(endTime);
+    
+    // Handle overnight shifts
+    const duration = end > start ? end - start : (1440 - start) + end;
+    return duration / 60;
+}
+
+// Helper function to get the start of the week (Monday)
+function getWeekStart(date) {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    return new Date(d.setDate(diff));
+}
+
+// Format helper functions (if not already defined)
+function formatDateFriendly(date) {
+    const d = new Date(date);
+    return d.toLocaleDateString('en-AU', { 
+        weekday: 'short', 
+        day: 'numeric', 
+        month: 'short' 
+    });
+}
+
+function formatTime12Hour(time) {
+    if (!time) return '';
+    const [hours, minutes] = time.split(':');
+    const hour = parseInt(hours);
+    const period = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+    return `${displayHour}:${minutes} ${period}`;
+}
         
         async function submitAdjustment() {
     try {
@@ -3125,6 +3641,7 @@ async function loadProfile() {
         showToast('Failed to submit adjustment request', 'error');
     }
 }
+
 
 async function submitShift() {
     try {
@@ -3248,7 +3765,295 @@ async function submitShift() {
     }
 }
 
+// 1. Modal opening functions
+function showAddShiftModal() {
+    const modal = document.getElementById('addShiftModal');
+    if (modal) {
+        // Populate dropdowns
+        populateParticipantDropdown();
+        populateDutyTypeDropdown();
+        
+        // Set default date to today
+        document.getElementById('shiftDate').value = new Date().toISOString().split('T')[0];
+        
+        modal.style.display = 'flex';
+    }
+}
 
+function showTransferModal() {
+    const modal = document.getElementById('transferShiftModal');
+    if (modal) {
+        populateTransferableShifts();
+        populateStaffDropdown();
+        modal.style.display = 'flex';
+    }
+}
+
+function showAdjustmentModal() {
+    const modal = document.getElementById('adjustmentModal');
+    if (modal) {
+        populateAdjustableShifts();
+        modal.style.display = 'flex';
+    }
+}
+
+function showLeaveModal() {
+    const modal = document.getElementById('leaveModal');
+    if (modal) {
+        modal.style.display = 'flex';
+    }
+}
+
+// 2. Helper functions to populate dropdowns
+async function populateParticipantDropdown() {
+    const select = document.getElementById('shiftParticipant');
+    if (!select) return;
+    
+    select.innerHTML = '<option value="">Select Client</option>';
+    participants.forEach(p => {
+        const option = document.createElement('option');
+        option.value = p.id;
+        option.textContent = `${p.first_name} ${p.last_name}`;
+        select.appendChild(option);
+    });
+}
+
+async function populateDutyTypeDropdown() {
+    const select = document.getElementById('shiftDutyType');
+    if (!select) return;
+    
+    select.innerHTML = '<option value="">Select Type</option>';
+    dutyTypes.forEach(dt => {
+        const option = document.createElement('option');
+        option.value = dt.id;
+        option.textContent = dt.name;
+        select.appendChild(option);
+    });
+}
+
+async function populateTransferableShifts() {
+    const select = document.getElementById('transferShiftSelect');
+    if (!select) return;
+    
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Get upcoming shifts for this staff member
+    const { data: shifts } = await supabaseClient
+        .from('shifts')
+        .select('*, participant:participants(first_name, last_name)')
+        .eq('staff_id', currentStaff.id)
+        .gte('date', today)
+        .is('deleted_at', null)
+        .order('date', { ascending: true });
+    
+    select.innerHTML = '<option value="">Select a shift</option>';
+    
+    if (shifts) {
+        shifts.forEach(shift => {
+            const option = document.createElement('option');
+            option.value = shift.id;
+            const clientName = shift.participant ? 
+                `${shift.participant.first_name} ${shift.participant.last_name}` : 
+                'Unknown Client';
+            option.textContent = `${formatDateShort(shift.date)} - ${clientName} (${shift.start_time || 'Sleepover'})`;
+            select.appendChild(option);
+        });
+    }
+}
+
+async function populateStaffDropdown() {
+    const select = document.getElementById('transferToStaff');
+    if (!select) return;
+    
+    select.innerHTML = '<option value="">Select staff member</option>';
+    
+    // Filter out current staff
+    const otherStaff = staff.filter(s => s.id !== currentStaff.id);
+    
+    otherStaff.forEach(s => {
+        const option = document.createElement('option');
+        option.value = s.id;
+        option.textContent = `${s.first_name} ${s.last_name}`;
+        select.appendChild(option);
+    });
+}
+
+async function populateAdjustableShifts() {
+    const select = document.getElementById('adjustmentShift');
+    if (!select) return;
+    
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Get recent and upcoming shifts
+    const { data: shifts } = await supabaseClient
+        .from('shifts')
+        .select('*, participant:participants(first_name, last_name)')
+        .eq('staff_id', currentStaff.id)
+        .gte('date', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]) // Last week
+        .is('deleted_at', null)
+        .order('date', { ascending: false });
+    
+    select.innerHTML = '<option value="">Select a shift</option>';
+    
+    if (shifts) {
+        shifts.forEach(shift => {
+            const option = document.createElement('option');
+            option.value = shift.id;
+            const clientName = shift.participant ? 
+                `${shift.participant.first_name} ${shift.participant.last_name}` : 
+                'Unknown Client';
+            option.textContent = `${formatDateShort(shift.date)} - ${clientName} (${shift.start_time || 'Sleepover'})`;
+            select.appendChild(option);
+        });
+    }
+}
+
+// 3. Other submission functions you might need
+async function submitTransfer() {
+    try {
+        const shiftId = document.getElementById('transferShiftSelect').value;
+        const toStaffId = document.getElementById('transferToStaff').value;
+        const reason = document.getElementById('transferReason').value;
+        
+        if (!shiftId || !toStaffId || !reason) {
+            showToast('Please fill all required fields', 'error');
+            return;
+        }
+        
+        const { error } = await supabaseClient
+            .from('transfer_requests')
+            .insert({
+                shift_id: shiftId,
+                from_staff_id: currentStaff.id,
+                to_staff_id: toStaffId,
+                reason: reason,
+                status: 'pending',
+                created_at: new Date().toISOString()
+            });
+            
+        if (error) throw error;
+        
+        showToast('Transfer request sent', 'success');
+        closeModal('transferShiftModal');
+        loadTransfers();
+        
+    } catch (error) {
+        console.error('Error:', error);
+        showToast('Failed to send transfer request', 'error');
+    }
+}
+
+async function submitAdjustment() {
+    try {
+        const shiftId = document.getElementById('adjustmentShift').value;
+        const newStartTime = document.getElementById('adjustmentStartTime').value;
+        const newEndTime = document.getElementById('adjustmentEndTime').value;
+        const reason = document.getElementById('adjustmentReason').value;
+        
+        if (!shiftId || !reason) {
+            showToast('Please fill all required fields', 'error');
+            return;
+        }
+        
+        // Create adjustment request (you might need a separate table for this)
+        const { error } = await supabaseClient
+            .from('shift_adjustment_requests')
+            .insert({
+                shift_id: shiftId,
+                staff_id: currentStaff.id,
+                new_start_time: newStartTime || null,
+                new_end_time: newEndTime || null,
+                reason: reason,
+                status: 'pending',
+                created_at: new Date().toISOString()
+            });
+            
+        if (error) throw error;
+        
+        showToast('Time adjustment request sent', 'success');
+        closeModal('adjustmentModal');
+        
+    } catch (error) {
+        console.error('Error:', error);
+        showToast('Failed to send adjustment request', 'error');
+    }
+}
+async function submitLeaveRequest() {
+    try {
+        const leaveType = document.getElementById('leaveType').value;
+        const startDate = document.getElementById('leaveStartDate').value;
+        const endDate = document.getElementById('leaveEndDate').value;
+        const reason = document.getElementById('leaveReason').value;
+
+        if (!leaveType || !startDate || !endDate) {
+            showToast('Please fill all required fields', 'error');
+            return;
+        }
+
+        // Generate all dates in range
+        const dates = [];
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+            dates.push(new Date(d).toISOString().split('T')[0]);
+        }
+
+        // Check for existing shifts
+        const { data: conflicts } = await supabaseClient
+            .from('shifts')
+            .select('*')
+            .eq('staff_id', currentStaff.id)
+            .in('date', dates)
+            .is('deleted_at', null);
+
+        if (conflicts && conflicts.length > 0) {
+            showToast(`You have ${conflicts.length} shift(s) during this period. Please transfer them first.`, 'error');
+            return;
+        }
+
+        // Insert blocked dates
+        const availabilityBlocks = dates.map(date => ({
+            staff_id: currentStaff.id,
+            date: date,
+            available: false,
+            reason: `${leaveType}: ${reason || 'Personal'}`,
+            created_at: new Date().toISOString()
+        }));
+
+        const { error } = await supabaseClient
+            .from('staff_availability')
+            .insert(availabilityBlocks);
+
+        if (error) throw error;
+
+        showToast(`Leave request submitted: ${dates.length} day(s) blocked`, 'success');
+        closeModal('leaveModal');
+        
+        // Reload dashboard
+        loadDashboard();
+        
+    } catch (error) {
+        console.error('Error submitting leave:', error);
+        showToast('Failed to submit leave request', 'error');
+    }
+}
+
+async function loadShiftTimes() {
+    const shiftId = document.getElementById('adjustmentShift').value;
+    if (!shiftId) return;
+    
+    const { data: shift } = await supabaseClient
+        .from('shifts')
+        .select('start_time, end_time')
+        .eq('id', shiftId)
+        .single();
+        
+    if (shift) {
+        document.getElementById('adjustmentStartTime').value = shift.start_time || '';
+        document.getElementById('adjustmentEndTime').value = shift.end_time || '';
+    }
+}
 async function loadLocations() {
     try {
         const { data: locationsData } = await supabaseClient
@@ -4014,6 +4819,83 @@ async function loadSchedule() {
         showToast('Failed to load schedule', 'error');
     }
 }
+
+async function viewShiftDetails(shiftId) {
+    try {
+        const { data: shift, error } = await supabaseClient
+            .from('shifts')
+            .select(`
+                *,
+                participant:participant_id(first_name, last_name, phone),
+                location:location_id(name, address),
+                duty_type:duty_type_id(name),
+                staff:staff_id(first_name, last_name)
+            `)
+            .eq('id', shiftId)
+            .single();
+
+        if (error) throw error;
+
+        // Show details in a simple alert or modal
+        const details = `
+Shift Details:
+Date: ${formatDateLong(shift.date)}
+Time: ${shift.start_time || 'Sleepover'} - ${shift.end_time || ''}
+Client: ${shift.participant ? `${shift.participant.first_name} ${shift.participant.last_name}` : 'Unassigned'}
+Location: ${shift.location?.name || 'TBC'}
+Service: ${shift.duty_type?.name || 'Standard Care'}
+        `;
+        
+        if (confirm(details + '\n\nWould you like to request a transfer for this shift?')) {
+            openTransferModal(shiftId);
+        }
+
+    } catch (error) {
+        console.error('Error viewing shift:', error);
+        showToast('Failed to load shift details', 'error');
+    }
+}
+
+async function openTransferModal(shiftId) {
+    try {
+        // Load available staff
+        await loadTransferableShifts(); // This populates the shift dropdown
+        
+        // Set the specific shift if provided
+        if (shiftId) {
+            document.getElementById('transferShiftSelect').value = shiftId;
+        }
+        
+        // Load staff options
+        const { data: staffList } = await supabaseClient
+            .from('staff')
+            .select('id, first_name, last_name')
+            .neq('id', currentStaff.id)
+            .eq('active', true)
+            .order('first_name');
+
+        const staffSelect = document.getElementById('transferToStaff');
+        staffSelect.innerHTML = '<option value="">Select staff member (optional)</option>' +
+            (staffList || []).map(s => `<option value="${s.id}">${s.first_name} ${s.last_name}</option>`).join('');
+        
+        openModal('transferShiftModal');
+        
+    } catch (error) {
+        console.error('Error opening transfer modal:', error);
+        showToast('Failed to load transfer options', 'error');
+    }
+}
+function changeMonth(direction) {
+    // Store current month offset in a global variable
+    if (!window.currentMonthOffset) {
+        window.currentMonthOffset = 0;
+    }
+    window.currentMonthOffset += direction;
+    
+    // Reload schedule with new month
+    loadSchedule();
+}
+
 
         function populateParticipantFilter() {
             const select = document.getElementById('participantFilter');
