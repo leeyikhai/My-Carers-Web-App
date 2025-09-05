@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MC Manager - Complete System</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <meta charset="utf-8">
+    <title>My Carers</title>
+  
+    <!-- favicon links -->
+    <link rel="icon" type="image/png" sizes="16x16" href="mc-favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="mc-favicon-32x32.png">
     <style>
 
       
@@ -1603,7 +1609,7 @@ async function initializeApp() {
         if (error) throw error;
         
         if (!session) {
-            window.location.href = 'login.html';
+            window.location.href = 'index.html';
             return;
         }
 
@@ -6935,7 +6941,7 @@ async function createCareHomeShifts() {
             try {
                 const { error } = await supabaseClient.auth.signOut();
                 if (error) throw error;
-                window.location.href = 'login.html';
+                window.location.href = 'index.html';
             } catch (error) {
                 console.error('Logout error:', error);
                 showNotification('Logout failed', 'error');
@@ -7059,7 +7065,7 @@ NEXT STEPS:
         supabaseClient.auth.onAuthStateChange((event, session) => {
             console.log('Auth state change:', event);
             if (event === 'SIGNED_OUT') {
-                window.location.href = 'login.html';
+                window.location.href = 'index.html';
             }
         });
 
@@ -7509,7 +7515,7 @@ function resetSessionTimer() {
     
     sessionTimer = setTimeout(() => {
         alert('Session expired. Please log in again.');
-        window.location.href = 'login.html';
+        window.location.href = 'index.html';
     }, SESSION_TIMEOUT);
 }
 
