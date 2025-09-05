@@ -8405,6 +8405,183 @@ if (document.readyState === 'loading') {
     initializeEnhancements();
 }
 
+async function switchStaffView(staffId) {
+    try {
+        // Get the selected staff member
+        const { data: selectedStaff, error } = await supabaseClient
+            .from('staff')
+            .select('*')
+            .eq('id', staffId)
+            .single();
+        
+        if (error) throw error;
+        
+        // Store the original if this is the first switch
+        if (!window.originalStaffData) {
+            window.originalStaffData = currentStaffData;
+        }
+        
+        // Switch current staff context
+        currentStaffData = selectedStaff;
+        
+        // Update the display
+        document.getElementById('userName').textContent = 
+            `${selectedStaff.first_name} ${selectedStaff.last_name}`;
+        
+        // Add indicator that we're in test mode
+        if (!document.getElementById('testModeIndicator')) {
+            const indicator = document.createElement('div');
+            indicator.id = 'testModeIndicator';
+            indicator.style.cssText = 'background: #ff9800; color: white; padding: 5px 10px; text-align: center; position: fixed; top: 0; left: 0; right: 0; z-index: 10000; font-size: 12px;';
+            indicator.innerHTML = `
+                ⚠️ TEST MODE - Viewing as: ${selectedStaff.first_name} ${selectedStaff.last_name} 
+                <button onclick="resetToOriginalStaff()" style="margin-left: 10px; padding: 2px 8px; background: white; color: #333; border: none; border-radius: 3px; cursor: pointer;">Exit Test Mode</button>
+            `;
+            document.body.prepend(indicator);
+        } else {
+            document.getElementById('testModeIndicator').innerHTML = `
+                ⚠️ TEST MODE - Viewing as: ${selectedStaff.first_name} ${selectedStaff.last_name}
+                <button onclick="resetToOriginalStaff()" style="margin-left: 10px; padding: 2px 8px; background: white; color: #333; border: none; border-radius: 3px; cursor: pointer;">Exit Test Mode</button>
+            `;
+        }
+        
+        // Reload all data for this staff member
+        await loadShifts();  // This will load shifts for currentStaffData
+        
+        // Refresh the current view
+        renderCurrentView();
+        
+        showNotification(`Now viewing as: ${selectedStaff.first_name} ${selectedStaff.last_name}`, 'info');
+        
+    } catch (error) {
+        console.error('Error switching staff view:', error);
+        showNotification('Failed to switch staff view', 'error');
+    }
+}
+
+// 2. Reset back to original staff
+function resetToOriginalStaff() {
+    if (window.originalStaffData) {
+        currentStaffData = window.originalStaffData;
+        delete window.originalStaffData;
+        
+        // Update display
+        document.getElementById('userName').textContent = 
+            `${currentStaffData.first_name} ${currentStaffData.last_name}`;
+        
+        // Remove test mode indicator
+        const indicator = document.getElementById('testModeIndicator');
+        if (indicator) indicator.remove();
+        
+        // Reload data
+        loadShifts();
+        renderCurrentView();
+        
+        showNotification('Returned to your normal view', 'success');
+    }
+}
+
+// 3. Add a dropdown to the header for quick staff switching
+function addStaffSwitcher() {
+    // Only show for admin/manager roles
+    if (currentUserRole !== 'admin' && currentUserRole !== 'manager') return;
+    
+    const switcherHTML = `
+        <div id="staffSwitcher" style="display: inline-block; margin-left: 20px;">
+            <select id="staffViewSelect" onchange="if(this.value) switchStaffView(this.value)" style="
+                padding: 5px 10px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                background: white;
+                cursor: pointer;
+            ">
+                <option value="">👤 View as Staff...</option>
+                ${staff.map(s => `
+                    <option value="${s.id}" ${currentStaffData?.id === s.id ? 'selected' : ''}>
+                        ${s.first_name} ${s.last_name}
+                    </option>
+                `).join('')}
+            </select>
+        </div>
+    `;
+    
+    // Add to header
+    const userInfo = document.querySelector('.user-info');
+    if (userInfo) {
+        userInfo.insertAdjacentHTML('beforeend', switcherHTML);
+    }
+}
+
+// 4. For team.html - similar but simpler
+async function switchStaffViewTeam(staffId) {
+    try {
+        const { data: selectedStaff, error } = await supabaseClient
+            .from('staff')
+            .select('*')
+            .eq('id', staffId)
+            .single();
+        
+        if (error) throw error;
+        
+        // Store original
+        if (!window.originalStaff) {
+            window.originalStaff = currentStaff;
+        }
+        
+        // Switch context
+        currentStaff = selectedStaff;
+        
+        // Update display
+        document.getElementById('userName').textContent = 
+            `${selectedStaff.first_name} ${selectedStaff.last_name}`;
+        
+        // Add test mode banner
+        if (!document.getElementById('testModeBanner')) {
+            const banner = document.createElement('div');
+            banner.id = 'testModeBanner';
+            banner.style.cssText = 'background: orange; color: white; padding: 8px; text-align: center; position: fixed; top: 0; left: 0; right: 0; z-index: 9999;';
+            banner.innerHTML = `
+                Testing as: ${selectedStaff.first_name} ${selectedStaff.last_name}
+                <button onclick="exitTestMode()" style="margin-left: 10px; padding: 2px 8px;">Exit</button>
+            `;
+            document.body.prepend(banner);
+        }
+        
+        // Reload their data
+        await loadDashboard();
+        await loadSchedule();
+        await loadTransfers();
+        
+        showToast(`Viewing as: ${selectedStaff.first_name} ${selectedStaff.last_name}`, 'info');
+        
+    } catch (error) {
+        console.error('Error:', error);
+        showToast('Failed to switch view', 'error');
+    }
+}
+
+// 5. Add to initialization in mc-manager.html
+// After loading staff data in initializeApp(), add:
+if (currentUserRole === 'admin' || currentUserRole === 'manager') {
+    // Add the staff switcher after staff data is loaded
+    setTimeout(() => addStaffSwitcher(), 100);
+}
+
+// 6. Quick keyboard shortcut for switching (optional)
+document.addEventListener('keydown', function(e) {
+    // Alt+S to open staff switcher
+    if (e.altKey && e.key === 's') {
+        e.preventDefault();
+        const select = document.getElementById('staffViewSelect');
+        if (select) select.focus();
+    }
+    
+    // Escape to exit test mode
+    if (e.key === 'Escape' && window.originalStaffData) {
+        resetToOriginalStaff();
+    }
+});
+
     </script>
 </body>
 </html>
