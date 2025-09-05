@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MC Manager - Complete System</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <meta charset="utf-8">
     <title>My Carers</title>
   
     <!-- favicon links -->
@@ -3404,7 +3403,7 @@ async function renderShiftRow(shift, date) {
     else if (shift.status === 'completed') statusClass = 'badge-info';
     else if (shift.status === 'cancelled') statusClass = 'badge-danger';
     
-    const shiftActions = generateShiftActions(shift);
+    const shiftActions = renderShiftActions(shift);
     
     return `
         <tr class="shift-row" data-shift-id="${shift.id}">
