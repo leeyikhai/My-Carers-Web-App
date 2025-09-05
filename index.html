@@ -644,9 +644,8 @@
             resetBtn.disabled = true;
             
             try {
-                const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-                    redirectTo: `${window.location.origin}/reset-password.html`
-                });
+                const { error } = await supabaseClient.auth.resetPasswordForEmail(email);
+
                 
                 if (error) throw error;
                 
