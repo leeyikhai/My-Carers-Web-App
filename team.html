@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Team Portal - MC Care</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <meta charset="utf-8">
+    <title>My Carers</title>
+  
+    <!-- favicon links -->
+    <link rel="icon" type="image/png" sizes="16x16" href="mc-favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="mc-favicon-32x32.png">
     <style>
 
         
@@ -1859,7 +1865,7 @@
                 const { data: { session }, error } = await supabaseClient.auth.getSession();
                 
                 if (error || !session) {
-                    window.location.href = 'login.html';
+                    window.location.href = 'index.html';
                     return;
                 }
 
