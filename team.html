@@ -2865,12 +2865,10 @@ window.debugStaffState = function() {
     };
 }
 
-
 async function initializeApp() {
     try {
         console.log('Initializing team app...');
         
-        // Check authentication
         const { data: { session }, error } = await supabaseClient.auth.getSession();
         
         if (error || !session) {
@@ -2882,114 +2880,85 @@ async function initializeApp() {
         currentUser = session.user;
         console.log('User authenticated:', currentUser.email);
         
-        // Load staff record with proper error handling
-        const { data: staffData, error: staffError } = await supabaseClient
+        // Try multiple methods to find staff record
+        let staffData = null;
+        
+        // Method 1: Try by user_id
+        let result = await supabaseClient
             .from('staff')
             .select('*')
             .eq('user_id', currentUser.id)
             .maybeSingle();
         
-        if (staffError) {
-            console.error('Error loading staff data:', staffError);
-            showToast('Failed to load staff data', 'error');
-            return;
+        staffData = result.data;
+        
+        // Method 2: Try by email match
+        if (!staffData) {
+            console.log('No staff found by user_id, trying email...');
+            result = await supabaseClient
+                .from('staff')
+                .select('*')
+                .eq('email', currentUser.email)
+                .maybeSingle();
+            
+            staffData = result.data;
+            
+            // AUTO-LINK: If found by email but no user_id, update it
+            if (staffData && !staffData.user_id) {
+                console.log('Auto-linking staff record to user account...');
+                const { error: updateError } = await supabaseClient
+                    .from('staff')
+                    .update({ user_id: currentUser.id })
+                    .eq('id', staffData.id);
+                
+                if (!updateError) {
+                    staffData.user_id = currentUser.id;
+                    console.log('Staff record auto-linked successfully');
+                }
+            }
+        }
+        
+        // Method 3: For testing - allow manual override
+        if (!staffData && window.location.hostname === 'localhost') {
+            console.warn('No staff found, checking for test override...');
+            // You could load a default test staff here
         }
         
         if (!staffData) {
-            console.error('No staff record found for user:', currentUser.id);
-            showToast('Staff record not found. Please contact administrator.', 'error');
-            // Don't redirect immediately, let them see the error
-            setTimeout(() => {
-                window.location.href = 'index.html';
-            }, 3000);
+            console.error('No staff record found');
+            showToast('No staff record found. Please contact administrator.', 'error');
+            
+            // Show helpful error with current user info
+            document.body.innerHTML = `
+                <div style="padding: 40px; text-align: center; font-family: Arial;">
+                    <h2>Staff Account Not Found</h2>
+                    <p>No staff record found for: ${currentUser.email}</p>
+                    <p style="color: #666; margin-top: 20px;">Please contact your administrator to link your account.</p>
+                    <p style="font-size: 12px; color: #999; margin-top: 40px;">User ID: ${currentUser.id}</p>
+                    <button onclick="logout()" style="margin-top: 20px; padding: 10px 20px;">Logout</button>
+                </div>
+            `;
             return;
         }
         
+        // Set the staff data
+        AppState.staff.current = staffData;
         currentStaff = staffData;
-        console.log('Current staff loaded:', currentStaff);
         
-        // Ensure required DOM elements exist before proceeding
-        ensureRequiredElements();
-
-        try {
-            await loadReferenceData(); // <-- This is what's missing
-            console.log('Reference data loaded');
-        } catch (refError) {
-            console.error('Error loading reference data:', refError);
-            showToast('Some reference data failed to load', 'warning');
-        }
+        console.log('Staff record loaded:', staffData.first_name, staffData.last_name);
         
-        // Update UI with user info - with null checks
-        const userNameElement = document.getElementById('userName');
-        if (userNameElement) {
-            userNameElement.textContent = `${currentStaff.first_name} ${currentStaff.last_name}`;
-        } else {
-            console.warn('userName element not found');
-        }
+        // Update UI
+        document.getElementById('userName').textContent = 
+            `${staffData.first_name} ${staffData.last_name}`;
         
-        // Set current pay period
-        try {
-            setCurrentPayPeriod();
-        } catch (periodError) {
-            console.error('Error setting pay period:', periodError);
-            // Continue initialization even if pay period fails
-        }
-        
-        // Load initial data with error handling
-        try {
-            await loadReferenceData();
-            console.log('Reference data loaded');
-        } catch (refError) {
-            console.error('Error loading reference data:', refError);
-            showToast('Some reference data failed to load', 'warning');
-        }
-        
-        // Load dashboard
-        try {
-            await loadDashboard();
-            console.log('Dashboard loaded');
-        } catch (dashError) {
-            console.error('Error loading dashboard:', dashError);
-            showToast('Dashboard failed to load completely', 'error');
-        }
-        
-        // Set greeting
-        try {
-            setGreeting();
-        } catch (greetError) {
-            console.error('Error setting greeting:', greetError);
-        }
-        
-        // Load profile banner if exists
-        try {
-            if (typeof loadProfileBanner === 'function') {
-                loadProfileBanner();
-            }
-        } catch (bannerError) {
-            console.error('Error loading profile banner:', bannerError);
-        }
-        
-        // Setup event listeners
-        try {
-            if (typeof setupEventListeners === 'function') {
-                setupEventListeners();
-            }
-            setupModals();
-        } catch (listenerError) {
-            console.error('Error setting up event listeners:', listenerError);
-        }
-        
-        console.log('Team app initialization complete');
+        // Continue with initialization
+        await loadReferenceData();
+        setGreeting();
+        showSection('dashboard');
         
     } catch (error) {
-        console.error('Critical initialization error:', error);
-        showToast('Failed to initialize app: ' + error.message, 'error');
-        
-        // Try to show a fallback error state
-        const userNameElement = document.getElementById('userName');
-        if (userNameElement) {
-            userNameElement.textContent = 'Error Loading';
-        }
+        console.error('Error in initializeApp:', error);
+        showToast('Failed to initialize app', 'error');
     }
 }
 
