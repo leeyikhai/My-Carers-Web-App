@@ -5127,7 +5127,7 @@ async function submitAdjustment() {
 
 
 
-async function submitLeaveRequest() {
+async function submitLeave() {
     try {
         // Ensure we're authenticated
         const { data: { user } } = await supabaseClient.auth.getUser();
