@@ -1541,6 +1541,77 @@
     border-color: var(--danger-color);
     opacity: 0.8;
 }
+
+.weekly-schedule {
+    background: white;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+}
+
+.day-section {
+    border-bottom: 1px solid var(--border-color);
+}
+
+.day-section:last-child {
+    border-bottom: none;
+}
+
+.day-section.today {
+    background: #f0f8ff;
+}
+
+.day-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--bg-light);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.day-name {
+    font-weight: 600;
+    font-size: 16px;
+}
+
+.shift-count {
+    background: var(--primary-color);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+}
+
+.shift-item {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-light);
+    transition: background 0.2s;
+}
+
+.shift-item:hover {
+    background: var(--bg-light);
+}
+
+.shift-item:last-child {
+    border-bottom: none;
+}
+
+.no-shifts {
+    padding: 20px;
+    text-align: center;
+    color: var(--text-light);
+    font-style: italic;
+}
+
+.shift-history-item {
+    padding: 12px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.shift-date-header {
+    font-weight: 600;
+    margin-bottom: 8px;
+}
     </style>
 
     
@@ -6069,103 +6140,244 @@ async function addNoteToShift(shiftId) {
 
 async function loadSchedule() {
     try {
-        let scheduleContainer = document.getElementById('scheduleCalendar');
+        const scheduleSection = document.getElementById('schedule');
+        if (!scheduleSection) return;
         
-        if (!scheduleContainer) {
-            const scheduleSection = document.getElementById('schedule');
-            if (!scheduleSection) {
-                console.log('Schedule section not active');
-                return;
-            }
-            
-            let contentArea = scheduleSection.querySelector('.schedule-content');
-            if (!contentArea) {
-                contentArea = document.createElement('div');
-                contentArea.className = 'schedule-content';
-                scheduleSection.appendChild(contentArea);
-            }
-            
-            scheduleContainer = document.createElement('div');
-            scheduleContainer.id = 'scheduleCalendar';
-            contentArea.innerHTML = '';
-            contentArea.appendChild(scheduleContainer);
-        }
-
-        // Initialize period if not set
-        if (!window.currentPeriodStart || !window.currentPeriodEnd) {
-            setCurrentPayPeriod();
-        }
-
-        // Check if dates are valid before using them
-        if (!window.currentPeriodStart || isNaN(window.currentPeriodStart.getTime())) {
-            console.error('Invalid currentPeriodStart');
-            window.currentPeriodStart = getTestDate();
-            window.currentPeriodEnd = new Date(window.currentPeriodStart);
-            window.currentPeriodEnd.setDate(window.currentPeriodEnd.getDate() + 13);
-        }
-
-        const startDate = new Date(window.currentPeriodStart);
-        const endDate = new Date(window.currentPeriodEnd);
-        
-        // Validate dates
-        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-            console.error('Invalid date range for schedule');
-            scheduleContainer.innerHTML = '<div class="error-message">Invalid date range</div>';
+        // Ensure we have current staff data
+        if (!AppState.staff.current) {
+            console.error('No current staff for schedule');
             return;
         }
 
+        // Calculate current week (Monday to Sunday)
+        const today = getTestDate();
+        const currentDay = today.getDay();
+        const diff = today.getDate() - currentDay + (currentDay === 0 ? -6 : 1); // Adjust when Sunday
+        const weekStart = new Date(today.setDate(diff));
+        weekStart.setHours(0, 0, 0, 0);
+        
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 6);
+        weekEnd.setHours(23, 59, 59, 999);
+        
         // Format dates for query
-        const start = startDate.toISOString().split('T')[0];
-        const end = endDate.toISOString().split('T')[0];
-
-        // Load shifts for the period - USING SAME ID AS TIMESHEET
+        const startDate = weekStart.toISOString().split('T')[0];
+        const endDate = weekEnd.toISOString().split('T')[0];
+        
+        console.log('Loading schedule for week:', startDate, 'to', endDate);
+        
+        // Load shifts for the week
         const { data: shifts, error } = await supabaseClient
             .from('shifts')
             .select(`
                 *,
-                participants(id, first_name, last_name),
+                participants(id, first_name, last_name, ndis_number),
                 locations(name, address),
                 duty_types(name)
             `)
-            .eq('staff_id', AppState.staff.current.id)  // CHANGED: Using AppState like timesheet
-            .gte('date', start)
-            .lte('date', end)
+            .eq('staff_id', AppState.staff.current.id)
+            .gte('date', startDate)
+            .lte('date', endDate)
             .order('date', { ascending: true })
             .order('start_time', { ascending: true });
 
         if (error) {
             console.error('Error loading schedule:', error);
-            scheduleContainer.innerHTML = '<div class="error-message">Failed to load schedule</div>';
+            showToast('Failed to load schedule', 'error');
             return;
         }
 
-        // IMPORTANT: Store shifts globally so dropdowns can use them
+        // Store shifts globally
         allShifts = shifts || [];
-        myShifts = shifts || [];  // Update myShifts too for modal dropdowns
+        myShifts = shifts || [];
         
-        console.log('Schedule loaded:', shifts?.length || 0, 'shifts');
-
-        // Populate participant filter if it exists
-        const filterSelect = document.getElementById('participantFilter');
-        if (filterSelect && participants.length > 0) {
-            const uniqueParticipants = [...new Set(shifts?.map(s => s.participant_id).filter(Boolean) || [])];
-            filterSelect.innerHTML = '<option value="">All My Clients</option>' +
-                uniqueParticipants.map(pId => {
-                    const p = participants.find(participant => participant.id === pId);
-                    return p ? `<option value="${pId}">${p.first_name} ${p.last_name}</option>` : '';
-                }).join('');
-        }
-
-        // Render schedule
-        if (typeof renderFortnightSchedule === 'function') {
-            renderFortnightSchedule(startDate, endDate, shifts || []);
-        }
-
+        console.log('Schedule loaded:', allShifts.length, 'shifts');
+        
+        // Render the weekly schedule
+        renderWeeklySchedule(weekStart, weekEnd, shifts || []);
+        
     } catch (error) {
-        console.error('Error loading schedule:', error);
+        console.error('Error in loadSchedule:', error);
         showToast('Failed to load schedule', 'error');
     }
 }
+
+function renderWeeklySchedule(weekStart, weekEnd, shifts) {
+    const container = document.getElementById('scheduleGrid');
+    if (!container) return;
+    
+    // Create week navigation header
+    let html = `
+        <div class="schedule-header">
+            <button class="btn btn-sm" onclick="changeWeek(-1)">← Previous Week</button>
+            <div class="week-display">
+                <h3>${formatDateShort(weekStart.toISOString().split('T')[0])} - ${formatDateShort(weekEnd.toISOString().split('T')[0])}</h3>
+            </div>
+            <button class="btn btn-sm" onclick="changeWeek(1)">Next Week →</button>
+        </div>
+    `;
+    
+    // Group shifts by date
+    const shiftsByDate = {};
+    const daysOfWeek = [];
+    
+    // Generate all days of the week
+    for (let i = 0; i < 7; i++) {
+        const date = new Date(weekStart);
+        date.setDate(weekStart.getDate() + i);
+        const dateStr = date.toISOString().split('T')[0];
+        daysOfWeek.push(dateStr);
+        shiftsByDate[dateStr] = [];
+    }
+    
+    // Populate shifts into their dates
+    shifts.forEach(shift => {
+        if (shiftsByDate[shift.date]) {
+            shiftsByDate[shift.date].push(shift);
+        }
+    });
+    
+    // Render each day
+    html += '<div class="weekly-schedule">';
+    
+    daysOfWeek.forEach(dateStr => {
+        const date = new Date(dateStr + 'T12:00:00');
+        const isToday = dateStr === getTestDate().toISOString().split('T')[0];
+        const dayShifts = shiftsByDate[dateStr];
+        
+        html += `
+            <div class="day-section ${isToday ? 'today' : ''}">
+                <div class="day-header">
+                    <div class="day-name">${date.toLocaleDateString('en-AU', { weekday: 'long' })}</div>
+                    <div class="day-date">${date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}</div>
+                    ${dayShifts.length > 0 ? `<span class="shift-count">${dayShifts.length} shift${dayShifts.length > 1 ? 's' : ''}</span>` : ''}
+                </div>
+                <div class="day-shifts">
+        `;
+        
+        if (dayShifts.length === 0) {
+            html += '<div class="no-shifts">No shifts scheduled</div>';
+        } else {
+            dayShifts.forEach(shift => {
+                const participant = shift.participants;
+                const participantName = participant ? 
+                    `${participant.first_name} ${participant.last_name}` : 
+                    'Unassigned';
+                
+                html += `
+                    <div class="shift-item" onclick="showParticipantShifts('${shift.participant_id}', '${participantName.replace(/'/g, "\\'")}')" style="cursor: pointer;">
+                        <div class="shift-time">
+                            ${shift.start_time ? formatTime(shift.start_time) : 'Sleepover'} - 
+                            ${shift.end_time ? formatTime(shift.end_time) : ''}
+                        </div>
+                        <div class="shift-participant">
+                            <strong>${participantName}</strong>
+                            ${participant?.ndis_number ? `<span class="ndis-number">(${participant.ndis_number})</span>` : ''}
+                        </div>
+                        <div class="shift-location">
+                            📍 ${shift.locations?.name || 'Client Home'}
+                        </div>
+                        ${shift.duty_types ? `<div class="shift-duty-type">${shift.duty_types.name}</div>` : ''}
+                    </div>
+                `;
+            });
+        }
+        
+        html += `
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    
+    container.innerHTML = html;
+}
+
+// Function to change week
+window.changeWeek = function(direction) {
+    window.currentWeekOffset = (window.currentWeekOffset || 0) + direction;
+    
+    const today = getTestDate();
+    const currentDay = today.getDay();
+    const diff = today.getDate() - currentDay + (currentDay === 0 ? -6 : 1);
+    const weekStart = new Date(today.setDate(diff + (window.currentWeekOffset * 7)));
+    
+    loadSchedule();
+};
+
+// Function to show all shifts for a participant
+window.showParticipantShifts = async function(participantId, participantName) {
+    try {
+        if (!participantId || participantId === 'null') {
+            showToast('No participant selected', 'info');
+            return;
+        }
+        
+        // Load all shifts for this participant
+        const { data: participantShifts, error } = await supabaseClient
+            .from('shifts')
+            .select(`
+                *,
+                staff(first_name, last_name),
+                locations(name),
+                duty_types(name)
+            `)
+            .eq('participant_id', participantId)
+            .eq('staff_id', AppState.staff.current.id)
+            .order('date', { ascending: false })
+            .limit(50);
+        
+        if (error) {
+            console.error('Error loading participant shifts:', error);
+            showToast('Failed to load participant shifts', 'error');
+            return;
+        }
+        
+        // Create modal to show shifts
+        const modalHtml = `
+            <div id="participantShiftsModal" class="modal active" style="display: flex;">
+                <div class="modal-content" style="max-width: 600px; max-height: 80vh; overflow-y: auto;">
+                    <div class="modal-header">
+                        <h2>Shifts for ${participantName}</h2>
+                        <button class="modal-close" onclick="closeModal('participantShiftsModal')">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        ${participantShifts.length === 0 ? 
+                            '<p>No shifts found for this participant</p>' :
+                            participantShifts.map(shift => `
+                                <div class="shift-history-item">
+                                    <div class="shift-date-header">
+                                        ${formatDateLong(shift.date)}
+                                    </div>
+                                    <div class="shift-details">
+                                        <div>${shift.start_time ? formatTime(shift.start_time) : 'Sleepover'} - 
+                                             ${shift.end_time ? formatTime(shift.end_time) : ''}</div>
+                                        <div>📍 ${shift.locations?.name || 'Client Home'}</div>
+                                        ${shift.duty_types ? `<div>Type: ${shift.duty_types.name}</div>` : ''}
+                                        <div class="shift-status-badge ${shift.status}">${shift.status}</div>
+                                    </div>
+                                </div>
+                            `).join('')
+                        }
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Remove any existing modal
+        const existingModal = document.getElementById('participantShiftsModal');
+        if (existingModal) existingModal.remove();
+        
+        // Add modal to page
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+    } catch (error) {
+        console.error('Error showing participant shifts:', error);
+        showToast('Failed to load participant history', 'error');
+    }
+};
+
 function changeSchedulePeriod(direction) {
     if (!window.currentPeriodStart) {
         setCurrentPayPeriod();
