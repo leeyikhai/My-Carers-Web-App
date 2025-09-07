@@ -4541,10 +4541,10 @@ async function submitShift() {
         const { data: leaveCheck } = await supabaseClient
             .from('staff_availability')
             .select('*')
-            .eq('staff_id', currentStaff.id)
+            .eq('staff_id', AppState.staff.current.id)
             .eq('date', date)
             .eq('available', false)
-            .single();
+            .maybeSingle();
 
         if (leaveCheck) {
             showToast(`Cannot add shift: You are on ${leaveCheck.reason} on this date`, 'error');
@@ -4555,7 +4555,7 @@ async function submitShift() {
         const { data: existingShifts } = await supabaseClient
             .from('shifts')
             .select('*')
-            .eq('staff_id', currentStaff.id)
+            .eq('staff_id', AppState.staff.current.id)
             .eq('date', date)
             .is('deleted_at', null);
 
@@ -4608,24 +4608,42 @@ async function submitShift() {
             }
         }
 
-        // Create shift
+        // Get default pay_override_id
+        let payOverrideId = null;
+        const { data: defaultOverride } = await supabaseClient
+            .from('pay_overrides')
+            .select('id')
+            .limit(1)
+            .maybeSingle();
+        
+        if (defaultOverride) {
+            payOverrideId = defaultOverride.id;
+        } else {
+            // Use a default UUID if no pay_override exists
+            payOverrideId = '00000000-0000-0000-0000-000000000001';
+        }
+
+        // Create shift with status 'scheduled' by default
         const { error } = await supabaseClient
             .from('shifts')
             .insert({
                 date: date,
                 start_time: startTime || null,
                 end_time: endTime || null,
-                staff_id: currentStaff.id,
+                staff_id: AppState.staff.current.id,
                 participant_id: participantId,
                 location_id: locationId,
                 duty_type_id: dutyTypeId,
-                status: 'pending',
-                notes: notes || null
+                status: 'scheduled', // Changed from 'pending' to 'scheduled'
+                notes: notes || null,
+                pay_override_id: payOverrideId, // Added required field
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
             });
 
         if (error) throw error;
 
-        showToast('Shift submitted for approval', 'success');
+        showToast('Shift added successfully', 'success');
         closeModal('addShiftModal');
         
         // Clear form
@@ -4636,8 +4654,10 @@ async function submitShift() {
         document.getElementById('shiftDutyType').value = '';
         document.getElementById('shiftNotes').value = '';
         
-        loadDashboard();
-        loadSchedule();
+        // Reload relevant sections
+        if (typeof loadDashboard === 'function') loadDashboard();
+        if (typeof loadSchedule === 'function') loadSchedule();
+        if (typeof loadTimesheet === 'function') loadTimesheet();
 
     } catch (error) {
         console.error('Error submitting shift:', error);
@@ -5095,7 +5115,6 @@ async function submitAdjustment() {
 
 
 
-
 async function submitLeave() {
     try {
         // Ensure we're authenticated
@@ -5124,20 +5143,48 @@ async function submitLeave() {
             dates.push(new Date(d).toISOString().split('T')[0]);
         }
 
-        // Create staff_availability entries for each date
+        // Check for existing leave entries to avoid duplicates
+        const { data: existingLeave } = await supabaseClient
+            .from('staff_availability')
+            .select('date')
+            .eq('staff_id', AppState.staff.current.id)
+            .in('date', dates);
+
+        if (existingLeave && existingLeave.length > 0) {
+            const conflictDates = existingLeave.map(l => l.date).join(', ');
+            showToast(`You already have leave on: ${conflictDates}`, 'error');
+            return;
+        }
+
+        // Check for existing shifts in this period
+        const { data: existingShifts } = await supabaseClient
+            .from('shifts')
+            .select('date')
+            .eq('staff_id', AppState.staff.current.id)
+            .in('date', dates)
+            .is('deleted_at', null);
+
+        if (existingShifts && existingShifts.length > 0) {
+            showToast(`You have shifts on some of these dates. Please transfer them first.`, 'error');
+            return;
+        }
+
+        // Create staff_availability entries for each date (WITHOUT created_by)
         const availabilityUpdates = dates.map(date => ({
-            staff_id: currentStaff.id,
+            staff_id: AppState.staff.current.id,
             date: date,
             available: false,
             reason: `${leaveType}: ${reason || 'No reason provided'}`,
-            created_at: new Date().toISOString(),
-            created_by: currentUser.id  // Add created_by if required by RLS
+            created_at: new Date().toISOString()
+            // REMOVED created_by - field doesn't exist in table
         }));
 
-        // Insert availability records
+        // Use upsert to handle any potential conflicts
         const { error: availError } = await supabaseClient
             .from('staff_availability')
-            .insert(availabilityUpdates);
+            .upsert(availabilityUpdates, {
+                onConflict: 'staff_id,date'
+            });
 
         if (availError) throw availError;
 
@@ -5145,24 +5192,33 @@ async function submitLeave() {
         const { error: leaveError } = await supabaseClient
             .from('leave_requests')
             .insert({
-                staff_id: currentStaff.id,
+                staff_id: AppState.staff.current.id,
                 leave_type: leaveType,
                 start_date: startDate,
                 end_date: endDate,
                 reason: reason,
                 status: 'pending',
-                created_at: new Date().toISOString(),
-                created_by: currentUser.id
+                created_at: new Date().toISOString()
+                // Only add created_by if the table has this column
             });
 
         // Don't fail if leave_requests table doesn't exist
         if (leaveError && !leaveError.message.includes('does not exist')) {
-            console.error('Leave request error:', leaveError);
+            console.error('Leave request error (non-critical):', leaveError);
         }
 
-        showToast('Leave request submitted', 'success');
+        showToast('Leave request submitted successfully', 'success');
         closeModal('leaveModal');
-        loadDashboard();
+        
+        // Clear form
+        document.getElementById('leaveType').value = '';
+        document.getElementById('leaveStartDate').value = '';
+        document.getElementById('leaveEndDate').value = '';
+        document.getElementById('leaveReason').value = '';
+        
+        // Reload relevant sections
+        if (typeof loadDashboard === 'function') loadDashboard();
+        if (typeof loadSchedule === 'function') loadSchedule();
 
     } catch (error) {
         console.error('Error submitting leave:', error);
@@ -5422,39 +5478,6 @@ async function populateShiftModalDropdowns() {
     }
 }
 
-async function loadTransferModalData() {
-    // Load upcoming shifts for transfer
-    const transferSelect = document.getElementById('transferShift');
-    if (transferSelect && myShifts.length > 0) {
-        const upcomingShifts = myShifts.filter(s => new Date(s.date) >= new Date());
-        transferSelect.innerHTML = '<option value="">Select Shift</option>' +
-            upcomingShifts.map(s => {
-                const participant = participants.find(p => p.id === s.participant_id);
-                return `<option value="${s.id}">${formatDate(s.date)} - ${participant?.first_name || 'Unknown'} ${participant?.last_name || ''}</option>`;
-            }).join('');
-    }
-    
-    // Load other staff members
-    const staffSelect = document.getElementById('transferToStaff');
-    if (staffSelect && staff.length > 0) {
-        const otherStaff = staff.filter(s => s.id !== currentStaff.id);
-        staffSelect.innerHTML = '<option value="">Select Staff</option>' +
-            otherStaff.map(s => `<option value="${s.id}">${s.first_name} ${s.last_name}</option>`).join('');
-    }
-}
-
-async function loadAdjustmentModalData() {
-    // Load upcoming shifts for adjustment
-    const adjustmentSelect = document.getElementById('adjustmentShift');
-    if (adjustmentSelect && myShifts.length > 0) {
-        const upcomingShifts = myShifts.filter(s => new Date(s.date) >= new Date());
-        adjustmentSelect.innerHTML = '<option value="">Select Shift</option>' +
-            upcomingShifts.map(s => {
-                const participant = participants.find(p => p.id === s.participant_id);
-                return `<option value="${s.id}">${formatDate(s.date)} - ${participant?.first_name || 'Unknown'} ${participant?.last_name || ''}</option>`;
-            }).join('');
-    }
-}
 
 
 function checkExpiryRequired() {
@@ -6044,7 +6067,6 @@ async function addNoteToShift(shiftId) {
     }
 }
 
-
 async function loadSchedule() {
     try {
         let scheduleContainer = document.getElementById('scheduleCalendar');
@@ -6096,11 +6118,16 @@ async function loadSchedule() {
         const start = startDate.toISOString().split('T')[0];
         const end = endDate.toISOString().split('T')[0];
 
-        // Load shifts for the period
+        // Load shifts for the period - USING SAME ID AS TIMESHEET
         const { data: shifts, error } = await supabaseClient
             .from('shifts')
-            .select('*')
-            .eq('staff_id', currentStaff.id)
+            .select(`
+                *,
+                participants(id, first_name, last_name),
+                locations(name, address),
+                duty_types(name)
+            `)
+            .eq('staff_id', AppState.staff.current.id)  // CHANGED: Using AppState like timesheet
             .gte('date', start)
             .lte('date', end)
             .order('date', { ascending: true })
@@ -6112,14 +6139,33 @@ async function loadSchedule() {
             return;
         }
 
+        // IMPORTANT: Store shifts globally so dropdowns can use them
+        allShifts = shifts || [];
+        myShifts = shifts || [];  // Update myShifts too for modal dropdowns
+        
+        console.log('Schedule loaded:', shifts?.length || 0, 'shifts');
+
+        // Populate participant filter if it exists
+        const filterSelect = document.getElementById('participantFilter');
+        if (filterSelect && participants.length > 0) {
+            const uniqueParticipants = [...new Set(shifts?.map(s => s.participant_id).filter(Boolean) || [])];
+            filterSelect.innerHTML = '<option value="">All My Clients</option>' +
+                uniqueParticipants.map(pId => {
+                    const p = participants.find(participant => participant.id === pId);
+                    return p ? `<option value="${pId}">${p.first_name} ${p.last_name}</option>` : '';
+                }).join('');
+        }
+
         // Render schedule
-        renderFortnightSchedule(startDate, endDate, shifts || []);
+        if (typeof renderFortnightSchedule === 'function') {
+            renderFortnightSchedule(startDate, endDate, shifts || []);
+        }
 
     } catch (error) {
         console.error('Error loading schedule:', error);
+        showToast('Failed to load schedule', 'error');
     }
 }
-
 function changeSchedulePeriod(direction) {
     if (!window.currentPeriodStart) {
         setCurrentPayPeriod();
@@ -7417,10 +7463,6 @@ function updatePeriodDisplay() {
     }
 }
 
-// ============================================
-// FIX 3: Complete loadTimesheet Function
-// ============================================
-
 async function loadTimesheet() {
     try {
         console.log('Loading timesheet...');
@@ -7434,7 +7476,7 @@ async function loadTimesheet() {
                     .select('*')
                     .eq('email', user.email)
                     .single();
-                    
+                
                 AppState.staff.current = staffData;
             }
         }
@@ -7481,8 +7523,9 @@ async function loadTimesheet() {
 
         console.log(`Loaded ${shifts ? shifts.length : 0} shifts`);
         
-        // Store shifts globally
+        // Store shifts globally - BOTH places for compatibility
         AppState.shifts.my = shifts || [];
+        window.myShifts = shifts || [];  // For modal dropdowns that still check myShifts
         
         // Calculate hours breakdown
         calculateHoursBreakdown();
@@ -7495,7 +7538,114 @@ async function loadTimesheet() {
         showToast('Failed to load timesheet', 'error');
     }
 }
+async function loadTransferModalData() {
+    try {
+        // Ensure myShifts is loaded with current staff's shifts
+        if (!myShifts || myShifts.length === 0) {
+            const { data: shifts } = await supabaseClient
+                .from('shifts')
+                .select('*, participants(first_name, last_name)')
+                .eq('staff_id', AppState.staff.current.id)  // Use AppState
+                .gte('date', getTestDate().toISOString().split('T')[0])
+                .order('date', { ascending: true });
+            
+            myShifts = shifts || [];
+        }
 
+        // Load upcoming shifts for transfer
+        const transferSelect = document.getElementById('transferShift');
+        if (transferSelect) {
+            if (myShifts.length === 0) {
+                transferSelect.innerHTML = '<option value="">No shifts available to transfer</option>';
+            } else {
+                const upcomingShifts = myShifts.filter(s => new Date(s.date) >= getTestDate());
+                
+                if (upcomingShifts.length === 0) {
+                    transferSelect.innerHTML = '<option value="">No upcoming shifts to transfer</option>';
+                } else {
+                    transferSelect.innerHTML = '<option value="">Select Shift</option>' +
+                        upcomingShifts.map(s => {
+                            // Use participants from the joined query if available
+                            const participant = s.participants || participants.find(p => p.id === s.participant_id);
+                            const clientName = participant ? 
+                                `${participant.first_name} ${participant.last_name}` : 
+                                'Unassigned';
+                            return `<option value="${s.id}">${formatDate(s.date)} - ${clientName}</option>`;
+                        }).join('');
+                }
+            }
+        }
+        
+        // Load other staff members
+        const staffSelect = document.getElementById('transferToStaff');
+        if (staffSelect && staff.length > 0) {
+            const otherStaff = staff.filter(s => s.id !== AppState.staff.current.id);  // Use AppState
+            staffSelect.innerHTML = '<option value="">Select Staff (Optional)</option>' +
+                otherStaff.map(s => `<option value="${s.id}">${s.first_name} ${s.last_name}</option>`).join('');
+        }
+    } catch (error) {
+        console.error('Error loading transfer modal data:', error);
+        showToast('Failed to load transfer options', 'error');
+    }
+}
+
+async function loadAdjustmentModalData() {
+    try {
+        // Ensure myShifts is loaded with current staff's shifts
+        if (!myShifts || myShifts.length === 0) {
+            const { data: shifts } = await supabaseClient
+                .from('shifts')
+                .select('*, participants(first_name, last_name)')
+                .eq('staff_id', AppState.staff.current.id)  // Use AppState
+                .gte('date', getTestDate().toISOString().split('T')[0])
+                .order('date', { ascending: true });
+            
+            myShifts = shifts || [];
+        }
+
+        // Load upcoming shifts for adjustment
+        const adjustmentSelect = document.getElementById('adjustmentShift');
+        if (adjustmentSelect) {
+            if (myShifts.length === 0) {
+                adjustmentSelect.innerHTML = '<option value="">No shifts available to adjust</option>';
+            } else {
+                const upcomingShifts = myShifts.filter(s => new Date(s.date) >= getTestDate());
+                
+                if (upcomingShifts.length === 0) {
+                    adjustmentSelect.innerHTML = '<option value="">No upcoming shifts to adjust</option>';
+                } else {
+                    adjustmentSelect.innerHTML = '<option value="">Select Shift</option>' +
+                        upcomingShifts.map(s => {
+                            // Use participants from the joined query if available
+                            const participant = s.participants || participants.find(p => p.id === s.participant_id);
+                            const clientName = participant ? 
+                                `${participant.first_name} ${participant.last_name}` : 
+                                'Unassigned';
+                            // Include time data for pre-filling the form
+                            return `<option value="${s.id}" data-start="${s.start_time || ''}" data-end="${s.end_time || ''}">${formatDate(s.date)} - ${clientName}</option>`;
+                        }).join('');
+                }
+            }
+        }
+        
+        // Add event listener to pre-fill times when shift is selected
+        if (adjustmentSelect && !adjustmentSelect.hasAttribute('data-listener')) {
+            adjustmentSelect.setAttribute('data-listener', 'true');
+            adjustmentSelect.addEventListener('change', function() {
+                const selected = this.options[this.selectedIndex];
+                if (selected && selected.dataset.start) {
+                    const startTimeInput = document.getElementById('adjustmentStartTime');
+                    const endTimeInput = document.getElementById('adjustmentEndTime');
+                    if (startTimeInput) startTimeInput.value = selected.dataset.start;
+                    if (endTimeInput) endTimeInput.value = selected.dataset.end;
+                }
+            });
+        }
+    } catch (error) {
+        console.error('Error loading adjustment modal data:', error);
+        showToast('Failed to load adjustment options', 'error');
+    }
+}
 // ============================================
 // FIX 4: Calculate Hours Breakdown
 // ============================================
