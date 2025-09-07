@@ -7621,32 +7621,32 @@ window.currentPeriodOffset = 0;
 
 
 
+// ============================================
+// FIX 1: Proper Pay Period Initialization
+// ============================================
+
 function setCurrentPayPeriod() {
     try {
-        const today = getTestDate();
+        const today = new Date();
         
-        // Calculate days since the known start date
+        // Calculate which pay period we're in
         const daysSinceStart = Math.floor((today - PAY_PERIOD_START) / (1000 * 60 * 60 * 24));
+        const periodNumber = Math.floor(daysSinceStart / PERIOD_LENGTH);
         
-        // Calculate which period we're in
-        const currentPeriodNumber = Math.floor(daysSinceStart / PERIOD_LENGTH);
+        // Apply any offset (for navigating periods)
+        const adjustedPeriodNumber = periodNumber + (window.currentPeriodOffset || 0);
         
-        // Add any user offset (for navigation)
-        const adjustedPeriodNumber = currentPeriodNumber + (window.currentPeriodOffset || 0);
-        
-        // Calculate this period's start (Monday)
+        // Calculate current period start (Sunday)
         window.currentPeriodStart = new Date(PAY_PERIOD_START);
         window.currentPeriodStart.setDate(PAY_PERIOD_START.getDate() + (adjustedPeriodNumber * PERIOD_LENGTH));
         
-        // Calculate period end (Sunday, 13 days later)
+        // Calculate period end (Saturday, 13 days later)
         window.currentPeriodEnd = new Date(window.currentPeriodStart);
         window.currentPeriodEnd.setDate(window.currentPeriodStart.getDate() + 13);
         
         console.log('Pay period set:', {
             start: window.currentPeriodStart.toISOString(),
-            end: window.currentPeriodEnd.toISOString(),
-            startDay: window.currentPeriodStart.toLocaleDateString('en-AU', { weekday: 'long' }),
-            endDay: window.currentPeriodEnd.toLocaleDateString('en-AU', { weekday: 'long' })
+            end: window.currentPeriodEnd.toISOString()
         });
         
         // Update the display
@@ -7656,13 +7656,14 @@ function setCurrentPayPeriod() {
         console.error('Error setting pay period:', error);
         // Emergency fallback
         window.currentPeriodStart = new Date();
-        const day = window.currentPeriodStart.getDay();
-        const diff = window.currentPeriodStart.getDate() - day + (day === 0 ? -6 : 1); // Get to Monday
-        window.currentPeriodStart.setDate(diff);
-        window.currentPeriodEnd = new Date(window.currentPeriodStart);
-        window.currentPeriodEnd.setDate(window.currentPeriodStart.getDate() + 13);
+        window.currentPeriodEnd = new Date();
+        window.currentPeriodEnd.setDate(window.currentPeriodEnd.getDate() + 13);
     }
 }
+
+// ============================================
+// FIX 2: Update Period Display
+// ============================================
 
 function updatePeriodDisplay() {
     const periodDatesElement = document.getElementById('periodDates');
@@ -7671,13 +7672,9 @@ function updatePeriodDisplay() {
         const startStr = window.currentPeriodStart.toLocaleDateString('en-AU', options);
         const endStr = window.currentPeriodEnd.toLocaleDateString('en-AU', options);
         periodDatesElement.textContent = `${startStr} - ${endStr}`;
-        
-        // Verify it's Monday to Sunday
-        const startDay = window.currentPeriodStart.toLocaleDateString('en-AU', { weekday: 'short' });
-        const endDay = window.currentPeriodEnd.toLocaleDateString('en-AU', { weekday: 'short' });
-        console.log(`Period: ${startDay} to ${endDay}`); // Should always be "Mon to Sun"
     }
 }
+
 async function loadTimesheet() {
     try {
         console.log('Loading timesheet...');
