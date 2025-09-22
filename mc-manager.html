@@ -1633,6 +1633,7 @@ let templateShifts = [];
         let currentUserRole = 'staff';
         let currentStaffData = null;
         let shifts = [];
+        let shiftId= [];
         let staff = [];
         let participants = [];
         let locations = [];
@@ -1651,7 +1652,17 @@ let careHomes = new Map();
 let activeCareHomeFilter = null; 
 const TIMEZONE = 'Australia/Sydney';
 const LOCALE = 'en-AU';
+const LOCATION_IDS = {
+    SAUNDERS_CARE_HOME: "82be1e0c-7036-4063-b161-1ab91162c3e1",
+    CLIENT_HOME: "00000000-0000-0000-0000-000000000001", 
+    MY_CARERS_OFFICE: "e020835c-b8d8-46d2-81ac-4761cbe77f17"
+};
 
+const DB_ERRORS = {
+    FOREIGN_KEY_VIOLATION: "23503", // Referenced record doesn't exist
+    UNIQUE_VIOLATION: "23505",      // Duplicate entry
+    NOT_NULL_VIOLATION: "23502"     // Required field missing
+};
 
 async function verifyDataConnections() {
     console.log('=== VERIFYING DATA CONNECTIONS ===');
@@ -1821,13 +1832,24 @@ async function requestTransfer(shiftId) {
     const { data, error } = await supabaseClient
         .from('transfer_requests')
         .insert({
-            shift_id: parseInt(shiftId),
+            shift_id: parseInt(shiftId), // CRITICAL: Convert to INTEGER
             from_staff_id: currentStaff.id,
             to_staff_id: null,
             status: 'pending',
             reason: 'Personal reason',
-            created_at: new Date().toISOString() // Required field
+            created_at: new Date().toISOString() // Add required field
         });
+    
+    if (error) {
+        console.error('Transfer request error:', error);
+        if (error.code === DB_ERRORS.FOREIGN_KEY_VIOLATION) {
+            showToast('Invalid shift reference', 'error');
+        } else {
+            showToast('Failed to request transfer', 'error');
+        }
+    } else {
+        showToast('Transfer request submitted', 'success');
+    }
 }
 
 async function refreshAfterChange() {
@@ -2227,7 +2249,7 @@ async function loadShifts() {
                             overlappingStaff.push({
                                 staff: otherShift.staff,
                                 staff_id: otherShift.staff_id,
-                                shift_id: otherShift.id,
+                                shift_id: parseInt(shiftId),
                                 time: `${formatTime12Hour(otherShift.start_time)}-${formatTime12Hour(otherShift.end_time)}`,
                                 overlap_period: {
                                     start: overlapStart.toTimeString().slice(0, 5),
@@ -2325,7 +2347,7 @@ async function loadShifts() {
                         // Check for 10pm+ starts or 12am-6am periods
                         if (startHour >= 22 || startHour < 6 || (endHour > 0 && endHour <= 6)) {
                             violations.push({
-                                shift_id: otherShift.id,
+                                shift_id: parseInt(shiftId),
                                 time: `${formatTime12Hour(otherShift.start_time)}-${formatTime12Hour(otherShift.end_time || '00:00')}`,
                                 reason: startHour >= 22 ? 'Late night shift (after 10pm)' : 'Early morning shift (before 6am)'
                             });
@@ -2865,11 +2887,6 @@ document.addEventListener('keydown', function(e) {
     }
 });
 
-        // ========================================
-        // HOUR CALCULATION ENGINE - FIXED
-        // ========================================
-
-        // Update the calculateShiftHours function to handle combined shifts
 function calculateShiftHours(shift) {
     const result = {
         total: 0,
@@ -3037,7 +3054,7 @@ function calculateShiftPay(shift, hoursBreakdown) {
         (hoursBreakdown.saturday * (parseFloat(payRate.saturday) || baseRate)) +
         (hoursBreakdown.sunday * (parseFloat(payRate.sunday) || baseRate)) +
         (hoursBreakdown.publicHoliday * (parseFloat(payRate.public_holiday) || baseRate)) +
-        (hoursBreakdown.sleepover * (parseFloat(payRate.sleepover) || baseRate));
+        (hoursBreakdown.sleepover * (parseFloat(payRate.sleepover) / 2|| baseRate));
 
     console.log(`Pay calculation for shift ${shift.id}:`, {
         staffName: shift.staff?.first_name,
@@ -3226,13 +3243,6 @@ async function updateShift() {
             return;
         }
 
-        // Get current shift data before updating for undo
-        const currentShift = shifts.find(s => s.id === shiftId);
-        if (!currentShift) {
-            showNotification('Shift not found', 'error');
-            return;
-        }
-
         const updateData = {
             date,
             start_time: startTime || null,
@@ -3251,9 +3261,9 @@ async function updateShift() {
             // User selected a specific pay rate override
             updateData.pay_override_id = payRateId;
         } else {
-            // User selected "Use Staff Default" or no selection
-            // Set to null to clear any previous override
-            updateData.pay_override_id = null;
+            // User selected "Use Staff Default" - get staff's default rate
+            const selectedStaff = staff.find(s => s.id === staffId);
+            updateData.pay_override_id = selectedStaff?.pay_rate_id || '00000000-0000-0000-0000-000000000002';
         }
 
         // Calculate new duration
@@ -3267,25 +3277,6 @@ async function updateShift() {
             updateData.duration_hours = (end - start) / (1000 * 60 * 60);
         }
 
-        // Save to undo stack BEFORE making the change
-        UndoRedoManager.saveState('update_shift', {
-            id: shiftId,
-            previous: {
-                date: currentShift.date,
-                start_time: currentShift.start_time,
-                end_time: currentShift.end_time,
-                staff_id: currentShift.staff_id,
-                participant_id: currentShift.participant_id,
-                location_id: currentShift.location_id,
-                duty_type_id: currentShift.duty_type_id,
-                pay_override_id: currentShift.pay_override_id,
-                status: currentShift.status,
-                notes: currentShift.notes,
-                duration_hours: currentShift.duration_hours
-            },
-            current: updateData
-        });
-
         console.log('Updating shift with data:', updateData);
 
         const { error } = await supabaseClient
@@ -3298,13 +3289,6 @@ async function updateShift() {
         showNotification('Shift updated successfully', 'success');
         closeModal('editShiftModal');
         await loadShifts();
-        
-        // Refresh conflicts view if it's active
-        if (currentView === 'conflicts') {
-            await renderConflicts();
-        } else {
-            renderCurrentView();
-        }
 
     } catch (error) {
         console.error('Error updating shift:', error);
@@ -5456,186 +5440,34 @@ async function createShift() {
             return;
         }
 
-        // FIX #2: Check staff availability BEFORE conflict checking
-        const { data: availabilityCheck } = await supabaseClient
-            .from('staff_availability')
-            .select('*')
-            .eq('staff_id', staffId)
-            .eq('date', date)
-            .single();
+        // Get the staff member's default pay rate if no override selected
+        const selectedStaff = staff.find(s => s.id === staffId);
+        const effectivePayRateId = payRateId || selectedStaff?.pay_rate_id || '00000000-0000-0000-0000-000000000002';
 
-        if (availabilityCheck && !availabilityCheck.available) {
-            const selectedStaff = staff.find(s => s.id === staffId);
-            const staffName = selectedStaff ? `${selectedStaff.first_name} ${selectedStaff.last_name}` : 'Staff member';
-            const leaveReason = availabilityCheck.reason || 'unavailable';
-            
-            const message = `⚠️ AVAILABILITY WARNING\n\n` +
-                `${staffName} is on ${leaveReason} on ${formatDateFriendly(date)}.\n\n` +
-                `Do you want to create this shift anyway?`;
-            
-            if (!confirm(message)) {
-                return;
-            }
-        }
+        // Calculate duration
+        let duration_hours = null;
         const selectedDutyType = dutyTypes.find(d => d.id === dutyTypeId);
-        
-        // FIX #1: Enhanced conflict checking with database query for real-time accuracy
-        const { data: dbShifts } = await supabaseClient
-            .from('shifts')
-            .select('*')
-            .eq('staff_id', staffId)
-            .eq('date', date)
-            .is('deleted_at', null);
-
-        const existingShifts = dbShifts || [];
-
-        // Check for sleepover conflicts first
-        const isNewSleepover = selectedDutyType?.name?.toLowerCase().includes('sleepover');
-        const existingSleepover = existingShifts.find(s => {
-            const dt = dutyTypes.find(d => d.id === s.duty_type_id);
-            return dt?.name?.toLowerCase().includes('sleepover');
-        });
-
-        if (isNewSleepover && existingSleepover) {
-            showNotification(`Staff already has a sleepover shift on ${date}`, 'error');
-            return; // Hard block - no duplicate sleepovers
-        }
-
-        if (isNewSleepover && existingShifts.length > 0) {
-            // Check if any existing shifts conflict with sleepover hours (10pm-6am)
-            for (const shift of existingShifts) {
-                if (shift.start_time) {
-                    const startHour = parseInt(shift.start_time.split(':')[0]);
-                    const endHour = shift.end_time ? parseInt(shift.end_time.split(':')[0]) : 0;
-                    
-                    // Check if shift extends into sleepover hours
-                    if (startHour >= 22 || startHour < 6 || 
-                        (endHour > 0 && endHour <= 6) || 
-                        (shift.end_time && shift.end_time < shift.start_time)) { // Overnight shift
-                        showNotification('Cannot add sleepover: Staff has a shift during sleepover hours (10pm-6am)', 'error');
-                        return;
-                    }
-                }
-            }
-        }
-
-        // Check for regular shift overlaps
-        if (startTime && endTime && !isNewSleepover) {
-            // Check if there's an existing sleepover
-            if (existingSleepover) {
-                const newStartHour = parseInt(startTime.split(':')[0]);
-                const newEndHour = parseInt(endTime.split(':')[0]);
-                
-                if (newStartHour >= 22 || newStartHour < 6 || 
-                    newEndHour <= 6 || 
-                    (endTime < startTime)) { // Overnight shift
-                    showNotification('Cannot add shift during sleepover hours when staff has a sleepover', 'error');
-                    return;
-                }
-            }
-
-            // Check for time overlaps with other shifts
-            const newStart = new Date(`2000-01-01T${startTime}`);
-            let newEnd = new Date(`2000-01-01T${endTime}`);
-            if (newEnd <= newStart) newEnd.setDate(newEnd.getDate() + 1);
-            
-            for (const existing of existingShifts) {
-                if (existing.start_time && existing.end_time) {
-                    const existingStart = new Date(`2000-01-01T${existing.start_time}`);
-                    let existingEnd = new Date(`2000-01-01T${existing.end_time}`);
-                    if (existingEnd <= existingStart) existingEnd.setDate(existingEnd.getDate() + 1);
-                    
-                    // Check for overlap
-                    if (!(newEnd <= existingStart || newStart >= existingEnd)) {
-                        // Calculate overlap period
-                        const overlapStart = new Date(Math.max(newStart, existingStart));
-                        const overlapEnd = new Date(Math.min(newEnd, existingEnd));
-                        const overlapHours = (overlapEnd - overlapStart) / (1000 * 60 * 60);
-                        
-                        // Get participant name for better error message
-                        const existingParticipant = participants.find(p => p.id === existing.participant_id);
-                        const participantName = existingParticipant ? 
-                            `${existingParticipant.first_name} ${existingParticipant.last_name}` : 
-                            'Unknown';
-                        
-                        const staffName = staff.find(s => s.id === staffId)?.first_name || 'Staff';
-                        
-                        const message = `⚠️ SHIFT OVERLAP DETECTED\n\n` +
-                            `${staffName} already has a shift:\n` +
-                            `• Time: ${formatTime12Hour(existing.start_time)} to ${formatTime12Hour(existing.end_time)}\n` +
-                            `• Client: ${participantName}\n` +
-                            `• Overlap: ${overlapHours.toFixed(1)} hours\n\n` +
-                            `Do you want to create this overlapping shift anyway?`;
-                        
-                        if (!confirm(message)) {
-                            return; // Block creation if user cancels
-                        }
-                    }
-                }
-            }
-        }
-
-        // Check weekly hours limit
-        const weekStart = new Date(date);
-        weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekEnd.getDate() + 6);
-
-        const { data: weekShifts } = await supabaseClient
-            .from('shifts')
-            .select('*')
-            .eq('staff_id', staffId)
-            .gte('date', weekStart.toISOString().split('T')[0])
-            .lte('date', weekEnd.toISOString().split('T')[0])
-            .is('deleted_at', null);
-
-        let totalWeekHours = 0;
-        (weekShifts || []).forEach(s => {
-            totalWeekHours += s.duration_hours || 0;
-        });
-
-        // Add new shift hours
-        let newShiftHours = 0;
         if (selectedDutyType?.name.toLowerCase().includes('sleepover')) {
-            newShiftHours = 2;
+            duration_hours = 2;
         } else if (startTime && endTime) {
             const start = new Date(`2000-01-01T${startTime}`);
             let end = new Date(`2000-01-01T${endTime}`);
             if (end <= start) end.setDate(end.getDate() + 1);
-            newShiftHours = (end - start) / (1000 * 60 * 60);
+            duration_hours = (end - start) / (1000 * 60 * 60);
         }
-
-        const selectedStaff = staff.find(s => s.id === staffId);
-        const weeklyLimit = selectedStaff?.weekly_hour_limit || 38;
-
-        if (totalWeekHours + newShiftHours > weeklyLimit) {
-            const message = `⚠️ WEEKLY HOURS WARNING\n\n` +
-                `${selectedStaff?.first_name} will have ${(totalWeekHours + newShiftHours).toFixed(1)} hours this week.\n` +
-                `This exceeds their ${weeklyLimit} hour weekly limit.\n\n` +
-                `Do you want to proceed anyway?`;
-            
-            if (!confirm(message)) {
-                return;
-            }
-        }
-
-        // Prepare shift data
-        const effectivePayRateId = payRateId || selectedStaff?.pay_rate_id || '00000000-0000-0000-0000-000000000002';
 
         const shiftData = {
-            date, 
+            date: date,
             start_time: startTime || null,
             end_time: endTime || null,
-            duty_type_id: dutyTypeId,
-            pay_override_id: effectivePayRateId,
             staff_id: staffId,
             participant_id: participantId,
             location_id: locationId,
+            duty_type_id: dutyTypeId,
+            pay_override_id: effectivePayRateId, // FIXED: Using correct pay rate
             created_by: currentStaffData?.id || currentUser.id,
             status: 'confirmed',
-            transfer_status: 'none',
-            adjustment_status: 'none',
-            duration_hours: newShiftHours || null
+            duration_hours: duration_hours
         };
 
         console.log('Creating shift with data:', shiftData);
@@ -5648,19 +5480,9 @@ async function createShift() {
 
         if (error) throw error;
 
-        // Save to undo stack
-        if (typeof UndoRedoManager !== 'undefined') {
-            UndoRedoManager.saveState('create_shift', { id: newShift.id });
-        }
-
         showNotification('Shift created successfully', 'success');
         closeModal('addShiftModal');
         await loadShifts();
-        
-        // FIX: Refresh conflicts view if active
-        if (currentView === 'conflicts') {
-            await renderConflicts();
-        }
 
     } catch (error) {
         console.error('Error creating shift:', error);
@@ -5793,7 +5615,7 @@ function editShift(shiftId) {
         if (shiftToDelete) {
             // Save to undo stack
             UndoRedoManager.saveState('delete_shift', {
-                id: shiftId,
+                id: parseInt(shiftId),
                 shiftData: { ...shiftToDelete }
             });
         }
@@ -6334,7 +6156,6 @@ function renderTimesheet() {
         grandTotalPublicHoliday += group.totalHours.publicHoliday || 0;
     });
 
-    // Build the accordion table HTML with enhanced styling
     let html = `
         <style>
             .timesheet-wrapper {
@@ -7071,7 +6892,7 @@ function showAddNoteModal() {
                 const { error } = await supabaseClient
                     .from('shift_notes')
                     .insert([{
-                        shift_id: shiftId,
+                        shift_id: parseInt(shiftId),
                         staff_id: currentStaffData?.id || currentUser.id,
                         note_type: noteType,
                         note: noteContent.trim()
@@ -7445,6 +7266,49 @@ async function createCareHomeBatchShifts() {
     }
 }
 
+function addStaffSwitcher() {
+    // Check if switcher already exists
+    if (document.getElementById('staffSwitcher')) return;
+    
+    const headerContent = document.querySelector('.header-content');
+    if (!headerContent) return;
+    
+    const switcherHTML = `
+        <div id="staffSwitcher" style="display: flex; align-items: center; gap: 10px;">
+            <label style="font-size: 14px;">View as:</label>
+            <select id="staffSwitcherSelect" style="padding: 5px; border-radius: 4px;">
+                <option value="">Current User</option>
+            </select>
+        </div>
+    `;
+    
+    headerContent.insertAdjacentHTML('beforeend', switcherHTML);
+    
+    // Populate with staff
+    const select = document.getElementById('staffSwitcherSelect');
+    if (select && staff && staff.length > 0) {
+        staff.forEach(s => {
+            const option = document.createElement('option');
+            option.value = s.id;
+            option.textContent = `${s.first_name} ${s.last_name}`;
+            if (s.id === currentStaffData?.id) {
+                option.selected = true;
+            }
+            select.appendChild(option);
+        });
+        
+        // Add change handler
+        select.addEventListener('change', async (e) => {
+            const staffId = e.target.value;
+            if (staffId) {
+                currentStaffData = staff.find(s => s.id === staffId);
+                await loadShifts();
+                renderCurrentView();
+            }
+        });
+    }
+}
+
 async function createCareHomeShifts() {
     const careHomeId = document.getElementById('batchCareHomeSelect')?.value;
     const date = document.getElementById('batchShiftDate')?.value;
@@ -7479,20 +7343,21 @@ async function createCareHomeShifts() {
             }
         }
         
-        // Create shifts for each resident
         const shiftsToCreate = careHome.residents.map(resident => ({
-            date,
-            start_time: startTime || null,
-            end_time: endTime || null,
-            staff_id: selectedStaffId,
-            participant_id: resident.id,
-            location_id: careHomeId,
-            duty_type_id: dutyTypeId,
-            status: 'scheduled',
-            notes: `Batch created for ${careHome.name}`,
-            created_at: new Date().toISOString(),
-            created_by: currentUser?.id
-        }));
+            date: shiftDate,
+        staff_id: selectedStaffId,
+        participant_id: resident.id,
+        location_id: careHome.location_id,
+        duty_type_id: template.duty_type_id,
+        start_time: template.start_time,
+        end_time: template.end_time,
+        status: 'scheduled',
+        // FIX: Add pay_override_id
+        pay_override_id: staff.find(s => s.id === selectedStaffId)?.pay_rate_id || null,
+        created_by: currentStaffData.id,
+        created_at: new Date().toISOString()
+    }));
+    
         
         // Calculate duration for each shift
         shiftsToCreate.forEach(shift => {
@@ -7991,8 +7856,27 @@ function generatePayrollSummary() {
         }
 
         function showNotification(message, type = 'info') {
-    // Alias for showToast to ensure compatibility
-    showToast(message, type === 'error' ? 'error' : type === 'success' ? 'success' : 'info');
+    // Use existing toast system or create notification
+    if (typeof showToast === 'function') {
+        showToast(message, type);
+    } else {
+        // Basic fallback
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.textContent = message;
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px;
+            background: ${type === 'success' ? '#4caf50' : type === 'error' ? '#f44336' : '#2196f3'};
+            color: white;
+            border-radius: 4px;
+            z-index: 9999;
+        `;
+        document.body.appendChild(notification);
+        setTimeout(() => notification.remove(), 3000);
+    }
 }
 
 
@@ -8400,7 +8284,6 @@ function setupEnhancedKeyboardShortcuts() {
     });
 }
 
-// 4. Copy/Duplicate Functions
 async function copyShift(shiftId) {
     const shift = shifts.find(s => s.id === shiftId);
     if (!shift) return;
@@ -8417,7 +8300,7 @@ async function copyShift(shiftId) {
             participant_id: shift.participant_id,
             location_id: shift.location_id,
             duty_type_id: shift.duty_type_id,
-            pay_override_id: shift.pay_override_id,
+            pay_override_id: shift.pay_override_id || '00000000-0000-0000-0000-000000000002', // FIXED!
             status: 'pending',
             created_by: currentStaffData?.id || currentUser.id
         };
@@ -8468,7 +8351,7 @@ async function duplicateWeek() {
                 participant_id: shift.participant_id,
                 location_id: shift.location_id,
                 duty_type_id: shift.duty_type_id,
-                pay_override_id: shift.pay_override_id,
+                pay_override_id: shift.pay_override_id || '00000000-0000-0000-0000-000000000002', // FIXED!
                 status: 'pending',
                 created_by: currentStaffData?.id || currentUser.id
             };
@@ -8524,37 +8407,6 @@ function showSaving() {
     }, 500);
 }
 
-// 6. Global Search
-function showGlobalSearch() {
-    // Remove existing if any
-    const existing = document.getElementById('searchModal');
-    if (existing) existing.remove();
-    
-    const searchModal = document.createElement('div');
-    searchModal.id = 'searchModal';
-    searchModal.className = 'modal-overlay';
-    searchModal.style.display = 'flex';
-    searchModal.innerHTML = `
-        <div class="modal" style="max-width: 600px;">
-            <header class="modal-header">
-                <h3 class="modal-title">Search Everything (Ctrl+K)</h3>
-                <button class="modal-close" onclick="closeModal('searchModal')">&times;</button>
-            </header>
-            <div class="modal-content">
-                <input type="text" 
-                       id="globalSearchInput" 
-                       class="form-control" 
-                       placeholder="Search staff, participants, locations..."
-                       onkeyup="performGlobalSearch()"
-                       autofocus>
-                <div id="searchResults" style="margin-top: 16px; max-height: 400px; overflow-y: auto;"></div>
-            </div>
-        </div>
-    `;
-    
-    document.body.appendChild(searchModal);
-    document.getElementById('globalSearchInput').focus();
-}
 
 function performGlobalSearch() {
     const query = document.getElementById('globalSearchInput').value.toLowerCase();
@@ -10390,7 +10242,92 @@ async function updateTemplate(templateId) {
     }
 }
 
-//hard delete
+async function confirmTemplateApplication(templateId) {
+    try {
+        const template = rosterTemplates.find(t => t.id === templateId);
+        if (!template) throw new Error('Template not found');
+        
+        const startDate = document.getElementById('applyStartDate').value;
+        const endDate = document.getElementById('applyEndDate').value;
+        const participantId = document.getElementById('applyParticipant').value;
+        
+        if (!startDate || !endDate) {
+            showNotification('Please select date range', 'warning');
+            return;
+        }
+        
+        // Generate shifts for date range
+        const shiftsToCreate = [];
+        const current = new Date(startDate);
+        const end = new Date(endDate);
+        
+        while (current <= end) {
+            const dayOfWeek = current.getDay(); // 0-6 (0=Sunday)
+            const dayShifts = template.roster_template_shifts.filter(s => s.day_of_week === dayOfWeek);
+            
+            for (const templateShift of dayShifts) {
+                // GET THE STAFF'S PAY RATE - THIS IS CRITICAL!
+                let payRateId = null;
+                
+                if (templateShift.staff_id) {
+                    const templateStaff = staff.find(s => s.id === templateShift.staff_id);
+                    payRateId = templateStaff?.pay_rate_id;
+                }
+                
+                // If no staff or no pay rate, use default
+                if (!payRateId) {
+                    payRateId = '00000000-0000-0000-0000-000000000002'; // Default pay rate UUID
+                }
+                
+                shiftsToCreate.push({
+                    date: current.toISOString().split('T')[0],
+                    start_time: templateShift.start_time,
+                    end_time: templateShift.end_time,
+                    staff_id: templateShift.staff_id,
+                    participant_id: participantId || template.participant_id,
+                    location_id: templateShift.location_id,
+                    duty_type_id: templateShift.duty_type_id,
+                    pay_override_id: payRateId, // THIS WAS MISSING! NOW FIXED!
+                    status: 'scheduled',
+                    created_by: currentStaffData?.id || currentUser.id,
+                    notes: templateShift.notes
+                });
+            }
+            
+            current.setDate(current.getDate() + 1);
+        }
+        
+        if (shiftsToCreate.length === 0) {
+            showNotification('No shifts to create from template', 'warning');
+            return;
+        }
+        
+        // Insert all shifts
+        const { error } = await supabaseClient
+            .from('shifts')
+            .insert(shiftsToCreate);
+        
+        if (error) throw error;
+        
+        showNotification(`Created ${shiftsToCreate.length} shifts from template`, 'success');
+        document.querySelector('.modal-overlay').remove();
+        await loadShifts();
+        
+    } catch (error) {
+        console.error('Error applying template:', error);
+        showNotification('Failed to apply template: ' + error.message, 'error');
+    }
+}
+function getCurrentStaffPayRate(staffId) {
+    if (!staffId) return '00000000-0000-0000-0000-000000000002'; // Default UUID
+    
+    const staffMember = staff.find(s => s.id === staffId);
+    if (!staffMember || !staffMember.pay_rate_id) {
+        return '00000000-0000-0000-0000-000000000002'; // Default UUID
+    }
+    
+    return staffMember.pay_rate_id;
+}
 async function deleteTemplate(templateId) {
     if (!confirm('Are you sure you want to delete this template? This cannot be undone.')) {
         return;
@@ -10670,7 +10607,6 @@ document.addEventListener('keydown', function(e) {
         resetToOriginalStaff();
     }
 });
-
     </script>
 </body>
 </html>
