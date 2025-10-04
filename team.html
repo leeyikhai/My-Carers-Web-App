@@ -11,7 +11,8 @@
     <link rel="icon" type="image/png" sizes="16x16" href="https://gqchhsayqxttewthcsah.supabase.co/storage/v1/object/public/Branding/mc-favicon-16x16.png">
 <link rel="icon" type="image/png" sizes="32x32" href="https://gqchhsayqxttewthcsah.supabase.co/storage/v1/object/public/Branding/mc-favicon-32x32.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
     <style>
         
         :root {
@@ -60,24 +61,36 @@
         }
 
         .profile-banner {
-            height: 120px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            position: relative;
-            overflow: hidden;
-        }
+    position: relative;
+    height: 150px;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    cursor: pointer;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
 
-        .profile-banner-upload {
-            position: absolute;
-            bottom: 10px;
-            right: 10px;
-            background: rgba(255,255,255,0.9);
-            padding: 8px 12px;
-            border-radius: var(--radius-md);
-            font-size: 12px;
-            cursor: pointer;
-            display: none;
-        }
+/* Add a class when banner has an image */
+.profile-banner.has-image .banner-overlay {
+    opacity: 0;
+}
 
+.profile-banner.has-image:hover .banner-overlay {
+    opacity: 0.7;  /* Show on hover to allow changing */
+}
+
+.banner-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.5);
+    color: white;
+    opacity: 0.7;  /* Show by default when no image */
+    transition: opacity 0.3s;
+}
         .profile-info {
             padding: 15px 20px;
             display: flex;
@@ -100,6 +113,31 @@
             display: inline-block;
         }
 
+        .search-dropdown {
+    position: absolute;
+    z-index: 1000;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    max-height: 200px;
+    overflow-y: auto;
+    width: 100%;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.search-dropdown-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.search-dropdown-item:hover {
+    background: #f5f5f5;
+}
+
+.search-dropdown-item.selected {
+    background: #e3f2fd;
+}
         /* Mobile Navigation */
         .mobile-nav {
             position: fixed;
@@ -1676,29 +1714,29 @@
                 <h2 id="userName">Loading...</h2>
                 <span class="user-role" id="userRole">Staff</span>
             </div>
-            <button class="btn btn-sm btn-outline" onclick="logout()">Logout</button>
+            <button class="btn btn-sm btn-outline" data-action="logout">Logout</button>
         </div>
     </header>
 
     <!-- Desktop Navigation (hidden on mobile) -->
     <nav class="desktop-nav hidden">
-        <button class="nav-item" onclick="switchSection('dashboard')" 
+        <button class="nav-item" data-section="dashboard" 
                 aria-label="Navigate to dashboard" 
                 role="tab" 
                 aria-selected="true">
             <div class="icon"><i class="fa-solid fa-house" aria-hidden="true"></i></div>
             <div>Home</div>
         </button>
-        <div class="nav-item" onclick="switchSection('timesheet')">
+        <div class="nav-item" data-section="timesheet">
             <span>Timesheet</span>
         </div>
-        <div class="nav-item" onclick="switchSection('schedule')">
+        <div class="nav-item" data-section="schedule">
             <span>Schedule</span>
         </div>
-        <div class="nav-item" onclick="switchSection('transfers')">
+        <div class="nav-item" data-section="transfers">
             <span>Transfers</span>
         </div>
-        <div class="nav-item" onclick="switchSection('profile')">
+        <div class="nav-item" data-section="profile">
             <span>Profile</span>
         </div>
     </nav>
@@ -1717,19 +1755,19 @@
 
         <!-- Quick Actions -->
         <div class="quick-actions">
-            <div class="quick-action-btn" onclick="showAddShiftModal()">
+            <div class="quick-action-btn" data-action="showAddShiftModal">
                 <span class="icon"><i class="fa-solid fa-plus"></i></span>
                 <span>Add Shift</span>
             </div>
-            <div class="quick-action-btn" onclick="showTransferModal()">
+            <div class="quick-action-btn" data-action="showTransferModal">
                 <span class="icon"><i class="fa-solid fa-arrow-right-arrow-left"></i></span>
                 <span>Transfer Shift</span>
             </div>
-            <div class="quick-action-btn" onclick="showAdjustmentModal()">
+            <div class="quick-action-btn" data-action="showAdjustmentModal">
                 <span class="icon"><i class="fa-solid fa-clock"></i></span>
                 <span>Adjust Time</span>
             </div>
-            <div class="quick-action-btn" onclick="showLeaveModal()">
+            <div class="quick-action-btn" data-action="showLeaveModal">
                 <span class="icon"><i class="fa-solid fa-umbrella-beach"></i></span>
                 <span>Request Leave</span>
             </div>
@@ -1755,14 +1793,13 @@
     <!-- Timesheet Section -->
     <div id="timesheet" class="content-section">
         <div class="period-selector">
-            <button class="period-nav" onclick="changePeriod(-1)">◀</button>
+            <button class="period-nav" id="prevPeriodBtn">◀</button>
             <div class="period-display">
                 <div class="period-label">Pay Period</div>
-                <div class="period-dates" id="periodDates">28 Jul - 10 Aug 2025</div>
+                <div class="period-dates" id="periodDates">Loading...</div>
             </div>
-            <button class="period-nav" onclick="changePeriod(1)">▶</button>
+            <button class="period-nav" id="nextPeriodBtn">▶</button>
         </div>
-
         <!-- Hours Summary -->
         <div class="timesheet-summary">
             <h3>Hours Breakdown</h3>
@@ -1780,8 +1817,8 @@
             <div class="shift-list-header">
                 <h3>Shifts</h3>
                 <div class="view-toggle">
-                    <button class="toggle-btn active" onclick="toggleTimesheetView('date')">By Date</button>
-                    <button class="toggle-btn" onclick="toggleTimesheetView('participant')">By Client</button>
+                    <button class="toggle-btn active" data-timesheet-view="date">By Date</button>
+                    <button class="toggle-btn" data-timesheet-view="participant">By Client</button>
                 </div>
             </div>
             <div id="timesheetShifts">
@@ -1813,14 +1850,14 @@
     <!-- Transfers Section -->
     <div id="transfers" class="content-section">
         <div class="transfer-tabs">
-            <div class="transfer-tab active" onclick="switchTransferTab('incoming')">
+            <div class="transfer-tab active" data-transfer-tab="incoming">
                 Incoming Requests
                 <span class="badge" id="incomingCount">0</span>
             </div>
-            <div class="transfer-tab" onclick="switchTransferTab('outgoing')">
+            <div class="transfer-tab" data-transfer-tab="outgoing">
                 My Requests
             </div>
-            <div class="transfer-tab" onclick="switchTransferTab('available')">
+            <div class="transfer-tab" data-transfer-tab="available">
                 Available Shifts
             </div>
         </div>
@@ -1846,17 +1883,19 @@
 
     <!-- Profile Section -->
     <div id="profile" class="content-section">
-        <div class="profile-banner" id="profileBanner">
-            <div class="profile-banner-upload" id="bannerUploadBtn">
-                📷 Change Banner
+        <div class="profile-banner" id="profileBanner" onclick="document.getElementById('bannerUpload').click()">
+            <div class="banner-overlay">
+                <i class="fas fa-camera"></i>
+                <span>Tap to upload photo</span>
             </div>
-            <input type="file" id="bannerUpload" accept="image/*" style="display: none;">
-        </div>
+            <input type="file" id="bannerUpload" accept="image/*" capture="environment" style="display: none;">
+        </div>        
+        
         <!-- Personal Information -->
         <div class="profile-section">
             <div class="profile-section-header">
                 Personal Information
-                <button class="edit-btn" onclick="editPersonalInfo()">Edit</button>
+                <button class="edit-btn" data-action="editPersonalInfo">Edit</button>
             </div>
             <div class="profile-content" id="personalInfo">
                 <!-- Will be populated dynamically -->
@@ -1867,7 +1906,7 @@
         <div class="profile-section">
             <div class="profile-section-header">
                 Contact Details
-                <button class="edit-btn" onclick="editContactInfo()">Edit</button>
+                <button class="edit-btn" data-action="editContactInfo">Edit</button>
             </div>
             <div class="profile-content" id="contactInfo">
                 <!-- Will be populated dynamically -->
@@ -1907,7 +1946,7 @@
         <div class="profile-section">
             <div class="profile-section-header">
                 Weekly Availability
-                <button class="edit-btn" onclick="saveAvailability()">Save</button>
+                <button class="edit-btn" data-action="saveAvailability">Save</button>
             </div>
             <div class="profile-content">
                 <div class="availability-grid" id="availabilityGrid">
@@ -1920,7 +1959,7 @@
     <!-- Mobile Navigation -->
     <nav class="mobile-nav" role="tablist" aria-label="Main navigation">
         <button class="nav-item active" 
-                onclick="switchSection('dashboard')" 
+                data-section="dashboard" 
                 aria-label="Navigate to dashboard" 
                 role="tab" 
                 aria-selected="true"
@@ -1931,7 +1970,7 @@
         </button>
         
         <button class="nav-item" 
-                onclick="switchSection('timesheet')" 
+                data-section="timesheet" 
                 aria-label="Navigate to timesheet" 
                 role="tab" 
                 aria-selected="false"
@@ -1941,7 +1980,7 @@
         </button>
         
         <button class="nav-item" 
-                onclick="switchSection('schedule')" 
+                data-section="schedule" 
                 aria-label="Navigate to schedule" 
                 role="tab" 
                 aria-selected="false"
@@ -1962,7 +2001,7 @@
         </button>
         
         <button class="nav-item" 
-                onclick="switchSection('profile')" 
+                data-section="profile" 
                 aria-label="Navigate to profile" 
                 role="tab" 
                 aria-selected="false"
@@ -1973,6 +2012,36 @@
     </nav>
 
     <!-- MODALS SECTION -->
+
+    <!-- Profile Photo Editor Modal -->
+<div id="photoEditorModal" class="modal">
+    <div class="modal-content" style="max-width: 800px;">
+        <div class="modal-header">
+            <h3 class="modal-title">Adjust Profile Banner</h3>
+            <button class="modal-close" onclick="closePhotoEditor()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="cropperContainer" style="max-height: 400px;">
+                <img id="imageToCrop" style="max-width: 100%;">
+            </div>
+            <div style="margin-top: 15px; display: flex; gap: 10px;">
+                <button onclick="rotateCropper(-90)" class="edit-btn" style="background: var(--text-secondary);">
+                    <i class="fas fa-rotate-left"></i> Rotate Left
+                </button>
+                <button onclick="rotateCropper(90)" class="edit-btn" style="background: var(--text-secondary);">
+                    <i class="fas fa-rotate-right"></i> Rotate Right
+                </button>
+                <button onclick="resetCropper()" class="edit-btn" style="background: var(--text-secondary);">
+                    <i class="fas fa-undo"></i> Reset
+                </button>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="edit-btn" style="background: var(--text-secondary);" onclick="closePhotoEditor()">Cancel</button>
+            <button class="edit-btn" onclick="saveCroppedImage()">Save Banner</button>
+        </div>
+    </div>
+</div>
 
     <!-- Add Shift Modal -->
     <div id="addShiftModal" class="modal" role="dialog" aria-labelledby="addShiftTitle" aria-hidden="true">
@@ -2080,7 +2149,7 @@
                 <button type="button" class="modal-btn secondary" onclick="closeModal('addShiftModal')">
                     Cancel
                 </button>
-                <button type="submit" class="modal-btn primary" onclick="submitShift()" form="addShiftForm">
+                <button type="submit" class="modal-btn primary" data-action="submitShift" form="addShiftForm">
                     Submit for Approval
                 </button>
             </footer>
@@ -2088,72 +2157,79 @@
     </div>
 
     <!-- Transfer Shift Modal -->
-    <div id="transferShiftModal" class="modal" role="dialog" aria-labelledby="transferShiftTitle" aria-hidden="true">
-        <div class="modal-content" role="document">
-            <header class="modal-header">
-                <h3 id="transferShiftTitle" class="modal-title">Transfer Shift</h3>
-                <button class="modal-close" 
-                        onclick="closeModal('transferShiftModal')" 
-                        aria-label="Close modal"
-                        type="button">&times;</button>
-            </header>
-            
-            <div class="modal-body">
-                <form id="transferForm" novalidate>
-                    <fieldset>
-                        <legend class="sr-only">Transfer Details</legend>
-                        
-                        <div class="form-group">
-                            <label for="transferShiftSelect" class="form-label">Select Shift to Transfer *</label>
-                            <select class="form-control" 
-                                    id="transferShiftSelect" 
-                                    name="transferShiftSelect"
-                                    required 
-                                    aria-describedby="transferShiftSelect-error">
-                                <option value="">Select a shift</option>
-                            </select>
-                            <div id="transferShiftSelect-error" class="error-message" role="alert" aria-live="polite"></div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="transferToStaff" class="form-label">Transfer To *</label>
-                            <select class="form-control" 
-                                    id="transferToStaff" 
-                                    name="transferToStaff"
-                                    required 
-                                    aria-describedby="transferToStaff-error transferToStaff-help">
-                                <option value="">Select staff member</option>
-                            </select>
-                            <small id="transferToStaff-help" class="form-help">Choose the staff member to transfer this shift to</small>
-                            <div id="transferToStaff-error" class="error-message" role="alert" aria-live="polite"></div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="transferReason" class="form-label">Reason *</label>
-                            <textarea class="form-control" 
-                                      id="transferReason" 
-                                      name="transferReason"
-                                      required 
-                                      placeholder="Please provide a reason for the transfer..."
-                                      rows="3"
-                                      aria-describedby="transferReason-error transferReason-help"></textarea>
-                            <small id="transferReason-help" class="form-help">Explain why you need to transfer this shift</small>
-                            <div id="transferReason-error" class="error-message" role="alert" aria-live="polite"></div>
-                        </div>
-                    </fieldset>
-                </form>
-            </div>
-            
-            <footer class="modal-footer">
-                <button type="button" class="modal-btn secondary" onclick="closeModal('transferShiftModal')">
-                    Cancel
-                </button>
-                <button type="submit" class="modal-btn primary" onclick="submitTransfer()" form="transferForm">
-                    Send Transfer Request
-                </button>
-            </footer>
+<div id="transferShiftModal" class="modal" role="dialog" aria-labelledby="transferShiftTitle" aria-hidden="true">
+    <div class="modal-content" role="document">
+        <header class="modal-header">
+            <h3 id="transferShiftTitle" class="modal-title">Transfer Shift</h3>
+            <button class="modal-close" 
+                    data-modal-close="transferShiftModal" 
+                    aria-label="Close modal"
+                    type="button">&times;</button>
+        </header>
+        
+        <div class="modal-body">
+            <form id="transferForm" novalidate>
+                <fieldset>
+                    <legend class="sr-only">Transfer Details</legend>
+                    
+                    <!-- MISSING: Shift selection dropdown -->
+                    <div class="form-group">
+                        <label for="transferShiftSelect" class="form-label">Select Shift to Transfer *</label>
+                        <select class="form-control" 
+                                id="transferShiftSelect" 
+                                name="transferShiftSelect"
+                                required
+                                aria-describedby="transferShift-error">
+                            <option value="">Select a shift</option>
+                        </select>
+                        <div id="transferShift-error" class="error-message" role="alert" aria-live="polite"></div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="transferToStaff" class="form-label">Transfer To *</label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="transferToStaffSearch" 
+                               placeholder="Type to search staff..."
+                               autocomplete="off">
+                        <select class="form-control" 
+                                id="transferToStaff" 
+                                name="transferToStaff"
+                                style="display: none;">
+                            <option value="">Select staff member</option>
+                        </select>
+                        <div id="staffSearchResults" class="search-dropdown" style="display: none;"></div>
+                    </div>
+                    
+                    <!-- Add warning div for conflicts -->
+                    <div id="transferConflictWarning" style="display: none; margin-top: 10px;"></div>
+                    
+                    <div class="form-group">
+                        <label for="transferReason" class="form-label">Reason *</label>
+                        <textarea class="form-control" 
+                                  id="transferReason" 
+                                  name="transferReason"
+                                  required 
+                                  placeholder="Please provide a reason for the transfer..."
+                                  rows="3"
+                                  aria-describedby="transferReason-error transferReason-help"></textarea>
+                        <small id="transferReason-help" class="form-help">Explain why you need to transfer this shift</small>
+                        <div id="transferReason-error" class="error-message" role="alert" aria-live="polite"></div>
+                    </div>
+                </fieldset>
+            </form>
         </div>
+        
+        <footer class="modal-footer">
+            <button type="button" class="modal-btn secondary" data-modal-close="transferShiftModal">
+                Cancel
+            </button>
+            <button type="submit" class="modal-btn primary" data-action="submitTransfer" form="transferForm">
+                Send Transfer Request
+            </button>
+        </footer>
     </div>
+</div>
 
     <!-- Time Adjustment Modal -->
     <div id="adjustmentModal" class="modal" role="dialog" aria-labelledby="adjustmentTitle" aria-hidden="true">
@@ -2161,7 +2237,7 @@
             <header class="modal-header">
                 <h3 id="adjustmentTitle" class="modal-title">Request Time Adjustment</h3>
                 <button class="modal-close" 
-                        onclick="closeModal('adjustmentModal')" 
+                        data-modal-close="adjustmentModal" 
                         aria-label="Close modal"
                         type="button">&times;</button>
             </header>
@@ -2225,10 +2301,10 @@
             </div>
             
             <footer class="modal-footer">
-                <button type="button" class="modal-btn secondary" onclick="closeModal('adjustmentModal')">
+                <button type="button" class="modal-btn secondary" data-modal-close="adjustmentModal">
                     Cancel
                 </button>
-                <button type="submit" class="modal-btn primary" onclick="submitAdjustment()" form="adjustmentForm">
+                <button type="submit" class="modal-btn primary" data-action="submitAdjustment" form="adjustmentForm">
                     Submit Request
                 </button>
             </footer>
@@ -2241,7 +2317,7 @@
             <header class="modal-header">
                 <h3 id="leaveTitle" class="modal-title">Request Leave</h3>
                 <button class="modal-close" 
-                        onclick="closeModal('leaveModal')" 
+                        data-modal-close="leaveModal" 
                         aria-label="Close modal"
                         type="button">&times;</button>
             </header>
@@ -2308,10 +2384,12 @@
             </div>
             
             <footer class="modal-footer">
-                <button type="button" class="modal-btn secondary" onclick="closeModal('leaveModal')">
+                <button type="button" class="modal-btn secondary" data-modal-close="leaveModal">
                     Cancel
                 </button>
-                <button type="button" onclick="submitLeave()">Submit Request</button>
+                <button type="button" class="modal-btn primary" data-action="submitLeave">
+                    Submit Request
+                </button>
             </footer>
         </div>
     </div>
@@ -2322,7 +2400,7 @@
             <header class="modal-header">
                 <h3 id="documentUploadTitle" class="modal-title">Upload Document</h3>
                 <button class="modal-close" 
-                        onclick="closeModal('documentUploadModal')" 
+                        data-modal-close="documentUploadModal" 
                         aria-label="Close modal"
                         type="button">&times;</button>
             </header>
@@ -2403,10 +2481,10 @@
             </div>
             
             <footer class="modal-footer">
-                <button type="button" class="modal-btn secondary" onclick="closeModal('documentUploadModal')">
+                <button type="button" class="modal-btn secondary" data-modal-close="documentUploadModal">
                     Cancel
                 </button>
-                <button type="submit" class="modal-btn primary" onclick="uploadDocument()" form="documentUploadForm">
+                <button type="submit" class="modal-btn primary" data-action="uploadDocument" form="documentUploadForm">
                     Upload
                 </button>
             </footer>
@@ -2419,7 +2497,7 @@
             <header class="modal-header">
                 <h3 id="addNoteTitle" class="modal-title">Add Shift Note</h3>
                 <button class="modal-close" 
-                        onclick="closeModal('addNoteModal')" 
+                        data-modal-close="addNoteModal" 
                         aria-label="Close modal"
                         type="button">&times;</button>
             </header>
@@ -2463,7 +2541,7 @@
                             <div class="image-upload-area" role="region" aria-label="Image upload area">
                                 <button type="button" 
                                         class="add-image-btn" 
-                                        onclick="document.getElementById('noteImages').click()"
+                                        data-trigger-click="noteImages"
                                         aria-label="Add images">
                                     <i class="fa-solid fa-plus" aria-hidden="true"></i>
                                 </button>
@@ -2487,10 +2565,10 @@
             </div>
             
             <footer class="modal-footer">
-                <button type="button" class="modal-btn secondary" onclick="closeModal('addNoteModal')">
+                <button type="button" class="modal-btn secondary" data-modal-close="addNoteModal">
                     Cancel
                 </button>
-                <button type="submit" class="modal-btn primary" onclick="submitNote()" form="noteForm">
+                <button type="submit" class="modal-btn primary" data-action="submitNote" form="noteForm">
                     Add Note
                 </button>
             </footer>
@@ -2508,9 +2586,13 @@
         const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         //DAY OFFSETTER!
-        const DATE_OFFSET_DAYS = -21; // Set to 0 to disable testing mode
+        const DATE_OFFSET_DAYS = -14; // Set to 0 to disable testing mode
         const PERIOD_LENGTH = 14; // 14-day pay periods
-        // Global State
+        const DB_ERRORS = {
+    FOREIGN_KEY_VIOLATION: "23503",
+    UNIQUE_VIOLATION: "23505",
+    NOT_NULL_VIOLATION: "23502"
+};
         let currentUser = null;
         let currentStaff = null;
         let allShifts = [];
@@ -2529,7 +2611,7 @@
         let participantDefaultLocations = new Map();
         let careHomeLocations = new Set();
         let isSubmittingLeave = false;
-        
+        let id = null;
 window.shifts = window.shifts || [];
 window.participants = window.participants || [];
 window.locations = window.locations || [];
@@ -2579,47 +2661,126 @@ Object.defineProperty(window, 'currentStaff', {
     return date;
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
-    try {
-        console.log('Initializing application...');
-        
-        // Phase 1: Create DOM elements
-        createStaffSelector();
-        if (typeof addButtonStyles === 'function') {
-            addButtonStyles();
-        }
-        
-        // Phase 2: Initialize app
-        await initializeApp();
-        await ensureStaffLoaded();
-        
-        // Phase 3: Setup all event listeners
-        setupAllEventListeners();
-        
-        // Phase 4: Post-init tasks (with delay)
-        setTimeout(async () => {
-            if (AppState.staff.current) {
-                await addStaffSelector();
-                const selector = document.getElementById('staffSelector');
-                if (selector) {
-                    selector.style.display = 'block';
-                }
+const ModalManager = {
+    // Modal configurations
+    modals: {
+        addShift: {
+            id: 'addShiftModal',
+            onOpen: () => populateShiftModalDropdowns(),
+            onClose: () => document.getElementById('addShiftForm')?.reset()
+        },
+        transfer: {
+            id: 'transferShiftModal',
+            onOpen: () => {
+                loadTransferableShifts();
+                initializeStaffSearch();
+            },
+            onClose: () => {
+                document.getElementById('transferForm')?.reset();
+                document.getElementById('transferToStaffSearch').value = '';
+                document.getElementById('transferToStaff').value = '';
+                document.getElementById('transferConflictWarning').style.display = 'none';
             }
-        }, 2000);
-        
-        // Phase 5: Initialize features
-        window.currentPeriodOffset = 0;
-        if (typeof setCurrentPayPeriod === 'function') {
-            setCurrentPayPeriod();
+        },
+        adjustment: {
+            id: 'adjustmentModal',
+            onOpen: () => loadAdjustmentShifts(),
+            onClose: () => document.getElementById('adjustmentForm')?.reset()
+        },
+        leave: {
+            id: 'leaveModal',
+            onOpen: () => loadLeaveRequestModal(),
+            onClose: () => {
+                document.getElementById('leaveForm')?.reset();
+                isSubmittingLeave = false;
+            }
+        }
+    },
+    
+    // Current open modal
+    currentModal: null,
+    
+    // Open modal by name
+    show(modalName, data = null) {
+        const config = this.modals[modalName];
+        if (!config) {
+            console.error(`Modal '${modalName}' not found`);
+            return;
         }
         
-        console.log('Application ready');
+        // Close any open modal first
+        if (this.currentModal) {
+            this.close();
+        }
         
-    } catch (error) {
-        console.error('Initialization failed:', error);
-        showToast('Failed to start application', 'error');
+        const modalElement = document.getElementById(config.id);
+        if (!modalElement) {
+            console.error(`Modal element '${config.id}' not found`);
+            return;
+        }
+        
+        // Store current modal
+        this.currentModal = {
+            name: modalName,
+            element: modalElement,
+            config: config
+        };
+        
+        // Show modal
+        modalElement.classList.add('active');
+        modalElement.style.display = 'flex';
+        
+        // Run onOpen callback if exists
+        if (config.onOpen) {
+            config.onOpen(data);
+        }
+        
+        // Add escape key listener
+        this.escapeHandler = (e) => {
+            if (e.key === 'Escape') {
+                this.close();
+            }
+        };
+        document.addEventListener('keydown', this.escapeHandler);
+    },
+    
+    // Close current modal
+    close() {
+        if (!this.currentModal) return;
+        
+        const { element, config } = this.currentModal;
+        
+        // Hide modal
+        element.classList.remove('active');
+        element.style.display = 'none';
+        
+        // Run onClose callback if exists
+        if (config.onClose) {
+            config.onClose();
+        }
+        
+        // Remove escape handler
+        if (this.escapeHandler) {
+            document.removeEventListener('keydown', this.escapeHandler);
+        }
+        
+        // Clear current modal
+        this.currentModal = null;
+    },
+    
+    // Check if a modal is open
+    isOpen(modalName = null) {
+        if (!modalName) {
+            return this.currentModal !== null;
+        }
+        return this.currentModal?.name === modalName;
+    },
+    
+    // Get current modal data
+    getCurrent() {
+        return this.currentModal;
     }
-});
+};
 
 async function initializeApp() {
     try {
@@ -2734,7 +2895,7 @@ async function initializeApp() {
                         <p style="font-size: 11px; color: #999; margin: 5px;">Auth User ID: ${currentUser.id}</p>
                         <p style="font-size: 11px; color: #999; margin: 5px;">Email: ${currentUser.email}</p>
                     </div>
-                    <button onclick="logout()" style="margin-top: 20px; padding: 10px 20px; background: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer;">Logout</button>
+                    <button data-action="logout" style="margin-top: 20px; padding: 10px 20px; background: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer;">Logout</button>
                 </div>
             `;
             return;
@@ -2824,16 +2985,18 @@ async function initializeApp() {
     }
     
     if (submitBtn) {
-        // Remove any existing onclick
-        submitBtn.onclick = null;
-        // Use a flag to prevent multiple submissions
-        submitBtn.onclick = function(e) {
+    // Remove any existing listeners
+    submitBtn.replaceWith(submitBtn.cloneNode(true));
+    const newSubmitBtn = document.querySelector('[data-action="submitLeaveWithProtection"]');
+    if (newSubmitBtn) {
+        newSubmitBtn.addEventListener('click', function(e) {
             e.preventDefault();
             if (!this.disabled) {
                 submitLeaveWithProtection();
             }
-        };
+        });
     }
+}
 }
 
 
@@ -2844,18 +3007,18 @@ async function initializeApp() {
         
         try {
             const { data: myShiftsData, error: shiftsError } = await supabaseClient
-                .from('shifts')
-                .select(`
-                    *,
-                    participants:participant_id(first_name, last_name, address),
-                    locations:location_id(id, name, address, is_care_home),
-                    duty_types:duty_type_id(name)
-                `)  // FIXED: Removed pay_multiplier from duty_types
-                .eq('staff_id', staffData.id)
-                .is('deleted_at', null)
-                .order('date', { ascending: false })
-                .limit(100); // Limit for performance
-            
+    .from('shifts')
+    .select(`
+        *,
+        participants:participant_id(first_name, last_name, address),
+        locations:location_id(id, name, address, is_care_home),
+        duty_types:duty_type_id(name)
+    `)
+    .eq('staff_id', staffData.id)
+    .is('deleted_at', null)
+    .order('date', { ascending: false })
+    .limit(100);
+
             if (shiftsError) {
                 console.error('Error loading shifts:', shiftsError);
                 myShifts = [];
@@ -3010,7 +3173,7 @@ async function initializeApp() {
                 <div style="padding: 20px; background: #f8d7da; color: #721c24; border-radius: 5px;">
                     <h3>Initialization Error</h3>
                     <p>${error.message}</p>
-                    <button onclick="location.reload()" style="margin-top: 10px; padding: 5px 15px;">Retry</button>
+                    <button data-action="reloadPage" style="margin-top: 10px; padding: 5px 15px;">Retry</button>
                 </div>
             `;
             errorContainer.style.display = 'block';
@@ -3142,36 +3305,17 @@ function onParticipantSelect(participantId, locationSelectId) {
     }
     
     // Otherwise, try to find "Client Home" as default
-    const clientHomeLocation = locations?.find(l => 
-        l.name.toLowerCase().includes('client home') || 
-        l.id === '00000000-0000-0000-0000-000000000001'  // Special ID for Client Home
-    );
-    
+    // Use constants from LOCATION_IDS
+const clientHomeLocation = locations?.find(l => 
+    l.name.toLowerCase().includes('client home') || 
+    l.id === LOCATION_IDS.CLIENT_HOME  // Use constant
+);
     if (clientHomeLocation) {
         locationSelect.value = clientHomeLocation.id;
         console.log('Auto-selected Client Home as default');
     }
 }
 
-async function loadDutyTypes() {
-    try {
-        const { data: dutyTypesData } = await supabaseClient
-            .from('duty_types')
-            .select('id, name')  // Only select fields that exist
-            .order('name');
-        
-        dutyTypes = dutyTypesData || [];
-        window.dutyTypes = dutyTypes;
-        
-        console.log('Duty types loaded:', dutyTypes.length);
-        return dutyTypes;
-        
-    } catch (error) {
-        console.error('Error loading duty types:', error);
-        dutyTypes = [];
-        return [];
-    }
-}
 
 async function loadReferenceData() {
     try {
@@ -3297,18 +3441,18 @@ function createSearchableDropdown(selectId, options = {}) {
             item.onmouseover = () => item.style.background = '#f0f0f0';
             item.onmouseout = () => item.style.background = 'white';
             
-            item.onclick = () => {
-                selectedValue = opt.value;
-                selectedText = opt.text;
-                searchInput.value = opt.text;
-                select.value = opt.value;
-                
-                // Trigger change event on original select
-                const event = new Event('change', { bubbles: true });
-                select.dispatchEvent(event);
-                
-                dropdownList.style.display = 'none';
-            };
+            item.addEventListener('click', () => {
+    selectedValue = opt.value;
+    selectedText = opt.text;
+    searchInput.value = opt.text;
+    select.value = opt.value;
+    
+    // Trigger change event on original select
+    const event = new Event('change', { bubbles: true });
+    select.dispatchEvent(event);
+    
+    dropdownList.style.display = 'none';
+});
             
             dropdownList.appendChild(item);
         });
@@ -3497,18 +3641,18 @@ async function refreshAfterChange() {
 async function loadMyShifts() {
     try {
         const { data: myShiftsData, error: shiftsError } = await supabaseClient
-            .from('shifts')
-            .select(`
-                *,
-                participants:participant_id(first_name, last_name, address),
-                locations:location_id(id, name, address, is_care_home),
-                duty_types:duty_type_id(name)
-            `)  // REMOVED pay_multiplier - doesn't exist
-            .eq('staff_id', currentStaff.id)
-            .is('deleted_at', null)
-            .order('date', { ascending: false })
-            .limit(100);
-        
+    .from('shifts')
+    .select(`
+        *,
+        participants:participant_id(first_name, last_name, address),
+        locations:location_id(id, name, address, is_care_home),
+        duty_types:duty_type_id(name)
+    `)
+    .eq('staff_id', staffData.id)
+    .is('deleted_at', null)
+    .order('date', { ascending: false })
+    .limit(100);
+
         if (shiftsError) {
             console.error('Error loading shifts:', shiftsError);
             throw shiftsError;
@@ -3555,7 +3699,24 @@ function setupAllEventListeners() {
     setupKeyboardShortcuts();
     
     // Timesheet Controls
-    setupTimesheetControls();
+    setTimeout(() => {
+    const prevBtn = document.getElementById('prevPeriodBtn');
+    const nextBtn = document.getElementById('nextPeriodBtn');
+    
+    if (prevBtn) {
+        prevBtn.addEventListener('click', () => {
+            console.log('Previous period clicked');
+            changePeriod(-1);
+        });
+    }
+    
+    if (nextBtn) {
+        nextBtn.addEventListener('click', () => {
+            console.log('Next period clicked');
+            changePeriod(1);
+        });
+    }
+}, 100);
     
     console.log('Event listeners ready');
 }
@@ -3565,21 +3726,10 @@ window.showNotification = function(message, type) {
 };
 
 function setupQuickActions() {
-    const quickActions = {
-        'quickAddShift': showAddShiftModal,
-        'quickTransfer': showTransferModal,
-        'quickAdjustment': showAdjustmentModal,
-        'quickLeave': showLeaveModal
-    };
-    
-    Object.entries(quickActions).forEach(([id, handler]) => {
-        const btn = document.getElementById(id);
-        if (btn) {
-            btn.onclick = handler;
-        }
-    });
+    // Quick actions are now handled by data attributes
+    // Just ensure the buttons have the right data-action attributes
+    console.log('Quick actions setup via data attributes');
 }
-
 function setupNavigation() {
     // Tab navigation
     document.querySelectorAll('.nav-tab').forEach(tab => {
@@ -3657,7 +3807,7 @@ async function loadAvailableTransfers() {
                             ${shift.end_time ? formatTime(shift.end_time) : ''}
                         </div>
                     </div>
-                    <button class="btn btn-sm btn-primary" onclick="claimShift('${shift.id}')">
+                    <button class="btn btn-sm btn-primary" data-action-with-param="claimShift" data-param="${shift.id}">
                         Claim Shift
                     </button>
                 </div>
@@ -3691,7 +3841,7 @@ async function claimShift(shiftId) {
         const { error } = await supabaseClient
             .from('shifts')
             .update({ staff_id: AppState.staff.current.id })
-            .eq('id', shiftId);
+            .eq('id', parseInt(shiftId));
         
         if (error) throw error;
         
@@ -3751,10 +3901,6 @@ function setupEditButtons() {
 }
 
 function setupFileUploads() {
-    const bannerUpload = document.getElementById('bannerUpload');
-    if (bannerUpload) {
-        bannerUpload.addEventListener('change', handleBannerUpload);
-    }
     
     const docUploadBtn = document.getElementById('uploadDocBtn');
     if (docUploadBtn) {
@@ -3784,176 +3930,35 @@ function setupKeyboardShortcuts() {
 }
 
 function setupTimesheetControls() {
-    // Period navigation
-    document.querySelectorAll('.period-nav').forEach(button => {
-        button.removeAttribute('onclick'); // Clean inline handlers
-        
-        if (button.textContent.includes('◀') || button.textContent.includes('Previous')) {
-            button.addEventListener('click', () => {
-                console.log('Navigate previous period');
-                window.changePeriod(-1);
-            });
-        } else if (button.textContent.includes('▶') || button.textContent.includes('Next')) {
-            button.addEventListener('click', () => {
-                console.log('Navigate next period');
-                window.changePeriod(1);
-            });
-        }
-    });
+    // Period navigation - use IDs instead of searching for text
+    const prevBtn = document.getElementById('prevPeriodBtn');
+    const nextBtn = document.getElementById('nextPeriodBtn');
+    
+    if (prevBtn) {
+        prevBtn.addEventListener('click', () => {
+            console.log('Navigate previous period');
+            changePeriod(-1);  // Call directly, not window.changePeriod
+        });
+    }
+    
+    if (nextBtn) {
+        nextBtn.addEventListener('click', () => {
+            console.log('Navigate next period');
+            changePeriod(1);  // Call directly, not window.changePeriod
+        });
+    }
     
     // View toggle buttons
     document.querySelectorAll('.view-toggle .toggle-btn').forEach(button => {
-        button.removeAttribute('onclick'); // Clean inline handlers
+        button.setAttribute('data-action', 'appropriateActionName');
         
         if (button.textContent.includes('Date')) {
-            button.addEventListener('click', () => window.toggleTimesheetView('date'));
+            button.addEventListener('click', () => toggleTimesheetView('date'));
         } else if (button.textContent.includes('Client')) {
-            button.addEventListener('click', () => window.toggleTimesheetView('participant'));
+            button.addEventListener('click', () => toggleTimesheetView('participant'));
         }
     });
 }
-
-window.switchToStaff = async function(staffId) {
-    try {
-        if (!staffId) {
-            showToast('No staff ID provided', 'error');
-            return;
-        }
-
-        console.log('Switching to staff ID:', staffId);
-
-        // Get the selected staff member
-        const { data: selectedStaff, error } = await supabaseClient
-            .from('staff')
-            .select('*')
-            .eq('id', staffId)
-            .single();
-        
-        if (error) {
-            console.error('Error fetching staff:', error);
-            showToast('Failed to load staff data', 'error');
-            return;
-        }
-        
-        console.log('Selected staff:', selectedStaff);
-        
-        // Store original if first time
-        if (!AppState.staff.original) {
-            AppState.staff.original = AppState.staff.current;
-            console.log('Stored original staff:', AppState.staff.original);
-        }
-        
-        // Switch to new staff member - CRITICAL: maintain currentStaff
-        AppState.staff.current = selectedStaff;
-        
-        // Update the UI
-        const userNameElement = document.getElementById('userName');
-        if (userNameElement) {
-            userNameElement.textContent = `${selectedStaff.first_name} ${selectedStaff.last_name}`;
-        }
-        
-        // Add/Update test mode banner
-        let testBanner = document.getElementById('testModeBanner');
-        if (!testBanner) {
-            testBanner = document.createElement('div');
-            testBanner.id = 'testModeBanner';
-            testBanner.style.cssText = `
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                background: #ff9800;
-                color: white;
-                padding: 10px;
-                text-align: center;
-                z-index: 10000;
-                font-weight: bold;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-            `;
-            document.body.prepend(testBanner);
-        }
-        
-        testBanner.innerHTML = `
-            🧪 TEST MODE: Viewing as ${selectedStaff.first_name} ${selectedStaff.last_name}
-            <button onclick="exitTestMode()" style="
-                margin-left: 20px;
-                padding: 5px 15px;
-                background: white;
-                color: #333;
-                border: none;
-                border-radius: 4px;
-                cursor: pointer;
-                font-weight: normal;
-            ">Exit Test Mode</button>
-        `;
-        
-        // Reload all their data
-        const loaders = [];
-        if (typeof loadDashboard === 'function') loaders.push(loadDashboard());
-        if (typeof loadSchedule === 'function') loaders.push(loadSchedule());
-        if (typeof loadTransfers === 'function') loaders.push(loadTransfers());
-        if (typeof loadProfile === 'function') loaders.push(loadProfile());
-        
-        await Promise.all(loaders).catch(err => console.error('Error loading data:', err));
-        
-        // Stay on current section, don't force dashboard
-        // The current section should reload with new staff data
-        
-        showToast(`Now viewing as: ${selectedStaff.first_name} ${selectedStaff.last_name}`, 'success');
-        
-    } catch (error) {
-        console.error('Error switching staff:', error);
-        showToast('Failed to switch staff view', 'error');
-    }
-}
-
-// Exit test mode function
-window.exitTestMode = function() {
-    if (AppState.staff.original) {
-        console.log('Exiting test mode, restoring:', AppState.staff.original);
-        
-        AppState.staff.current = AppState.staff.original;
-        delete AppState.staff.original;
-        
-        // Update UI
-        const userNameElement = document.getElementById('userName');
-        if (userNameElement) {
-            userNameElement.textContent = 
-                `${AppState.staff.current.first_name} ${AppState.staff.current.last_name}`;
-        }
-        
-        // Remove test banner
-        const banner = document.getElementById('testModeBanner');
-        if (banner) banner.remove();
-        
-        // Reload original data
-        const loaders = [];
-        if (typeof loadDashboard === 'function') loaders.push(loadDashboard());
-        if (typeof loadSchedule === 'function') loaders.push(loadSchedule());
-        if (typeof loadTransfers === 'function') loaders.push(loadTransfers());
-        if (typeof loadProfile === 'function') loaders.push(loadProfile());
-        
-        Promise.all(loaders).catch(err => console.error('Error reloading data:', err));
-        
-        showToast('Returned to your account', 'success');
-    }
-}
-
-window.debugStaffState = function() {
-    console.log('=== Staff State Debug ===');
-    console.log('currentStaff:', AppState.staff.current);
-    console.log('originalStaff:', AppState.staff.original);
-    console.log('currentUser:', window.currentUser);
-    console.log('Test Mode Active:', !!AppState.staff.original);
-    console.log('========================');
-    return {
-        currentStaff: AppState.staff.current,
-        originalStaff: AppState.staff.original,
-        testMode: !!AppState.staff.original
-    };
-}
-
-
 
 async function checkTableStructure() {
     // Run this once to determine actual column types
@@ -4186,7 +4191,7 @@ function ensureRequiredElements() {
                 (shift.location?.name || 'Unassigned');
             
             container.innerHTML = `
-            <div class="shift-card" data-shift-id="${shift.id}" onclick="toggleShiftDetails(this)">
+            <div class="shift-card" data-shift-id="${shift.id}" data-action="toggleShiftDetails">
                     <div class="shift-card-header">
                         <div class="shift-time">
                             ${shift.start_time ? formatTime(shift.start_time) : 'Sleepover'} - 
@@ -4203,7 +4208,7 @@ function ensureRequiredElements() {
                         <div class="handover-section">
                             <div class="handover-title">Handover Notes</div>
                             <div id="handoverNotes">Loading...</div>
-                            <button class="modal-btn primary mt-2" onclick="addNoteToShift(${shift.id})">Add Note</button>
+                            <button class="modal-btn primary mt-2" data-action-with-param="addNoteToShift" data-param="${shift.id}">Add Note</button>
                         </div>
                     </div>
                 </div>
@@ -4276,66 +4281,27 @@ async function enrichRequestData(requests, type) {
 }
 
 async function requestTransfer(shiftId) {
-    // shiftId is INTEGER - correct for the database
+    // Ensure shift_id is INTEGER for database
     const { data, error } = await supabaseClient
         .from('transfer_requests')
         .insert({
-            shift_id: parseInt(shiftId), // Ensure it's an integer
+            shift_id: parseInt(shiftId), // CRITICAL: Convert to INTEGER
             from_staff_id: currentStaff.id,
-            to_staff_id: null, // Optional target staff
+            to_staff_id: null,
             status: 'pending',
             reason: 'Personal reason',
-            created_at: new Date().toISOString()
+            created_at: new Date().toISOString() // Add required field
         });
     
     if (error) {
         console.error('Transfer request error:', error);
-        showToast('Failed to request transfer', 'error');
+        if (error.code === DB_ERRORS.FOREIGN_KEY_VIOLATION) {
+            showToast('Invalid shift reference', 'error');
+        } else {
+            showToast('Failed to request transfer', 'error');
+        }
     } else {
         showToast('Transfer request submitted', 'success');
-    }
-}
-
-async function submitTransfer() {
-    try {
-        const shiftId = document.getElementById('transferShiftSelect').value;
-        const toStaffId = document.getElementById('transferToStaff').value;
-        const reason = document.getElementById('transferReason').value;
-
-        if (!shiftId || !reason) {
-            showToast('Please select a shift and provide a reason', 'error');
-            return;
-        }
-
-        // Only create transfer_request record
-        const { data, error } = await supabaseClient
-            .from('transfer_requests')
-            .insert({
-                shift_id: parseInt(shiftId), // Ensure INTEGER type
-                from_staff_id: currentStaff.id,
-                to_staff_id: toStaffId || null, // Optional target staff
-                status: 'pending',
-                reason: reason,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-            })
-            .select()
-            .single();
-
-        if (error) throw error;
-
-        showToast('Transfer request submitted successfully', 'success');
-        closeModal('transferShiftModal');
-        document.getElementById('transferForm').reset();
-        
-        // Refresh UI if needed
-        if (typeof loadTransfers === 'function') {
-            await loadTransfers();
-        }
-        
-    } catch (error) {
-        console.error('Error submitting transfer:', error);
-        showToast('Failed to submit transfer request: ' + error.message, 'error');
     }
 }
 
@@ -4406,56 +4372,13 @@ async function loadAvailableTransfers() {
                 </div>
                 ${transfer.reason ? `<div class="transfer-reason">"${transfer.reason}"</div>` : ''}
                 <div class="transfer-actions">
-                    <button class="transfer-btn accept" onclick="acceptTransfer('${transfer.id}')">Pick Up Shift</button>
+                    <button class="transfer-btn accept" data-action-with-param="acceptTransfer" data-param="${transfer.id}">Pick Up Shift</button>
                 </div>
             </div>
         `).join('');
 
     } catch (error) {
         console.error('Error loading available transfers:', error);
-    }
-}
-
-function toggleShiftDetails(element) {
-    try {
-        // Find the shift card element
-        const shiftCard = element.closest('.shift-card') || element;
-        
-        // Toggle expanded class
-        shiftCard.classList.toggle('expanded');
-        
-        // Get shift ID from the element - multiple ways to find it
-        let shiftId = null;
-        
-        // Method 1: Look for data attribute
-        shiftId = shiftCard.dataset.shiftId || shiftCard.getAttribute('data-shift-id');
-        
-        // Method 2: Look in onclick attribute for shift ID
-        if (!shiftId) {
-            const addNoteBtn = shiftCard.querySelector('[onclick*="addNoteToShift"]');
-            if (addNoteBtn) {
-                const onclickText = addNoteBtn.getAttribute('onclick');
-                const match = onclickText.match(/addNoteToShift\((\d+)\)/);
-                if (match) {
-                    shiftId = match[1];
-                }
-            }
-        }
-        
-        if (!shiftId) {
-            console.error('No shift ID found in element:', shiftCard);
-            return;
-        }
-        
-        console.log('Toggle shift details for ID:', shiftId);
-        
-        // If expanding, load handover notes
-        if (shiftCard.classList.contains('expanded')) {
-            loadHandoverNotes(parseInt(shiftId));
-        }
-        
-    } catch (error) {
-        console.error('Error in toggleShiftDetails:', error);
     }
 }
 
@@ -4498,7 +4421,8 @@ async function loadPendingRequests() {
                         ${shift.start_time ? ` - ${formatTime12Hour(shift.start_time)}` : ' - Sleepover'}
                     </div>
                     ${isTransfer ? 
-                        `<button onclick="approveTransfer(${shift.id})" class="btn btn-sm btn-primary">Accept</button>` :
+                        `<button data-action-with-param="approveTransfer" data-param="${shift.id}"
+ class="btn btn-sm btn-primary">Accept</button>` :
                         `<div class="text-muted">Pending Admin Approval</div>`
                     }
                 </div>
@@ -4553,7 +4477,7 @@ function hideLoading() {
         }
 
         container.innerHTML = notifications.map(note => `
-            <div class="notification-item ${note.notification_type || ''}" onclick="markAsRead('${note.id}')">
+            <div class="notification-item ${note.notification_type || ''}" data-action-with-param="markAsRead" data-param="${note.id}">
                 <div class="notification-content">${note.message || 'New notification'}</div>
                 <div class="notification-time">${formatDateTime(note.created_at)}</div>
             </div>
@@ -4568,189 +4492,88 @@ function hideLoading() {
     }
 }
 
-
-
-        function loadShiftTimes() {
+async function acceptTransfer(transferRequestId) {
     try {
-        const select = document.getElementById('adjustmentShift');
-        const selected = select.options[select.selectedIndex];
-        
-        if (selected && selected.dataset.start) {
-            document.getElementById('adjustmentStartTime').value = selected.dataset.start || '';
-            document.getElementById('adjustmentEndTime').value = selected.dataset.end || '';
-        } else {
-            document.getElementById('adjustmentStartTime').value = '';
-            document.getElementById('adjustmentEndTime').value = '';
-        }
-    } catch (error) {
-        console.error('Error loading shift times:', error);
-        // Don't show toast for this minor error
-    }
-}
-
-async function loadTransfers() {
-    try {
-        if (!currentStaff || !currentStaff.id) {
-            console.error('No current staff data');
-            return;
-        }
-
-        // Incoming transfers - shifts being transferred TO this staff
-        const { data: incoming } = await supabaseClient
-            .from('shifts')
-            .select(`
-                *,
-                participants(first_name, last_name),
-                staff!shifts_staff_id_fkey(first_name, last_name),
-                transfer_staff:staff!shifts_transfer_requested_by_fkey(first_name, last_name)
-            `)
-            .eq('transfer_to_staff', currentStaff.id)
-            .eq('transfer_status', 'pending')
-            .order('date', { ascending: true });
-
-        // Outgoing transfers - shifts this staff is transferring away
-        const { data: outgoing } = await supabaseClient
-            .from('shifts')
-            .select(`
-                *,
-                participants(first_name, last_name),
-                to_staff:staff!shifts_transfer_to_staff_fkey(first_name, last_name)
-            `)
-            .eq('staff_id', currentStaff.id)
-            .eq('transfer_requested_by', currentStaff.id)
-            .in('transfer_status', ['pending', 'approved', 'denied'])
-            .order('date', { ascending: true });
-
-        // Available transfers - open transfers from others
-        const { data: available } = await supabaseClient
-            .from('shifts')
-            .select(`
-                *,
-                participants(first_name, last_name),
-                staff!shifts_staff_id_fkey(first_name, last_name)
-            `)
-            .eq('transfer_status', 'pending')
-            .is('transfer_to_staff', null)  // Open to anyone
-            .neq('staff_id', currentStaff.id)  // Not your own shifts
-            .order('date', { ascending: true });
-
-        // Update badge
-        const badge = document.getElementById('transferBadge');
-        if (badge) {
-            badge.textContent = incoming?.length || 0;
-            badge.classList.toggle('hidden', !incoming?.length);
-        }
-
-        // Render based on active tab
-        const activeTab = document.querySelector('.transfer-tab.active');
-        if (activeTab?.textContent.includes('Incoming')) {
-            renderIncomingTransfers(incoming || []);
-        } else if (activeTab?.textContent.includes('My Requests')) {
-            renderOutgoingTransfers(outgoing || []);
-        } else {
-            renderAvailableTransfers(available || []);
-        }
-
-    } catch (error) {
-        console.error('Error loading transfers:', error);
-        showToast('Failed to load transfers', 'error');
-    }
-}
-
-async function acceptTransfer(transferId) {
-    try {
-        // Get the transfer request details
-        const { data: transfer, error: fetchError } = await supabaseClient
+        const { data: transferRequest, error: fetchError } = await supabaseClient
             .from('transfer_requests')
-            .select('*, shifts!shift_id(*)')
-            .eq('id', transferId)
-            .single();
-
-        if (fetchError || !transfer) {
-            throw new Error('Transfer request not found');
-        }
-
-        // Check for shift conflicts
-        const { data: conflicts } = await supabaseClient
-            .from('shifts')
             .select('*')
-            .eq('staff_id', currentStaff.id)
-            .eq('date', transfer.shifts.date)
-            .is('deleted_at', null);
-
-        if (conflicts && conflicts.length > 0) {
-            // Check for time overlaps
-            const hasOverlap = conflicts.some(existing => {
-                if (!existing.start_time || !existing.end_time || 
-                    !transfer.shifts.start_time || !transfer.shifts.end_time) {
-                    return false; // Can't determine overlap without times
-                }
-                
-                const newStart = new Date(`2000-01-01T${transfer.shifts.start_time}`);
-                const newEnd = new Date(`2000-01-01T${transfer.shifts.end_time}`);
-                const existStart = new Date(`2000-01-01T${existing.start_time}`);
-                const existEnd = new Date(`2000-01-01T${existing.end_time}`);
-                
-                return (newStart < existEnd && newEnd > existStart);
-            });
-            
-            if (hasOverlap) {
-                if (!confirm('You have conflicting shifts on this date. Continue anyway?')) {
-                    return;
-                }
-            }
-        }
-
-        // Update the shift with new staff member
+            .eq('id', transferRequestId)
+            .single();
+        
+        if (fetchError) throw fetchError;
+        
+        const { error: transferError } = await supabaseClient
+            .from('transfer_requests')
+            .update({
+                status: 'accepted',
+                approved_by: currentStaff.id,
+                approved_at: new Date().toISOString()
+            })
+            .eq('id', transferRequestId);
+        
+        if (transferError) throw transferError;
+        
         const { error: shiftError } = await supabaseClient
             .from('shifts')
             .update({
                 staff_id: currentStaff.id,
+                transfer_status: 'completed',
+                transfer_approved_by: currentStaff.id,
+                transfer_approved_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
             })
-            .eq('id', transfer.shift_id);
-
-        if (shiftError) throw shiftError;
-
-        // Update transfer request status
-        const { error: transferError } = await supabaseClient
-            .from('transfer_requests')
-            .update({
-                to_staff_id: currentStaff.id,
-                status: 'approved',
-                updated_at: new Date().toISOString()
-            })
-            .eq('id', transferId);
-
-        if (transferError) throw transferError;
-
-        showToast('Shift accepted successfully', 'success');
+            .eq('id', transferRequest.shift_id);
         
-        // Refresh the transfers view
-        if (typeof loadAvailableTransfers === 'function') {
-            await loadAvailableTransfers();
-        }
-        if (typeof loadTransfers === 'function') {
-            await loadTransfers();
-        }
-
+        if (shiftError) throw shiftError;
+        
+        showToast('Transfer accepted successfully', 'success');
+        loadIncomingTransfers();
+        loadSchedule();
+        
     } catch (error) {
         console.error('Error accepting transfer:', error);
-        showToast('Failed to accept transfer: ' + error.message, 'error');
+        showToast('Failed to accept transfer', 'error');
     }
 }
 
-
-
-// Add this function to handle both modal ID variations
-function getTransferModalId() {
-    // Check which ID exists in your HTML
-    if (document.getElementById('transferShiftModal')) {
-        return 'transferShiftModal';
-    } else if (document.getElementById('transferModal')) {
-        return 'transferModal';
+async function rejectTransfer(transferRequestId) {
+    try {
+        const { data: transferRequest, error: fetchError } = await supabaseClient
+            .from('transfer_requests')
+            .select('shift_id')
+            .eq('id', transferRequestId)
+            .single();
+        
+        if (fetchError) throw fetchError;
+        
+        const { error: transferError } = await supabaseClient
+            .from('transfer_requests')
+            .update({
+                status: 'rejected',
+                rejected_by: currentStaff.id,
+                rejected_at: new Date().toISOString()
+            })
+            .eq('id', transferRequestId);
+        
+        if (transferError) throw transferError;
+        
+        const { error: shiftError } = await supabaseClient
+            .from('shifts')
+            .update({
+                transfer_status: 'none',
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', transferRequest.shift_id);
+        
+        if (shiftError) throw shiftError;
+        
+        showToast('Transfer rejected', 'info');
+        loadIncomingTransfers();
+        
+    } catch (error) {
+        console.error('Error rejecting transfer:', error);
+        showToast('Failed to reject transfer', 'error');
     }
-    return null;
 }
 
 async function fetchNotes(shiftId) {
@@ -4793,93 +4616,36 @@ async function logout() {
 }
 
 
-        async function loadTransferableShifts() {
-    try {
-        const tomorrow = getTestDate();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        
-        const { data: shifts } = await supabaseClient
-            .from('shifts')
-            .select(`
-                *,
-                participant:participants(first_name, last_name),
-                duty_type:duty_type_id(name)
-            `)
-            .eq('staff_id', currentStaff.id)
-            .gte('date', tomorrow.toISOString().split('T')[0])
-            .is('deleted_at', null)
-            .eq('status', 'confirmed')
-            .order('date')
-            .order('start_time');
-
-        const select = document.getElementById('transferShiftSelect');
-        select.innerHTML = '<option value="">Select a shift</option>';
-        
-        if (shifts && shifts.length > 0) {
-            shifts.forEach(shift => {
-                const participant = shift.participant;
-                const label = `${formatDateShort(shift.date)} ${shift.start_time || 'Sleepover'} - ${participant?.first_name} ${participant?.last_name}`;
-                select.innerHTML += `<option value="${shift.id}" data-start="${shift.start_time}" data-end="${shift.end_time}">${label}</option>`;
-            });
-        }
-    } catch (error) {
-        console.error('Error loading transferable shifts:', error);
-        showToast('Failed to load transferable shifts', 'error');
-    }
-}
-        async function loadAdjustableShifts() {
-            const yesterday = getTestDate();
-            yesterday.setDate(yesterday.getDate() - 1);
-            
-            const { data: shifts } = await supabaseClient
-                .from('shifts')
-                .select(`
-                    *,
-                    participant:participants(first_name, last_name)
-                `)
-                .eq('staff_id', currentStaff.id)
-                .gte('date', yesterday.toISOString().split('T')[0])
-                .is('deleted_at', null)
-                .in('status', ['confirmed', 'completed'])
-                .order('date', { ascending: false })
-                .order('start_time', { ascending: false })
-                .limit(20);
-
-            const select = document.getElementById('adjustmentShift');
-            select.innerHTML = '<option value="">Select a shift</option>';
-            
-            if (shifts && shifts.length > 0) {
-                shifts.forEach(shift => {
-                    const participant = shift.participant;
-                    const label = `${formatDateShort(shift.date)} ${shift.start_time || 'Sleepover'} - ${participant?.first_name} ${participant?.last_name}`;
-                    select.innerHTML += `<option value="${shift.id}" data-start="${shift.start_time}" data-end="${shift.end_time}">${label}</option>`;
-                });
-            }
-        }
-
         async function loadParticipants() {
     try {
-        const { data: participantsData } = await supabaseClient
+        const { data, error } = await supabaseClient
             .from('participants')
             .select('*')
             .eq('is_active', true)
+            .is('deleted_at', null)  // ADDED soft delete filter
             .order('first_name');
         
-        participants = participantsData || [];
-        window.participants = participants; // Ensure global access
+        if (error) {
+            console.error('Error loading participants:', error);
+            return [];
+        }
         
-        // Build participant-location mapping
-        await buildParticipantLocationMapping();
+        participants = data || [];
         
-        // Populate all participant dropdowns
-        populateParticipantDropdowns();
+        // Build care home locations set
+        careHomeLocations.clear();
+        participants.forEach(p => {
+            if (p.address && p.address.toLowerCase().includes('saunders')) {
+                careHomeLocations.add(p.id);
+            }
+        });
         
-        console.log('Participants loaded:', participants.length);
-        console.log('Care home mappings:', participantDefaultLocations.size);
+        console.log('Loaded participants:', participants.length);
+        return participants;
         
     } catch (error) {
-        console.error('Error loading participants:', error);
-        showToast('Failed to load participants', 'error');
+        console.error('Error in loadParticipants:', error);
+        return [];
     }
 }
 
@@ -5147,12 +4913,10 @@ async function loadDocuments() {
     }
     
     try {
+        // Load documents WITHOUT the join
         const { data: documents, error } = await supabaseClient
             .from('documents')
-            .select(`
-                *,
-                document_types:document_type_id(name, requires_expiry)
-            `)
+            .select('*')
             .eq('entity_type', 'staff')
             .eq('entity_id', currentStaff.id)
             .order('created_at', { ascending: false });
@@ -5160,6 +4924,18 @@ async function loadDocuments() {
         if (error) {
             console.error('Error loading documents:', error);
             return;
+        }
+        
+        // Load document types separately
+        const { data: documentTypes } = await supabaseClient
+            .from('document_types')
+            .select('*');
+        
+        // Enrich documents with type information
+        if (documents && documentTypes) {
+            documents.forEach(doc => {
+                doc.document_type = documentTypes.find(t => t.id === doc.type_id);
+            });
         }
         
         displayDocuments(documents || []);
@@ -5185,9 +4961,9 @@ function displayDocuments(documents) {
     }
     
     container.innerHTML = documents.map(doc => {
-        // Get the document type name from the joined data
-        const typeName = doc.document_types?.name || 'Unknown Type';
-        const requiresExpiry = doc.document_types?.requires_expiry || false;
+        // Get type info from enriched data
+        const typeName = doc.document_type?.name || 'Unknown Type';
+        const requiresExpiry = doc.document_type?.requires_expiry || false;
         
         // Check if document is expired
         const isExpired = doc.expiry_date && new Date(doc.expiry_date) < new Date();
@@ -5206,21 +4982,15 @@ function displayDocuments(documents) {
                         </p>
                     ` : ''}
                     ${doc.notes ? `<p class="notes">${doc.notes}</p>` : ''}
-                    <p class="upload-date">Uploaded: ${formatDate(doc.created_at)}</p>
                 </div>
                 <div class="document-actions">
-                    <a href="${doc.file_url}" target="_blank" class="btn btn-sm btn-primary">
-                        <i class="fas fa-download"></i> View
-                    </a>
-                    <button onclick="deleteDocument('${doc.id}')" class="btn btn-sm btn-danger">
-                        <i class="fas fa-trash"></i> Delete
-                    </button>
+                    <a href="${doc.file_url}" target="_blank" class="btn btn-sm btn-primary">View</a>
+                    <button data-action-with-param="deleteDocument" data-param="${doc.id}" class="btn btn-sm btn-danger">Delete</button>
                 </div>
             </div>
         `;
     }).join('');
 }
-
 
         async function loadAvailability() {
             const { data: availability } = await supabaseClient
@@ -5247,6 +5017,7 @@ function displayDocuments(documents) {
         const { data: shift } = await supabaseClient
             .from('shifts')
             .select('*')
+            .is('deleted_at', null)
             .eq('id', parseInt(shiftId))
             .single();
 
@@ -5305,11 +5076,13 @@ async function checkIfSleepover(dutyTypeId) {
     const { data } = await supabaseClient
         .from('duty_types')
         .select('name')
+        .is('deleted_at', null)
         .eq('id', dutyTypeId)
         .single();
     
     return data?.name?.toLowerCase().includes('sleepover') || false;
 }
+
 
 // Helper function to parse time string to minutes for comparison
 function parseTime(timeString) {
@@ -5353,7 +5126,7 @@ async function displayShiftNotes(shiftId) {
             <div class="note-footer">
                 <span class="note-time">${formatDateTime(note.created_at)}</span>
                 ${note.staff_id === currentStaff.id ? `
-                    <button onclick="deleteNote('${note.id}')" class="btn-delete-note">
+                    <button data-action-with-param="deleteNote" data-param="${note.id}" class="btn-delete-note">
                         <i class="fas fa-trash"></i>
                     </button>
                 ` : ''}
@@ -5411,91 +5184,98 @@ async function submitShift() {
         const participantId = document.getElementById('shiftParticipant').value;
         const dutyTypeId = document.getElementById('shiftDutyType').value;
         const notes = document.getElementById('shiftNotes').value;
+        const startTime = document.getElementById('shiftStartTime').value;
+        const endTime = document.getElementById('shiftEndTime').value;
         
-        // GET THE LOCATION VALUE - THIS WAS MISSING!
-        const locationId = document.getElementById('shiftLocation')?.value;
-
+        // GET THE LOCATION VALUE
+        const locationId = document.getElementById('shiftLocation').value;
+        
+        // Validate required fields
         if (!date || !participantId || !dutyTypeId) {
-            showToast('Please fill all required fields', 'error');
+            showToast('Please fill in all required fields', 'error');
             return;
         }
-
-        // Check if sleepover
-        const { data: dutyType } = await supabaseClient
-            .from('duty_types')
-            .select('name')
-            .eq('id', dutyTypeId)
-            .single();
         
-        const isSleepover = dutyType?.name?.toLowerCase().includes('sleepover');
-        
-        // Get times only if NOT sleepover
-        let startTime = null;
-        let endTime = null;
-        if (!isSleepover) {
-            startTime = document.getElementById('shiftStartTime').value;
-            endTime = document.getElementById('shiftEndTime').value;
-            
-            if (!startTime || !endTime) {
-                showToast('Please enter start and end times', 'error');
-                return;
-            }
-        }
-        
-        // If no location selected, try to set a default
+        // Determine final location
         let finalLocationId = locationId;
-        
         if (!finalLocationId) {
-            // Check if this participant has a default location (care home)
-            if (window.participantDefaultLocations && window.participantDefaultLocations.has(participantId)) {
-                finalLocationId = window.participantDefaultLocations.get(participantId);
-                console.log('Using participant\'s default care home location');
+            // Auto-assign based on participant
+            const participant = participants.find(p => p.id === participantId);
+            if (participant?.address?.toLowerCase().includes('saunders')) {
+                // Find Saunders location
+                const saundersLocation = locations.find(l => 
+                    l.name.toLowerCase().includes('saunders') || 
+                    l.id === '00000000-0000-0000-0000-000000000003'
+                );
+                finalLocationId = saundersLocation?.id;
             } else {
-                // Try to find "Client Home" as default
-                const clientHome = locations?.find(l => 
-                    l.name.toLowerCase().includes('client home') || 
+                // Default to Client Home
+                const clientHome = locations.find(l => 
+                    l.name.toLowerCase().includes('client home') ||
                     l.id === '00000000-0000-0000-0000-000000000001'
                 );
-                
-                if (clientHome) {
-                    finalLocationId = clientHome.id;
-                    console.log('Using Client Home as default location');
-                } else if (locations && locations.length > 0) {
-                    // Last resort: use first available location
-                    finalLocationId = locations[0].id;
-                    console.log('Using first available location as default');
-                }
+                finalLocationId = clientHome?.id;
             }
         }
         
-        // Validate we have a location
         if (!finalLocationId) {
-            showToast('Location is required. Please select a location.', 'error');
+            showToast('Unable to determine location. Please select a location.', 'error');
             return;
         }
 
-        // Create shift data with valid location_id
+        // GET THE CORRECT PAY RATE
+        let payRateId = null;
+        
+        // Check if current staff has a pay_rate_id
+        if (currentStaff?.pay_rate_id) {
+            payRateId = currentStaff.pay_rate_id;
+        }
+        
+        // If no pay rate found, use default
+        if (!payRateId) {
+            payRateId = '00000000-0000-0000-0000-000000000002'; // Default pay rate UUID
+        }
+
+        // Create shift data with CORRECT pay_override_id
         const shiftData = {
             date: date,
-            start_time: startTime,
-            end_time: endTime,
+            start_time: startTime || null,
+            end_time: endTime || null,
             staff_id: currentStaff.id,
             participant_id: participantId,
             duty_type_id: dutyTypeId,
-            location_id: finalLocationId,  // NOW PROPERLY SET!
-            pay_override_id: dutyTypeId,  // Use duty type as default
+            location_id: finalLocationId,
+            pay_override_id: payRateId, // NOW USING CORRECT PAY RATE!
             created_by: currentUser.id,
-            status: 'pending',  // Awaiting approval
+            status: 'pending',
             notes: notes || null
         };
 
-        console.log('Submitting shift with data:', shiftData);
-
+const payOverrideId = currentStaff?.pay_rate_id;
+        
+        if (!payOverrideId) {
+            showToast('Staff pay rate not found', 'error');
+            return;
+        }
         const { data, error } = await supabaseClient
             .from('shifts')
-            .insert(shiftData)
-            .select();
-
+            .insert({
+                staff_id: currentStaff.id,
+                participant_id: participantId,
+                location_id: locationId,
+                duty_type_id: dutyTypeId,
+                pay_override_id: payOverrideId, // CRITICAL: Add this
+                date: shiftDate,
+                start_time: startTime || null,
+                end_time: endTime || null,
+                status: 'scheduled',
+                notes: notes || null,
+                created_by: currentStaff.id,
+                created_at: new Date().toISOString()
+            })
+            .select()
+            .single();
+            
         if (error) throw error;
 
         showToast('Shift submitted for approval', 'success');
@@ -5504,7 +5284,7 @@ async function submitShift() {
         // Clear form
         document.getElementById('shiftForm').reset();
         
-        // Reload shifts to show the new one
+        // Reload shifts
         if (typeof loadMyShifts === 'function') {
             await loadMyShifts();
         }
@@ -5517,6 +5297,7 @@ async function submitShift() {
         showToast('Failed to submit shift: ' + error.message, 'error');
     }
 }
+
 
 function populateLocationDropdown() {
     const select = document.getElementById('shiftLocation');
@@ -5593,117 +5374,40 @@ function onDutyTypeChange() {
     }
 }
 
-
-
-const ModalManager = {
-    // Modal configurations
-    modals: {
-        addShift: {
-            id: 'addShiftModal',
-            onOpen: () => populateShiftModalDropdowns(),
-            onClose: () => document.getElementById('addShiftForm')?.reset()
-        },
-        transfer: {
-            id: 'transferModal',
-            onOpen: () => loadTransferModalData(),
-            onClose: () => document.getElementById('transferForm')?.reset()
-        },
-        adjustment: {
-            id: 'adjustmentModal',
-            onOpen: () => loadAdjustmentModalData(),
-            onClose: () => document.getElementById('adjustmentForm')?.reset()
-        },
-        leave: {
-            id: 'leaveModal',
-            onOpen: null,
-            onClose: () => document.getElementById('leaveForm')?.reset()
-        }
-    },
-    
-    // Current open modal
-    currentModal: null,
-    
-    // Open modal by name
-    show(modalName, data = null) {
-        const config = this.modals[modalName];
-        if (!config) {
-            console.error(`Modal '${modalName}' not found`);
-            return;
+function setCurrentPayPeriod(offset = 0) {
+    try {
+        // Update the global offset
+        window.periodOffset = offset;
+        
+        // Calculate the current period
+        const period = calculatePayPeriod(new Date(), window.periodOffset);
+        
+        // Store globally
+        window.currentPeriodStart = period.start;
+        window.currentPeriodEnd = period.end;
+        
+        // Update UI
+        updatePeriodDisplay(period.start, period.end);
+        
+        // Reload timesheet if visible
+        if (document.querySelector('.timesheet-section')?.style.display !== 'none') {
+            loadTimesheetForPeriod(period.start, period.end);
         }
         
-        // Close any open modal first
-        if (this.currentModal) {
-            this.close();
-        }
+        console.log('Period set:', {
+            start: period.start.toLocaleDateString(),
+            end: period.end.toLocaleDateString(),
+            offset: window.periodOffset
+        });
         
-        const modalElement = document.getElementById(config.id);
-        if (!modalElement) {
-            console.error(`Modal element '${config.id}' not found`);
-            return;
-        }
-        
-        // Store current modal
-        this.currentModal = {
-            name: modalName,
-            element: modalElement,
-            config: config
-        };
-        
-        // Show modal
-        modalElement.classList.add('active');
-        modalElement.style.display = 'flex';
-        
-        // Run onOpen callback if exists
-        if (config.onOpen) {
-            config.onOpen(data);
-        }
-        
-        // Add escape key listener
-        this.escapeHandler = (e) => {
-            if (e.key === 'Escape') {
-                this.close();
-            }
-        };
-        document.addEventListener('keydown', this.escapeHandler);
-    },
-    
-    // Close current modal
-    close() {
-        if (!this.currentModal) return;
-        
-        const { element, config } = this.currentModal;
-        
-        // Hide modal
-        element.classList.remove('active');
-        element.style.display = 'none';
-        
-        // Run onClose callback if exists
-        if (config.onClose) {
-            config.onClose();
-        }
-        
-        // Remove escape handler
-        if (this.escapeHandler) {
-            document.removeEventListener('keydown', this.escapeHandler);
-        }
-        
-        // Clear current modal
-        this.currentModal = null;
-    },
-    
-    // Check if a modal is open
-    isOpen(modalName = null) {
-        if (!modalName) {
-            return this.currentModal !== null;
-        }
-        return this.currentModal?.name === modalName;
-    },
-    
-    // Get current modal data
-    getCurrent() {
-        return this.currentModal;
+    } catch (error) {
+        console.error('Error setting pay period:', error);
+        // Set fallback dates
+        const today = new Date();
+        window.currentPeriodStart = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 7);
+        window.currentPeriodEnd = today;
     }
-};
+}
 
 function showAddShiftModal() {
     const modal = document.getElementById('addShiftModal');
@@ -5730,20 +5434,322 @@ function showAddShiftModal() {
     }
 }
 
+async function loadTransferableShifts() {
+    try {
+        const today = getTestDate();
+        today.setHours(0, 0, 0, 0);
+        
+        const fourteenDaysFromNow = new Date(today);
+        fourteenDaysFromNow.setDate(fourteenDaysFromNow.getDate() + 14);
+        
+        const { data: shifts, error } = await supabaseClient
+            .from('shifts')
+            .select(`
+                id,
+                date,
+                start_time,
+                end_time,
+                participant_id,
+                duty_type_id,
+                participant:participants(first_name, last_name),
+                duty_type:duty_types(name)
+            `)
+            .eq('staff_id', currentStaff.id)
+            .gte('date', today.toISOString().split('T')[0])
+            .lte('date', fourteenDaysFromNow.toISOString().split('T')[0])
+            .is('deleted_at', null)
+            .order('date', { ascending: true })
+            .order('start_time', { ascending: true });
 
-function showTransferModal() {
-    const modalId = getTransferModalId();
-    if (modalId) {
-        const modal = document.getElementById(modalId);
-        modal.style.display = 'flex';
-        modal.classList.add('active');
-        loadTransferModalData();
-    } else {
-        console.error('Transfer modal not found');
+        if (error) throw error;
+
+        const select = document.getElementById('transferShiftSelect');
+        select.innerHTML = '<option value="">Select a shift to transfer</option>';
+        
+        if (!shifts || shifts.length === 0) {
+            select.innerHTML += '<option value="" disabled>No upcoming shifts to transfer</option>';
+            return;
+        }
+        
+        shifts.forEach(shift => {
+            const option = document.createElement('option');
+            option.value = shift.id;
+            
+            const date = new Date(shift.date);
+            const dayName = date.toLocaleDateString('en-AU', { weekday: 'short' });
+            const day = date.getDate();
+            const month = date.toLocaleDateString('en-AU', { month: 'short' });
+            
+            const participantName = shift.participant 
+                ? `${shift.participant.first_name} ${shift.participant.last_name}`
+                : 'Unassigned';
+            
+            const isSleepover = shift.duty_type?.name?.toLowerCase().includes('sleepover') || false;
+            
+            let timeRange = '';
+            if (!isSleepover && shift.start_time && shift.end_time) {
+                const startTime = formatTimeDisplay(shift.start_time);
+                const endTime = formatTimeDisplay(shift.end_time);
+                timeRange = `, ${startTime}-${endTime}`;
+            } else if (isSleepover) {
+                timeRange = ', Sleepover';
+            }
+            
+            const dutyTypeLabel = shift.duty_type?.name || 'Standard';
+            option.textContent = `${dayName} ${day} ${month} - ${participantName}${timeRange} (${dutyTypeLabel})`;
+            
+            option.dataset.date = shift.date;
+            option.dataset.startTime = shift.start_time || '';
+            option.dataset.endTime = shift.end_time || '';
+            option.dataset.isSleepover = isSleepover.toString();
+            
+            select.appendChild(option);
+        });
+        
+    } catch (error) {
+        console.error('Error loading transferable shifts:', error);
+        showToast('Failed to load shifts', 'error');
     }
 }
 
+// Initialize searchable staff dropdown
+async function initializeStaffSearch() {
+    // Load all active staff
+    const { data: staffList, error } = await supabaseClient
+        .from('staff')
+        .select('id, first_name, last_name, staff_code')
+        .eq('is_active', true)
+        .is('deleted_at', null)
+        .neq('id', currentStaff.id)  // Exclude current user
+        .order('first_name');
+    
+    if (error) {
+        console.error('Error loading staff:', error);
+        return;
+    }
+    
+    window.availableStaff = staffList || [];
+    
+    const searchInput = document.getElementById('transferToStaffSearch');
+    const resultsDiv = document.getElementById('staffSearchResults');
+    const hiddenSelect = document.getElementById('transferToStaff');
+    
+    // Search functionality
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        
+        if (searchTerm.length === 0) {
+            resultsDiv.style.display = 'none';
+            return;
+        }
+        
+        const filtered = window.availableStaff.filter(s => 
+            `${s.first_name} ${s.last_name}`.toLowerCase().includes(searchTerm) ||
+            s.staff_code?.toLowerCase().includes(searchTerm)
+        );
+        
+        if (filtered.length > 0) {
+            resultsDiv.innerHTML = filtered.map(s => `
+                <div class="search-dropdown-item" data-id="${s.id}" data-name="${s.first_name} ${s.last_name}">
+                    ${s.first_name} ${s.last_name} (${s.staff_code || 'No code'})
+                </div>
+            `).join('');
+            resultsDiv.style.display = 'block';
+        } else {
+            resultsDiv.innerHTML = '<div class="search-dropdown-item">No staff found</div>';
+            resultsDiv.style.display = 'block';
+        }
+    });
+    
+    // Click handler for dropdown items
+    resultsDiv.addEventListener('click', function(e) {
+        const item = e.target.closest('.search-dropdown-item');
+        if (item && item.dataset.id) {
+            searchInput.value = item.dataset.name;
+            hiddenSelect.value = item.dataset.id;
+            resultsDiv.style.display = 'none';
+            
+            // Check for conflicts when staff is selected
+            checkTransferConflicts();
+        }
+    });
+    
+    // Hide dropdown on click outside
+    document.addEventListener('click', function(e) {
+        if (!searchInput.contains(e.target) && !resultsDiv.contains(e.target)) {
+            resultsDiv.style.display = 'none';
+        }
+    });
+}
+
+// Check for transfer conflicts
+async function checkTransferConflicts() {
+    const shiftSelect = document.getElementById('transferShiftSelect');
+    const targetStaffId = document.getElementById('transferToStaff').value;
+    
+    if (!shiftSelect.value || !targetStaffId) {
+        document.getElementById('transferConflictWarning').style.display = 'none';
+        return;
+    }
+    
+    const selectedShift = shiftSelect.options[shiftSelect.selectedIndex];
+    const shiftDate = selectedShift.dataset.date;
+    const shiftStart = selectedShift.dataset.startTime;
+    const shiftEnd = selectedShift.dataset.endTime;
+    const isSleepover = selectedShift.dataset.isSleepover === 'true';
+    
+    // Get target staff's shifts on the same date
+    const { data: targetShifts, error } = await supabaseClient
+        .from('shifts')
+        .select(`
+            id, 
+            start_time, 
+            end_time,
+            duty_type:duty_types(name)
+        `)
+        .eq('staff_id', targetStaffId)
+        .eq('date', shiftDate)
+        .is('deleted_at', null);
+    
+    if (error) {
+        console.error('Error checking conflicts:', error);
+        return;
+    }
+    
+    const warningDiv = document.getElementById('transferConflictWarning');
+    let hasConflict = false;
+    let requiresApproval = false;
+    let conflictMessage = '';
+    
+    if (targetShifts && targetShifts.length > 0) {
+        for (const existingShift of targetShifts) {
+            const existingIsSleepover = existingShift.duty_type?.name?.toLowerCase().includes('sleepover');
+            
+            // Check if either is a sleepover
+            if (isSleepover || existingIsSleepover) {
+                hasConflict = true;
+                conflictMessage = '⛔ Cannot transfer: Target staff already has a shift on this date (sleepover conflict)';
+                break;
+            }
+            
+            if (shiftStart && shiftEnd && existingShift.start_time && existingShift.end_time) {
+                const newStart = parseTimeToMinutes(shiftStart);
+                const newEnd = parseTimeToMinutes(shiftEnd);
+                const existingStart = parseTimeToMinutes(existingShift.start_time);
+                const existingEnd = parseTimeToMinutes(existingShift.end_time);
+                
+                // Check for direct overlap
+                if (!(newEnd <= existingStart || newStart >= existingEnd)) {
+                    hasConflict = true;
+                    conflictMessage = `⛔ Cannot transfer: Overlaps with existing shift (${formatTimeDisplay(existingShift.start_time)}-${formatTimeDisplay(existingShift.end_time)})`;
+                    break;
+                }
+                
+                // Check for 1-hour buffer
+                const gapBefore = newStart - existingEnd;
+                const gapAfter = existingStart - newEnd;
+                
+                if ((gapBefore >= 0 && gapBefore < 60) || (gapAfter >= 0 && gapAfter < 60)) {
+                    requiresApproval = true;
+                    conflictMessage = `⚠️ Warning: Less than 1 hour gap with existing shift (${formatTimeDisplay(existingShift.start_time)}-${formatTimeDisplay(existingShift.end_time)}). Transfer requires manager approval.`;
+                }
+            }
+        }
+    }
+    
+    if (hasConflict) {
+        warningDiv.innerHTML = `<div class="alert alert-danger">${conflictMessage}</div>`;
+        warningDiv.style.display = 'block';
+        document.querySelector('[data-action="submitTransfer"]').disabled = true;
+    } else if (requiresApproval) {
+        warningDiv.innerHTML = `<div class="alert alert-warning">${conflictMessage}</div>`;
+        warningDiv.style.display = 'block';
+        document.querySelector('[data-action="submitTransfer"]').disabled = false;
+        // Store that this requires approval
+        window.transferRequiresApproval = true;
+    } else {
+        warningDiv.style.display = 'none';
+        document.querySelector('[data-action="submitTransfer"]').disabled = false;
+        window.transferRequiresApproval = false;
+    }
+}
+
+// Helper function to parse time
+function parseTimeToMinutes(timeString) {
+    const [hours, minutes] = timeString.split(':').map(Number);
+    return hours * 60 + minutes;
+}
+
+// Updated submit transfer function
+async function submitTransfer() {
+    try {
+        const shiftId = document.getElementById('transferShiftSelect').value;
+        const toStaffId = document.getElementById('transferToStaff').value;
+        const reason = document.getElementById('transferReason').value;
+        
+        if (!shiftId || !toStaffId || !reason) {
+            showToast('Please fill in all required fields', 'error');
+            return;
+        }
+        
+        // Create transfer request
+        const { data, error } = await supabaseClient
+            .from('transfer_requests')
+            .insert({
+                shift_id: parseInt(shiftId),
+                from_staff_id: currentStaff.id,
+                to_staff_id: toStaffId,
+                status: window.transferRequiresApproval ? 'pending_approval' : 'pending',
+                reason: reason,
+                created_at: new Date().toISOString()
+            });
+        
+        if (!error) {
+            // Update shift transfer status
+            await supabaseClient
+                .from('shifts')
+                .update({
+                    transfer_status: 'requested'
+                })
+                .eq('id', parseInt(shiftId));
+        }
+        
+        if (error) {
+            console.error('Transfer request error:', error);
+            showToast('Failed to submit transfer request', 'error');
+        } else {
+            const message = window.transferRequiresApproval 
+                ? 'Transfer request submitted for manager approval' 
+                : 'Transfer request submitted successfully';
+            showToast(message, 'success');
+            closeModal('transferShiftModal');
+            document.getElementById('transferForm').reset();
+            document.getElementById('transferToStaffSearch').value = '';
+            document.getElementById('transferToStaff').value = '';
+        }
+    } catch (error) {
+        console.error('Error submitting transfer:', error);
+        showToast('Failed to submit transfer request', 'error');
+    }
+}
+
+
+function showTransferModal() {
+    loadTransferableShifts();
+    initializeStaffSearch();
+    ModalManager.show('transfer');
+    
+    // Add listeners for conflict checking
+    setTimeout(() => {
+        const shiftSelect = document.getElementById('transferShiftSelect');
+        if (shiftSelect) {
+            shiftSelect.addEventListener('change', checkTransferConflicts);
+        }
+    }, 500);
+}
+
 function showAdjustmentModal() {
+    loadAdjustmentShifts();
     ModalManager.show('adjustment');
 }
 
@@ -5936,35 +5942,6 @@ async function populateStaffDropdown() {
     });
 }
 
-async function populateAdjustableShifts() {
-    const select = document.getElementById('adjustmentShift');
-    if (!select) return;
-    
-    select.innerHTML = '<option value="">Select a shift</option>';
-    
-    const { data: myShifts } = await supabaseClient
-        .from('shifts')
-        .select('*, participants(first_name, last_name)')
-        .eq('staff_id', currentStaff.id)
-        .gte('date', getTestDate().toISOString().split('T')[0])
-        .order('date', { ascending: true });
-    
-    if (myShifts && myShifts.length > 0) {
-        myShifts.forEach(shift => {
-            const option = document.createElement('option');
-            option.value = shift.id;  // Already INTEGER
-            option.dataset.start = shift.start_time || '';
-            option.dataset.end = shift.end_time || '';
-            
-            const clientName = shift.participants ? 
-                `${shift.participants.first_name} ${shift.participants.last_name}` : 
-                'Unknown Client';
-            option.textContent = `${formatDateShort(shift.date)} - ${clientName} (${shift.start_time || 'Sleepover'})`;
-            select.appendChild(option);
-        });
-    }
-}
-
 function ensureIntegerId(id) {
     if (typeof id === 'number') return id;
     const parsed = parseInt(id, 10);
@@ -5974,52 +5951,124 @@ function ensureIntegerId(id) {
     return parsed;
 }
 
-async function submitAdjustment() {
-    try {
-        const shiftId = document.getElementById('adjustmentShift').value;
-        const newStartTime = document.getElementById('adjustmentStartTime').value;
-        const newEndTime = document.getElementById('adjustmentEndTime').value;
-        const reason = document.getElementById('adjustmentReason').value;
 
-        if (!shiftId || !reason) {
-            showToast('Please select a shift and provide a reason', 'error');
+async function loadAdjustmentShifts() {
+    try {
+        // Use getTestDate() which applies your DATE_OFFSET_DAYS
+        const today = getTestDate();
+        today.setHours(23, 59, 59, 999);
+        
+        const sevenDaysAgo = new Date(today);
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        sevenDaysAgo.setHours(0, 0, 0, 0);
+        
+        console.log('Date range with test offset:', {
+            from: sevenDaysAgo.toISOString().split('T')[0],
+            to: today.toISOString().split('T')[0]
+        });
+        
+        // Get shifts for the current staff member
+        const { data: shifts, error } = await supabaseClient
+            .from('shifts')
+            .select(`
+                id,
+                date,
+                start_time,
+                end_time,
+                participant_id,
+                duty_type_id,
+                participant:participants(first_name, last_name),
+                duty_type:duty_types(name)
+            `)
+            .eq('staff_id', currentStaff.id)
+            .gte('date', sevenDaysAgo.toISOString().split('T')[0])
+            .lte('date', today.toISOString().split('T')[0])
+            .is('deleted_at', null)
+            .order('date', { ascending: false });
+
+        if (error) throw error;
+
+        const select = document.getElementById('adjustmentShift');
+        select.innerHTML = '<option value="">Select a shift</option>';
+        
+        if (!shifts || shifts.length === 0) {
+            select.innerHTML += '<option value="" disabled>No shifts in the past 7 days</option>';
             return;
         }
-
-        // Validate times if provided
-        if (newStartTime && newEndTime) {
-            const start = new Date(`2000-01-01T${newStartTime}`);
-            const end = new Date(`2000-01-01T${newEndTime}`);
-            if (end <= start) {
-                showToast('End time must be after start time', 'error');
-                return;
-            }
-        }
-
-        const { data, error } = await supabaseClient
-            .from('shift_adjustment_requests')
-            .insert({
-                shift_id: parseInt(shiftId), // Ensure INTEGER type
-                staff_id: currentStaff.id,
-                requested_start_time: newStartTime || null, // Correct column name
-                requested_end_time: newEndTime || null,     // Correct column name
-                reason: reason,
-                status: 'pending',
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-            })
-            .select()
-            .single();
-            
-        if (error) throw error;
         
-        showToast('Time adjustment request sent successfully', 'success');
-        closeModal('adjustmentModal');
-        document.getElementById('adjustmentForm').reset();
+        shifts.forEach(shift => {
+            const option = document.createElement('option');
+            option.value = shift.id;
+            
+            const date = new Date(shift.date);
+            const dayName = date.toLocaleDateString('en-AU', { weekday: 'short' });
+            const day = date.getDate();
+            const month = date.toLocaleDateString('en-AU', { month: 'short' });
+            
+            const participantName = shift.participant 
+                ? `${shift.participant.first_name} ${shift.participant.last_name}`
+                : 'Unassigned';
+            
+            const isSleepover = shift.duty_type?.name?.toLowerCase().includes('sleepover') || false;
+            
+            let timeRange = '';
+            if (!isSleepover && shift.start_time && shift.end_time) {
+                const startTime = formatTimeDisplay(shift.start_time);
+                const endTime = formatTimeDisplay(shift.end_time);
+                timeRange = `, ${startTime}-${endTime}`;
+            } else if (isSleepover) {
+                timeRange = ', Sleepover';
+            }
+            
+            const dutyTypeLabel = shift.duty_type?.name || 'Standard';
+            option.textContent = `${dayName} ${day} ${month} - ${participantName}${timeRange} (${dutyTypeLabel})`;
+            
+            option.dataset.startTime = shift.start_time || '';
+            option.dataset.endTime = shift.end_time || '';
+            option.dataset.isSleepover = isSleepover.toString();
+            
+            select.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error loading shifts:', error);
+        showToast('Failed to load shifts', 'error');
+    }
+}
+// Helper function to format time for display (e.g., "11am", "10:30pm")
+function formatTimeDisplay(timeString) {
+    if (!timeString) return '';
+    const [hours, minutes] = timeString.split(':');
+    const hour = parseInt(hours);
+    const min = parseInt(minutes);
+    const period = hour >= 12 ? 'pm' : 'am';
+    const displayHour = hour > 12 ? hour - 12 : (hour === 0 ? 12 : hour);
+    const displayMin = min > 0 ? `:${min.toString().padStart(2, '0')}` : '';
+    return `${displayHour}${displayMin}${period}`;
+}
+
+
+async function loadLeaveRequestModal() {
+    try {
+        const today = getTestDate();
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        
+        // Set default start date to tomorrow
+        const startDateInput = document.getElementById('leaveStartDate');
+        if (startDateInput) {
+            startDateInput.value = tomorrow.toISOString().split('T')[0];
+            startDateInput.min = tomorrow.toISOString().split('T')[0];
+        }
+        
+        // Set default end date to same as start
+        const endDateInput = document.getElementById('leaveEndDate');
+        if (endDateInput) {
+            endDateInput.value = tomorrow.toISOString().split('T')[0];
+            endDateInput.min = tomorrow.toISOString().split('T')[0];
+        }
         
     } catch (error) {
-        console.error('Error submitting adjustment:', error);
-        showToast('Failed to send adjustment request: ' + error.message, 'error');
+        console.error('Error loading leave modal:', error);
     }
 }
 
@@ -6039,12 +6088,30 @@ async function submitLeave() {
         const endDate = document.getElementById('leaveEndDate').value;
         const reason = document.getElementById('leaveReason').value;
 
+        // ADD THIS DEBUGGING
+        console.log('Leave form values:', {
+            leaveType,
+            startDate,
+            endDate,
+            reason,
+            leaveTypeElement: document.getElementById('leaveType'),
+            startDateElement: document.getElementById('leaveStartDate'),
+            endDateElement: document.getElementById('leaveEndDate')
+        });
+
         if (!leaveType || !startDate || !endDate) {
+            // ADD MORE DEBUGGING
+            console.log('Validation failed:', {
+                leaveType: leaveType || 'EMPTY',
+                startDate: startDate || 'EMPTY',
+                endDate: endDate || 'EMPTY'
+            });
             showToast('Please fill all required fields', 'error');
             isSubmittingLeave = false;
             return;
         }
 
+        // Rest of your code stays the same...
         // Validate dates
         if (new Date(endDate) < new Date(startDate)) {
             showToast('End date must be after start date', 'error');
@@ -6081,54 +6148,186 @@ async function submitLeave() {
         isSubmittingLeave = false;
     }
 }
-function addModalsToDOM() {
-    // Only add if not already present
-    if (!document.getElementById('leaveModal')) {
-        const modalsHTML = `<!-- your modal HTML here -->`;
-        document.body.insertAdjacentHTML('beforeend', modalsHTML);
-    }
-}
 
-
-
-async function loadShiftTimes() {
-    const shiftId = document.getElementById('adjustmentShift').value;
-    if (!shiftId) return;
+function loadShiftTimes() {
+    const select = document.getElementById('adjustmentShift');
+    const selectedOption = select.options[select.selectedIndex];
     
-    const { data: shift } = await supabaseClient
-        .from('shifts')
-        .select('start_time, end_time')
-        .eq('id', shiftId)
-        .single();
-        
-    if (shift) {
-        document.getElementById('adjustmentStartTime').value = shift.start_time || '';
-        document.getElementById('adjustmentEndTime').value = shift.end_time || '';
+    if (!selectedOption || !selectedOption.value) return;
+    
+    const startTimeInput = document.getElementById('adjustmentStartTime');
+    const endTimeInput = document.getElementById('adjustmentEndTime');
+    const isSleepover = selectedOption.dataset.isSleepover === 'true';
+    
+    // Populate with original times (without seconds)
+    if (selectedOption.dataset.startTime) {
+        // Remove seconds from time
+        startTimeInput.value = selectedOption.dataset.startTime.substring(0, 5);
+    }
+    if (selectedOption.dataset.endTime) {
+        endTimeInput.value = selectedOption.dataset.endTime.substring(0, 5);
+    }
+    
+    // Handle sleepover shifts
+    if (isSleepover) {
+        startTimeInput.disabled = true;
+        endTimeInput.disabled = true;
+        startTimeInput.removeAttribute('required');
+        endTimeInput.removeAttribute('required');
+        document.querySelector('label[for="adjustmentStartTime"]').textContent = 'Start Time (Not required for sleepover)';
+        document.querySelector('label[for="adjustmentEndTime"]').textContent = 'End Time (Not required for sleepover)';
+    } else {
+        startTimeInput.disabled = false;
+        endTimeInput.disabled = false;
+        startTimeInput.setAttribute('required', 'required');
+        endTimeInput.setAttribute('required', 'required');
+        document.querySelector('label[for="adjustmentStartTime"]').textContent = 'New Start Time';
+        document.querySelector('label[for="adjustmentEndTime"]').textContent = 'New End Time';
+    }
+    
+    // Set 30-minute step intervals
+    startTimeInput.step = '1800'; // 30 minutes in seconds
+    endTimeInput.step = '1800';
+    
+    // Add validation listeners
+    startTimeInput.removeEventListener('change', validateTimes);
+    endTimeInput.removeEventListener('change', validateTimes);
+    startTimeInput.addEventListener('change', validateTimes);
+    endTimeInput.addEventListener('change', validateTimes);
+}
+
+function validateTimes() {
+    const startTimeInput = document.getElementById('adjustmentStartTime');
+    const endTimeInput = document.getElementById('adjustmentEndTime');
+    
+    if (!startTimeInput.value || !endTimeInput.value) return;
+    
+    const startTime = startTimeInput.value;
+    const endTime = endTimeInput.value;
+    
+    // Compare times
+    if (endTime <= startTime) {
+        endTimeInput.setCustomValidity('End time must be after start time');
+        showToast('End time must be after start time', 'error');
+        endTimeInput.value = ''; // Clear invalid end time
+    } else {
+        endTimeInput.setCustomValidity('');
     }
 }
+
+async function submitAdjustment() {
+    try {
+        const select = document.getElementById('adjustmentShift');
+        const selectedOption = select.options[select.selectedIndex];
+        const shiftId = select.value;
+        const reason = document.getElementById('adjustmentReason').value;
+        const newStartTime = document.getElementById('adjustmentStartTime').value;
+        const newEndTime = document.getElementById('adjustmentEndTime').value;
+        const isSleepover = selectedOption.dataset.isSleepover === 'true';
+        
+        if (!shiftId || !reason) {
+            showToast('Please fill in required fields', 'error');
+            return;
+        }
+        
+        // Validate times for non-sleepover shifts
+        if (!isSleepover) {
+            if (!newStartTime || !newEndTime) {
+                showToast('Start and end times are required for non-sleepover shifts', 'error');
+                return;
+            }
+            
+            if (newEndTime <= newStartTime) {
+                showToast('End time must be after start time', 'error');
+                return;
+            }
+        }
+        
+        // Get original times from the selected option
+        const originalStartTime = selectedOption.dataset.startTime || null;
+        const originalEndTime = selectedOption.dataset.endTime || null;
+        
+        // Add seconds to times for database storage
+        const formattedStartTime = newStartTime ? `${newStartTime}:00` : null;
+        const formattedEndTime = newEndTime ? `${newEndTime}:00` : null;
+        
+        // Update the shift record directly
+        const { data, error } = await supabaseClient
+            .from('shifts')
+            .update({
+                original_start_time: originalStartTime,
+                original_end_time: originalEndTime,
+                adjusted_start_time: formattedStartTime,
+                adjusted_end_time: formattedEndTime,
+                adjustment_reason: reason,
+                adjustment_status: 'pending'
+            })
+            .eq('id', parseInt(shiftId));
+        
+        if (error) {
+            console.error('Adjustment request error:', error);
+            showToast('Failed to submit adjustment request', 'error');
+        } else {
+            showToast('Adjustment request submitted', 'success');
+            closeModal('adjustmentModal');
+            document.getElementById('adjustmentForm').reset();
+            
+            // Refresh the schedule if it's visible
+            if (document.getElementById('schedule').classList.contains('active')) {
+                loadSchedule();
+            }
+        }
+    } catch (error) {
+        console.error('Error submitting adjustment:', error);
+        showToast('Failed to submit adjustment request', 'error');
+    }
+}
+
+async function loadDutyTypes() {
+    try {
+        const { data, error } = await supabaseClient
+            .from('duty_types')
+            .select('*')
+            .eq('is_active', true)
+            .order('name');
+        
+        if (error) {
+            console.error('Error loading duty types:', error);
+            return [];
+        }
+        
+        dutyTypes = data || [];
+        console.log('Loaded duty types:', dutyTypes.length);
+        return dutyTypes;
+        
+    } catch (error) {
+        console.error('Error in loadDutyTypes:', error);
+        return [];
+    }
+}
+
 async function loadLocations() {
     try {
-        const { data: locationsData } = await supabaseClient
+        const { data, error } = await supabaseClient
             .from('locations')
             .select('*')
             .eq('is_active', true)
             .order('name');
         
-        locations = locationsData || [];
-        window.locations = locations;
+        if (error) {
+            console.error('Error loading locations:', error);
+            return [];
+        }
         
-        console.log('Locations loaded:', locations.length);
-        console.log('Care homes:', locations.filter(l => l.is_care_home).map(l => l.name));
-        
+        locations = data || [];
+        console.log('Loaded locations:', locations.length);
         return locations;
         
     } catch (error) {
-        console.error('Error loading locations:', error);
-        locations = [];
+        console.error('Error in loadLocations:', error);
         return [];
     }
 }
-
 
 async function submitNote() {
     const shiftId = document.getElementById('noteShiftId').value;
@@ -6141,11 +6340,11 @@ async function submitNote() {
     }
     
     try {
-        // Insert the note - shift_id is now properly INTEGER
+        // CRITICAL: Ensure shift_id is INTEGER
         const { data: noteData, error: noteError } = await supabaseClient
             .from('shift_notes')
             .insert({
-                shift_id: parseInt(shiftId),  // Simple integer conversion
+                shift_id: parseInt(shiftId), // Convert to INTEGER
                 staff_id: currentStaff.id,
                 note_type: noteType,
                 note: noteText,
@@ -6154,20 +6353,18 @@ async function submitNote() {
             .select()
             .single();
         
-        if (noteError) throw noteError;
-        
-        showToast('Note added successfully', 'success');
-        closeModal('addNoteModal');
-        
-        // Clear the form
-        document.getElementById('noteText').value = '';
-        document.getElementById('noteType').selectedIndex = 0;
-        
-        // Refresh the notes display if we're viewing this shift
-        if (typeof refreshShiftNotes === 'function') {
-            refreshShiftNotes(shiftId);
+        if (noteError) {
+            console.error('Note creation error:', noteError);
+            if (noteError.code === DB_ERRORS.FOREIGN_KEY_VIOLATION) {
+                showToast('Invalid shift reference', 'error');
+            } else {
+                showToast('Failed to add note', 'error');
+            }
+        } else {
+            showToast('Note added successfully', 'success');
+            closeModal('addNoteModal');
+            await loadShiftNotes(shiftId);
         }
-        
     } catch (error) {
         console.error('Error submitting note:', error);
         showToast('Failed to add note', 'error');
@@ -6188,8 +6385,8 @@ function previewImages() {
             const img = document.createElement('img');
             img.src = e.target.result;
             img.className = 'image-preview';
-            img.onclick = () => removeImage(index);
-            container.appendChild(img);
+            img.setAttribute('data-action-with-param', 'removeImage');
+img.setAttribute('data-param', index);            container.appendChild(img);
         };
         reader.readAsDataURL(file);
     });
@@ -6242,7 +6439,7 @@ async function uploadDocument() {
             .insert({
                 entity_type: 'staff',
                 entity_id: currentStaff.id,
-                document_type_id: documentTypeId,  // CORRECT: Using document_type_id
+                type_id: documentTypeId,
                 title: title,
                 file_url: urlData.publicUrl,
                 expiry_date: expiryDate || null,
@@ -6288,29 +6485,6 @@ function displayUserRole() {
         // OR you could check if they have manager permissions some other way
     }
 }
-
-function createStaffSelector() {
-    const selector = document.createElement('div');
-    selector.id = 'staffSelector';
-    selector.style.display = 'none';
-    selector.style.position = 'fixed';
-    selector.style.top = '60px';
-    selector.style.right = '20px';
-    selector.style.background = 'white';
-    selector.style.border = '1px solid #ddd';
-    selector.style.borderRadius = '8px';
-    selector.style.padding = '10px';
-    selector.style.zIndex = '1000';
-    selector.style.boxShadow = '0 2px 10px rgba(0,0,0,0.1)';
-    selector.innerHTML = `
-        <h4 style="margin: 0 0 10px 0;">Quick Staff Switch</h4>
-        <select id="staffQuickSelect" style="width: 200px; padding: 5px;">
-            <option>Loading staff...</option>
-        </select>
-    `;
-    document.body.appendChild(selector);
-}
-
 
 async function populateShiftModalDropdowns() {
     // Populate participants
@@ -6513,8 +6687,8 @@ function editPersonalInfo() {
             <input type="text" class="form-control" id="editNDISNumber" value="${currentStaff.ndis_worker_number || ''}">
         </div>
         <div class="form-actions">
-            <button class="btn btn-primary" onclick="savePersonalInfo()">Save Changes</button>
-            <button class="btn btn-secondary" onclick="loadProfile()">Cancel</button>
+            <button class="btn btn-primary" data-action="savePersonalInfo">Save Changes</button>
+            <button class="btn btn-secondary" data-action="loadProfile">Cancel</button>
         </div>
     `;
 }
@@ -6586,8 +6760,8 @@ function editContactInfo() {
                    value="${currentStaff.emergency_contact_relationship || ''}">
         </div>
         <div class="form-actions">
-            <button class="btn btn-primary" onclick="saveContactInfo()">Save Changes</button>
-            <button class="btn btn-secondary" onclick="loadProfile()">Cancel</button>
+            <button class="btn btn-primary" data-action="saveContactInfo">Save Changes</button>
+            <button class="btn btn-secondary" data-action="loadProfile">Cancel</button>
         </div>
     `;
 }
@@ -6654,8 +6828,8 @@ function editBankingInfo() {
             <input type="text" class="form-control" id="editSuper" value="${currentStaff.super_fund || ''}">
         </div>
         <div class="form-actions">
-            <button class="btn btn-primary" onclick="saveBankingInfo()">Save Changes</button>
-            <button class="btn btn-secondary" onclick="loadProfile()">Cancel</button>
+            <button class="btn btn-primary" data-action="saveBankingInfo">Save Changes</button>
+            <button class="btn btn-secondary" data-action="loadProfile">Cancel</button>
         </div>
     `;
 }
@@ -6833,54 +7007,166 @@ function toggleTimeSlot(day, slot, element) {
 
 
 
-async function handleBannerUpload(event) {
-    const file = event.target.files[0];
+let cropper = null;
+let selectedFile = null;
+
+// When user selects a file, open the editor instead of uploading directly
+document.getElementById('bannerUpload').addEventListener('change', function(e) {
+    const file = e.target.files[0];
     if (!file) return;
     
-    try {
-        // Check file size
-        if (file.size > 5 * 1024 * 1024) {
-            showToast('Banner image must be less than 5MB', 'error');
-            return;
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+        showToast('Please select an image file', 'error');
+        return;
+    }
+    
+    // Check file size
+    if (file.size > 10 * 1024 * 1024) {
+        showToast('File size must be less than 10MB', 'error');
+        return;
+    }
+    
+    selectedFile = file;
+    openPhotoEditor(file);
+});
+
+function openPhotoEditor(file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const modal = document.getElementById('photoEditorModal');
+        const image = document.getElementById('imageToCrop');
+        
+        image.src = e.target.result;
+        modal.classList.add('active');
+        
+        // Initialize Cropper.js
+        if (cropper) {
+            cropper.destroy();
         }
         
-        // Get file extension properly
-        const fileExt = file.name.split('.').pop();
-        const fileName = `profile-banners/${currentStaff.id}_${Date.now()}.${fileExt}`;
+        cropper = new Cropper(image, {
+            aspectRatio: 3, // 3:1 ratio for banner
+            viewMode: 1,
+            guides: true,
+            center: true,
+            highlight: true,
+            background: true,
+            autoCrop: true,
+            movable: true,
+            rotatable: true,
+            scalable: true,
+            zoomable: true,
+            cropBoxMovable: true,
+            cropBoxResizable: true,
+        });
+    };
+    reader.readAsDataURL(file);
+}
+
+function closePhotoEditor() {
+    const modal = document.getElementById('photoEditorModal');
+    modal.classList.remove('active');
+    
+    if (cropper) {
+        cropper.destroy();
+        cropper = null;
+    }
+    
+    // Reset file input
+    document.getElementById('bannerUpload').value = '';
+}
+
+function rotateCropper(degrees) {
+    if (cropper) {
+        cropper.rotate(degrees);
+    }
+}
+
+function resetCropper() {
+    if (cropper) {
+        cropper.reset();
+    }
+}
+
+async function saveCroppedImage() {
+    if (!cropper) return;
+    
+    try {
+        showToast('Processing image...', 'info');
         
-        // Upload to Supabase Storage
-        const { data, error } = await supabaseClient.storage
-            .from('assets')
-            .upload(fileName, file);
+        // Get cropped canvas
+        const canvas = cropper.getCroppedCanvas({
+            width: 1200,  // Output width
+            height: 400,  // Output height
+            fillColor: '#fff',
+            imageSmoothingEnabled: true,
+            imageSmoothingQuality: 'high',
+        });
         
-        if (error) throw error;
-        
-        // Get public URL
-        const { data: urlData } = supabaseClient.storage
-            .from('assets')
-            .getPublicUrl(fileName);
-        
-        // Update staff record with banner URL
-        const { error: updateError } = await supabaseClient
-            .from('staff')
-            .update({ profile_banner_url: urlData.publicUrl })
-            .eq('id', currentStaff.id);
-        
-        if (updateError) throw updateError;
-        
-        // Update UI
-        loadProfileBanner();
-        showToast('Banner uploaded successfully', 'success');
+        // Convert to blob
+        canvas.toBlob(async (blob) => {
+            // Convert blob to base64
+            const reader = new FileReader();
+            reader.onloadend = async () => {
+                const base64Data = reader.result;
+                
+                try {
+                    // Delete existing banner
+                    await supabaseClient
+                        .from('attachments')
+                        .delete()
+                        .eq('entity_type', 'staff')
+                        .eq('entity_id', currentStaff.id)
+                        .eq('file_type', 'profile_banner');
+                    
+                    // Save new banner
+                    const { data, error } = await supabaseClient
+                        .from('attachments')
+                        .insert({
+                            entity_type: 'staff',
+                            entity_id: currentStaff.id,
+                            file_type: 'profile_banner',
+                            file_name: selectedFile.name,
+                            file: base64Data,
+                            file_url: 'stored-in-db',
+                            file_size: blob.size,
+                            mime_type: 'image/jpeg',
+                            uploaded_by: currentUser.id
+                        })
+                        .select()
+                        .single();
+                    
+                    if (error) throw error;
+                    
+                    // Update UI immediately
+                    const bannerElement = document.getElementById('profileBanner');
+                    if (bannerElement) {
+                        bannerElement.style.backgroundImage = `url(${base64Data})`;
+                        bannerElement.classList.add('has-image');  // ADD THIS LINE
+                    }
+                    
+                    closePhotoEditor();
+                    showToast('Banner updated successfully!', 'success');
+                    
+                } catch (error) {
+                    console.error('Error saving banner:', error);
+                    showToast('Failed to save banner', 'error');
+                }
+            };
+            reader.readAsDataURL(blob);
+            
+        }, 'image/jpeg', 0.9);
         
     } catch (error) {
-        console.error('Error uploading banner:', error);
-        showToast('Failed to upload banner', 'error');
+        console.error('Error processing image:', error);
+        showToast('Failed to process image', 'error');
     }
 }
 
 
 async function uploadProfileBanner() {
-    const fileInput = document.getElementById('bannerFile');
+    const fileInput = document.getElementById('bannerUpload');
     const file = fileInput.files[0];
     
     if (!file) {
@@ -6895,49 +7181,62 @@ async function uploadProfileBanner() {
             return;
         }
         
-        // Get file extension
-        const fileExt = file.name.split('.').pop();
-        const fileName = `profile-banners/${currentStaff.id}_${Date.now()}.${fileExt}`;
-        
-        // Upload to Supabase Storage - FIXED: Use 'documents' bucket instead of 'assets'
-        const { data, error } = await supabaseClient.storage
-            .from('documents')  // CHANGED FROM 'assets' to 'documents'
-            .upload(fileName, file);
-        
-        if (error) throw error;
-        
-        // Get public URL
-        const { data: urlData } = supabaseClient.storage
-            .from('documents')  // CHANGED FROM 'assets' to 'documents'
-            .getPublicUrl(fileName);
-        
-        // Note: profile_banner_url column may not exist in the staff table
-        // You should either:
-        // 1. Add this column to the staff table in the database
-        // 2. Store this in a user_preferences or staff_settings table
-        // 3. Remove this feature entirely
-        
-        // For now, commenting out the database update since the column likely doesn't exist
-        /*
-        const { error: updateError } = await supabaseClient
-            .from('staff')
-            .update({ profile_banner_url: urlData.publicUrl })
-            .eq('id', currentStaff.id);
-        
-        if (updateError) throw updateError;
-        */
-        
-        // Instead, store in localStorage as a temporary solution
-        localStorage.setItem(`banner_${currentStaff.id}`, urlData.publicUrl);
-        
-        // Update UI
-        const bannerElement = document.getElementById('profileBanner');
-        if (bannerElement) {
-            bannerElement.style.backgroundImage = `url(${urlData.publicUrl})`;
+        // Check if image type
+        if (!file.type.startsWith('image/')) {
+            showToast('Please select an image file', 'error');
+            return;
         }
         
-        showToast('Banner uploaded successfully', 'success');
-        closeModal('uploadBannerModal');
+        // Compress/resize image before upload
+        const compressedFile = await compressImage(file, 1200, 0.8); // Max width 1200px, 80% quality
+        
+        // Convert to base64 for storing in attachments table
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+            try {
+                const base64Data = reader.result;
+                
+                // Delete existing banner if exists
+                await supabaseClient
+                    .from('attachments')
+                    .delete()
+                    .eq('entity_type', 'staff')
+                    .eq('entity_id', currentStaff.id)
+                    .eq('file_type', 'profile_banner');
+                
+                // Insert new banner to attachments table
+                const { data, error } = await supabaseClient
+    .from('attachments')
+    .insert({
+        entity_type: 'staff',
+        entity_id: currentStaff.id,
+        file_type: 'profile_banner',
+        file_name: file.name,
+        file: base64Data,  // CHANGED from file_data to file
+        file_size: compressedFile.size,
+        mime_type: compressedFile.type,
+        uploaded_by: currentUser.id
+    })
+    .select()
+    .single();
+
+                if (error) throw error;
+                
+                // Update UI immediately
+                const bannerElement = document.getElementById('profileBanner');
+                if (bannerElement) {
+                    bannerElement.style.backgroundImage = `url(${base64Data})`;
+                }
+                
+                showToast('Banner uploaded successfully', 'success');
+                
+            } catch (error) {
+                console.error('Error saving banner:', error);
+                showToast('Failed to upload banner', 'error');
+            }
+        };
+        
+        reader.readAsDataURL(compressedFile);
         
     } catch (error) {
         console.error('Error uploading banner:', error);
@@ -6945,31 +7244,71 @@ async function uploadProfileBanner() {
     }
 }
 
-
 async function loadProfileBanner() {
     if (!currentStaff) return;
     
-    // Try to load from localStorage (temporary solution)
-    const storedBannerUrl = localStorage.getItem(`banner_${currentStaff.id}`);
+    const bannerElement = document.getElementById('profileBanner');
     
-    if (storedBannerUrl) {
-        const bannerElement = document.getElementById('profileBanner');
+    try {
+        const { data } = await supabaseClient
+            .from('attachments')
+            .select('file')
+            .eq('entity_type', 'staff')
+            .eq('entity_id', currentStaff.id)
+            .eq('file_type', 'profile_banner')
+            .single();
+        
+        if (data && data.file && bannerElement) {
+            bannerElement.style.backgroundImage = `url(${data.file})`;
+            bannerElement.classList.add('has-image');  // ADD THIS
+        }
+    } catch (error) {
+        // No banner - remove the class
         if (bannerElement) {
-            bannerElement.style.backgroundImage = `url(${storedBannerUrl})`;
+            bannerElement.classList.remove('has-image');
         }
     }
-    
-    // If you add profile_banner_url column to staff table, uncomment this:
-    /*
-    if (currentStaff.profile_banner_url) {
-        const bannerElement = document.getElementById('profileBanner');
-        if (bannerElement) {
-            bannerElement.style.backgroundImage = `url(${currentStaff.profile_banner_url})`;
-        }
-    }
-    */
 }
 
+// Helper function to compress/resize image
+async function compressImage(file, maxWidth, quality) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+                
+                // Calculate new dimensions
+                if (width > maxWidth) {
+                    height = (maxWidth / width) * height;
+                    width = maxWidth;
+                }
+                
+                canvas.width = width;
+                canvas.height = height;
+                
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                canvas.toBlob(
+                    (blob) => {
+                        resolve(new File([blob], file.name, {
+                            type: 'image/jpeg',
+                            lastModified: Date.now()
+                        }));
+                    },
+                    'image/jpeg',
+                    quality
+                );
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
 
 async function loadHandoverNotes(participantId, shiftDate) {
     if (!participantId || !shiftDate) return [];
@@ -7126,11 +7465,11 @@ function renderWeeklySchedule(weekStart, weekEnd, shifts) {
     // Create week navigation header
     let html = `
         <div class="schedule-header">
-            <button class="btn btn-sm" onclick="changeWeek(-1)">← Previous Week</button>
+            <button class="btn btn-sm" data-action-with-param="changeWeek" data-param="-1">← Previous Week</button>
             <div class="week-display">
                 <h3>${formatDateShort(weekStart.toISOString().split('T')[0])} - ${formatDateShort(weekEnd.toISOString().split('T')[0])}</h3>
             </div>
-            <button class="btn btn-sm" onclick="changeWeek(1)">Next Week →</button>
+            <button class="btn btn-sm" data-action-with-param="changeWeek" data-param="1">Next Week →</button>
         </div>
     `;
     
@@ -7182,7 +7521,7 @@ function renderWeeklySchedule(weekStart, weekEnd, shifts) {
                     'Unassigned';
                 
                 html += `
-                    <div class="shift-item" onclick="showParticipantShifts('${shift.participant_id}', '${participantName.replace(/'/g, "\\'")}')" style="cursor: pointer;">
+                    <div class="shift-item" data-action="showParticipantShifts" data-participant-id="${shift.participant_id}" data-participant-name="${participantName}" style="cursor: pointer;">
                         <div class="shift-time">
                             ${shift.start_time ? formatTime(shift.start_time) : 'Sleepover'} - 
                             ${shift.end_time ? formatTime(shift.end_time) : ''}
@@ -7260,7 +7599,7 @@ window.showParticipantShifts = async function(participantId, participantName) {
                 <div class="modal-content" style="max-width: 600px; max-height: 80vh; overflow-y: auto;">
                     <div class="modal-header">
                         <h3>Shift History: ${participantName}</h3>
-                        <button class="modal-close" onclick="document.getElementById('participantShiftsModal').remove()">&times;</button>
+                        <button class="modal-close" data-action="removeModal" data-modal-id="participantShiftsModal">&times;</button>
                     </div>
                     <div class="modal-body">
                         <div style="padding: 20px;">
@@ -7301,18 +7640,6 @@ window.showParticipantShifts = async function(participantId, participantName) {
         showToast('Failed to load participant history', 'error');
     }
 };
-
-function changeSchedulePeriod(direction) {
-    if (!window.currentPeriodStart) {
-        setCurrentPayPeriod();
-    }
-    
-    const weeks = direction * 2; // Move by 2 weeks (fortnight)
-    window.currentPeriodStart.setDate(window.currentPeriodStart.getDate() + (weeks * 7));
-    window.currentPeriodEnd.setDate(window.currentPeriodEnd.getDate() + (weeks * 7));
-    
-    loadSchedule();
-}
 
 
 // ==========================================
@@ -7549,174 +7876,7 @@ function setGreeting() {
     }
 }
 
-// 7. Reference Data Loader (Simplified)
-const DataLoader = {
-    // Store for loaded data
-    cache: {
-        participants: [],
-        staff: [],
-        dutyTypes: [],
-        locations: []
-    },
-    
-    // Load all reference data
-    async loadReferenceData() {
-        console.log('Loading reference data...');
-        
-        const loaders = [
-            this.loadParticipants(),
-            this.loadStaff(),
-            this.loadDutyTypes(),
-            this.loadLocations()
-        ];
-        
-        try {
-            await Promise.all(loaders);
-            console.log('Reference data loaded successfully');
-            return this.cache;
-        } catch (error) {
-            console.error('Error loading reference data:', error);
-            showToast('Failed to load reference data', 'error');
-            return this.cache;
-        }
-    },
-    
-    async loadParticipants() {
-        const { data, error } = await supabaseClient
-            .from('participants')
-            .select('*')
-            .eq('is_active', true)
-            .order('first_name');
-        
-        if (error) {
-            console.error('Error loading participants:', error);
-            return [];
-        }
-        
-        this.cache.participants = data || [];
-        participants = this.cache.participants; // Global compatibility
-        console.log('Loaded participants:', this.cache.participants.length);
-        return this.cache.participants;
-    },
-    
-    async loadStaff() {
-        const { data, error } = await supabaseClient
-            .from('staff')
-            .select('*')
-            .eq('is_active', true)
-            .order('first_name');
-        
-        if (error) {
-            console.error('Error loading staff:', error);
-            return [];
-        }
-        
-        this.cache.staff = data || [];
-        staff = this.cache.staff; // Global compatibility
-        console.log('Loaded staff:', this.cache.staff.length);
-        return this.cache.staff;
-    },
-    
-    async loadDutyTypes() {
-        const { data, error } = await supabaseClient
-            .from('duty_types')
-            .select('*')
-            .order('name');
-        
-        if (error) {
-            console.error('Error loading duty types:', error);
-            return [];
-        }
-        
-        this.cache.dutyTypes = data || [];
-        dutyTypes = this.cache.dutyTypes; // Global compatibility
-        console.log('Loaded duty types:', this.cache.dutyTypes.length);
-        return this.cache.dutyTypes;
-    },
-    
-    async loadLocations() {
-        const { data, error } = await supabaseClient
-            .from('locations')
-            .select('*')
-            .order('name');
-        
-        if (error) {
-            console.error('Error loading locations:', error);
-            return [];
-        }
-        
-        this.cache.locations = data || [];
-        locations = this.cache.locations; // Global compatibility
-        console.log('Loaded locations:', this.cache.locations.length);
-        return this.cache.locations;
-    }
-};
 
-async function viewShiftDetails(shiftId) {
-    try {
-        const { data: shift, error } = await supabaseClient
-            .from('shifts')
-            .select(`
-                *,
-                participant:participant_id(first_name, last_name, phone),
-                location:location_id(name, address),
-                duty_type:duty_type_id(name),
-                staff:staff_id(first_name, last_name)
-            `)
-            .eq('id', shiftId)
-            .single();
-
-        if (error) throw error;
-
-        // Show details in a simple alert or modal
-        const details = `
-Shift Details:
-Date: ${formatDateLong(shift.date)}
-Time: ${shift.start_time || 'Sleepover'} - ${shift.end_time || ''}
-Client: ${shift.participant ? `${shift.participant.first_name} ${shift.participant.last_name}` : 'Unassigned'}
-Location: ${shift.location?.name || 'TBC'}
-Service: ${shift.duty_type?.name || 'Standard Care'}
-        `;
-        
-        if (confirm(details + '\n\nWould you like to request a transfer for this shift?')) {
-            openTransferModal(shiftId);
-        }
-
-    } catch (error) {
-        console.error('Error viewing shift:', error);
-        showToast('Failed to load shift details', 'error');
-    }
-}
-
-async function openTransferModal(shiftId) {
-    try {
-        // Load available staff
-        await loadTransferableShifts(); // This populates the shift dropdown
-        
-        // Set the specific shift if provided
-        if (shiftId) {
-            document.getElementById('transferShiftSelect').value = shiftId;
-        }
-        
-        // Load staff options
-        const { data: staffList } = await supabaseClient
-            .from('staff')
-            .select('id, first_name, last_name')
-            .neq('id', currentStaff.id)
-            .eq('active', true)
-            .order('first_name');
-
-        const staffSelect = document.getElementById('transferToStaff');
-        staffSelect.innerHTML = '<option value="">Select staff member (optional)</option>' +
-            (staffList || []).map(s => `<option value="${s.id}">${s.first_name} ${s.last_name}</option>`).join('');
-        
-        openModal('transferShiftModal');
-        
-    } catch (error) {
-        console.error('Error opening transfer modal:', error);
-        showToast('Failed to load transfer options', 'error');
-    }
-}
 function changeMonth(direction) {
     if (!window.currentMonthOffset) {
         window.currentMonthOffset = 0;
@@ -8220,6 +8380,36 @@ function formatDateTime(dateTimeStr) {
     });
 }
 
+function formatDate(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-AU', { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric' 
+    });
+}
+
+function formatDateShort(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-AU', { 
+        month: 'short', 
+        day: 'numeric' 
+    });
+}
+
+function formatDateTime(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleString('en-AU', { 
+        year: 'numeric',
+        month: 'short', 
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
 
 function formatTime(timeStr) {
     if (!timeStr) return '';
@@ -8450,12 +8640,12 @@ function renderFortnightSchedule(startDate, endDate, shifts) {
     let html = `
         <div class="schedule-wrapper">
             <div class="schedule-header">
-                <button onclick="changeSchedulePeriod(-1)" class="btn-nav">‹ Previous</button>
+                <button data-action-with-param="changeSchedulePeriod" data-param="-1" class="btn-nav">‹ Previous</button>
                 <h3 class="schedule-period">
                     ${startDate.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })} - 
                     ${endDate.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
                 </h3>
-                <button onclick="changeSchedulePeriod(1)" class="btn-nav">Next ›</button>
+                <button data-action-with-param="changeSchedulePeriod" data-param="1" class="btn-nav">Next ›</button>
             </div>
             <div class="fortnight-grid">
     `;
@@ -8522,9 +8712,9 @@ function renderCalendar(targetDate, shifts) {
     let html = `
         <div class="calendar-wrapper">
             <div class="calendar-header">
-                <button onclick="changeMonth(-1)" class="calendar-nav-btn">‹</button>
+                <button data-action-with-param="changeMonth" data-param="-1" class="calendar-nav-btn">‹</button>
                 <h3 class="calendar-month">${monthNames[month]} ${year}</h3>
-                <button onclick="changeMonth(1)" class="calendar-nav-btn">›</button>
+                <button data-action-with-param="changeMonth" data-param="1" class="calendar-nav-btn">›</button>
             </div>
             <div class="calendar-grid">
                 <div class="calendar-weekdays">
@@ -8600,8 +8790,8 @@ function renderSchedule() {
                     <input type="text" class="form-control" id="editNDIS" value="${currentStaff.ndis_worker_number || ''}">
                 </div>
                 <div style="display: flex; gap: 12px; margin-top: 16px;">
-                    <button class="btn btn-primary" onclick="savePersonalInfo()">Save</button>
-                    <button class="btn btn-secondary" onclick="loadProfile()">Cancel</button>
+                    <button class="btn btn-primary" data-action="savePersonalInfo">Save</button>
+                    <button class="btn btn-secondary" data-action="loadProfile">Cancel</button>
                 </div>
             `;
         }
@@ -8654,7 +8844,7 @@ function showSection(sectionName) {
         });
         
         // Find and activate corresponding nav item
-        const navItem = document.querySelector(`[onclick*="${sectionName}"]`);
+        const navItem = document.querySelector(`[data-section="${sectionName}"]`);
         if (navItem) {
             navItem.classList.add('active');
         }
@@ -8676,132 +8866,152 @@ AppState.ui.timesheetView = 'date'; // 'date' or 'participant'
 window.currentPeriodOffset = 0;
 
 
+// ==================================================
+// PAY PERIOD MANAGEMENT - SINGLE CLEAN IMPLEMENTATION
+// ==================================================
 
-// ============================================
-// FIX 1: Proper Pay Period Initialization
-// ============================================
+// Configuration constants
+const PAY_PERIOD_CONFIG = {
+    BASE_DATE: new Date('2024-01-07'), // Sunday - adjust to your org's actual base date
+    LENGTH_DAYS: 14, // Fortnightly pay periods
+    LOCALE: 'en-AU'
+};
 
-function setCurrentPayPeriod() {
-    try {
-        const today = new Date();
-        
-        // Calculate which pay period we're in
-        const daysSinceStart = Math.floor((today - PAY_PERIOD_START) / (1000 * 60 * 60 * 24));
-        const periodNumber = Math.floor(daysSinceStart / PERIOD_LENGTH);
-        
-        // Apply any offset (for navigating periods)
-        const adjustedPeriodNumber = periodNumber + (window.currentPeriodOffset || 0);
-        
-        // Calculate current period start (Sunday)
-        window.currentPeriodStart = new Date(PAY_PERIOD_START);
-        window.currentPeriodStart.setDate(PAY_PERIOD_START.getDate() + (adjustedPeriodNumber * PERIOD_LENGTH));
-        
-        // Calculate period end (Saturday, 13 days later)
-        window.currentPeriodEnd = new Date(window.currentPeriodStart);
-        window.currentPeriodEnd.setDate(window.currentPeriodStart.getDate() + 13);
-        
-        console.log('Pay period set:', {
-            start: window.currentPeriodStart.toISOString(),
-            end: window.currentPeriodEnd.toISOString()
-        });
-        
-        // Update the display
-        updatePeriodDisplay();
-        
-    } catch (error) {
-        console.error('Error setting pay period:', error);
-        // Emergency fallback
-        window.currentPeriodStart = new Date();
-        window.currentPeriodEnd = new Date();
-        window.currentPeriodEnd.setDate(window.currentPeriodEnd.getDate() + 13);
-    }
+// Single source of truth for period offset
+if (!window.hasOwnProperty('periodOffset')) {
+    window.periodOffset = 0;
 }
 
-// ============================================
-// FIX 2: Update Period Display
-// ============================================
-
-function updatePeriodDisplay() {
-    const periodDatesElement = document.getElementById('periodDates');
-    if (periodDatesElement && window.currentPeriodStart && window.currentPeriodEnd) {
-        const options = { day: 'numeric', month: 'short', year: 'numeric' };
-        const startStr = window.currentPeriodStart.toLocaleDateString('en-AU', options);
-        const endStr = window.currentPeriodEnd.toLocaleDateString('en-AU', options);
-        periodDatesElement.textContent = `${startStr} - ${endStr}`;
-    }
-}
-
-// Add this function to properly calculate pay periods
-function getPayPeriodForDate(date = new Date()) {
-    // Your organization's base period start - UPDATE THIS TO YOUR ACTUAL START
-    const PERIOD_START_DATE = new Date('2024-07-28'); // Original base Sunday
-    const PERIOD_LENGTH = 14; // days
+/**
+ * Calculate pay period for any given date
+ * @param {Date} date - The date to calculate period for
+ * @param {number} offset - Number of periods to offset (negative = past, positive = future)
+ * @returns {Object} Period start and end dates
+ */
+function calculatePayPeriod(date = new Date(), offset = 0) {
+    const daysSinceBase = Math.floor((date - PAY_PERIOD_CONFIG.BASE_DATE) / (1000 * 60 * 60 * 24));
+    const currentPeriodNumber = Math.floor(daysSinceBase / PAY_PERIOD_CONFIG.LENGTH_DAYS);
+    const targetPeriodNumber = currentPeriodNumber + offset;
     
-    // Calculate days since base period
-    const daysDiff = Math.floor((date - PERIOD_START_DATE) / (1000 * 60 * 60 * 24));
-    const periodNumber = Math.floor(daysDiff / PERIOD_LENGTH);
+    const periodStart = new Date(PAY_PERIOD_CONFIG.BASE_DATE);
+    periodStart.setDate(periodStart.getDate() + (targetPeriodNumber * PAY_PERIOD_CONFIG.LENGTH_DAYS));
     
-    // Calculate this period's start date
-    const periodStart = new Date(PERIOD_START_DATE);
-    periodStart.setDate(periodStart.getDate() + (periodNumber * PERIOD_LENGTH));
-    
-    // Calculate period end (13 days after start)
     const periodEnd = new Date(periodStart);
-    periodEnd.setDate(periodStart.getDate() + 13);
+    periodEnd.setDate(periodEnd.getDate() + PAY_PERIOD_CONFIG.LENGTH_DAYS - 1);
     
     return {
         start: periodStart,
         end: periodEnd,
-        number: periodNumber
+        number: targetPeriodNumber
     };
 }
 
+function loadTimesheetForPeriod(startDate, endDate) {
+    console.log(`Loading timesheet for period: ${startDate.toLocaleDateString()} to ${endDate.toLocaleDateString()}`);
+    
+    // Call your existing timesheet loading function
+    if (typeof loadTimesheet === 'function') {
+        loadTimesheet();
+    }
+    
+    // Or if you have a different function, call it here
+    // For now, just filter shifts for the period
+    if (window.shifts && window.shifts.my) {
+        const periodShifts = window.shifts.my.filter(shift => {
+            const shiftDate = new Date(shift.date);
+            return shiftDate >= startDate && shiftDate <= endDate;
+        });
+        console.log(`Found ${periodShifts.length} shifts in period`);
+        
+        // Update timesheet display if needed
+        if (typeof renderTimesheet === 'function') {
+            renderTimesheet(periodShifts);
+        }
+    }
+}
+
+
+function updatePeriodDisplay() {
+    const periodDatesElement = document.getElementById('periodDates');
+    if (!periodDatesElement || !window.currentPeriodStart || !window.currentPeriodEnd) {
+        return;
+    }
+    
+    const formatOptions = { day: 'numeric', month: 'short', year: 'numeric' };
+    const startStr = window.currentPeriodStart.toLocaleDateString(PAY_PERIOD_CONFIG.LOCALE, formatOptions);
+    const endStr = window.currentPeriodEnd.toLocaleDateString(PAY_PERIOD_CONFIG.LOCALE, formatOptions);
+    
+    periodDatesElement.textContent = `${startStr} - ${endStr}`;
+}
+
+/**
+ * Change to a different pay period
+ * @param {number} direction - Number of periods to move (-1 = previous, 1 = next)
+ */
+function changePeriod(direction) {
+    if (typeof direction !== 'number') {
+        console.error('changePeriod: direction must be a number');
+        return;
+    }
+    
+    // Update the offset
+    window.periodOffset = (window.periodOffset || 0) + direction;
+    
+    // Recalculate the period
+    setCurrentPayPeriod();
+    
+    // Reload the timesheet with new period
+    if (typeof loadTimesheet === 'function') {
+        loadTimesheet();
+    }
+    
+    // Also update schedule if visible
+    if (document.getElementById('schedule')?.style.display !== 'none') {
+        if (typeof loadSchedule === 'function') {
+            loadSchedule();
+        }
+    }
+}
+
+/**
+ * Reset to current pay period
+ */
+function resetToCurrentPeriod() {
+    window.periodOffset = 0;
+    setCurrentPayPeriod();
+    
+    if (typeof loadTimesheet === 'function') {
+        loadTimesheet();
+    }
+}
+
+/**
+ * Get pay period for a specific date (utility function)
+ */
+function getPayPeriodForDate(date) {
+    return calculatePayPeriod(date, 0);
+}
+
+// Make functions globally available
+window.setCurrentPayPeriod = setCurrentPayPeriod;
+window.changePeriod = changePeriod;
+window.updatePeriodDisplay = updatePeriodDisplay;
+window.resetToCurrentPeriod = resetToCurrentPeriod;
+window.getPayPeriodForDate = getPayPeriodForDate;
+
+
 async function loadTimesheet() {
     try {
-        // Safety check
-        if (!currentStaff || !currentStaff.id) {
-            return;
+        // Ensure period is set
+        if (!window.currentPeriodStart || !window.currentPeriodEnd) {
+            setCurrentPayPeriod();
         }
         
-        // Initialize offset if needed
-        if (AppState.ui.periodOffset === undefined) {
-            AppState.ui.periodOffset = 0;
-        }
+        // Use the period dates for query
+        const startQuery = window.currentPeriodStart.toISOString().split('T')[0];
+        const endQuery = window.currentPeriodEnd.toISOString().split('T')[0];
         
-        // Calculate period dates
-        const PAY_PERIOD_START = new Date('2025-07-28'); // Monday
-        const PERIOD_LENGTH = 14;
-        const today = new Date();
-        
-        const daysSinceBase = Math.floor((today - PAY_PERIOD_START) / (1000 * 60 * 60 * 24));
-        const basePeriodNumber = Math.floor(daysSinceBase / PERIOD_LENGTH);
-        const currentPeriodNumber = basePeriodNumber + AppState.ui.periodOffset;
-        
-        const periodStart = new Date(PAY_PERIOD_START);
-        periodStart.setDate(PAY_PERIOD_START.getDate() + (currentPeriodNumber * PERIOD_LENGTH));
-        
-        const periodEnd = new Date(periodStart);
-        periodEnd.setDate(periodStart.getDate() + 13);
-        
-        // UPDATE THE DISPLAY
-        const periodDatesElement = document.getElementById('periodDates');
-        if (periodDatesElement) {
-            const startStr = periodStart.getDate() + ' ' + 
-                periodStart.toLocaleDateString('en-AU', { month: 'short' });
-            const endStr = periodEnd.getDate() + ' ' + 
-                periodEnd.toLocaleDateString('en-AU', { month: 'short' }) + ' ' +
-                periodEnd.getFullYear();
-            
-            periodDatesElement.textContent = `${startStr} - ${endStr}`;
-        }
-        
-        // Store globally
-        window.currentPeriodStart = periodStart;
-        window.currentPeriodEnd = periodEnd;
-        
-        // Load shifts
-        const startQuery = periodStart.toISOString().split('T')[0];
-        const endQuery = periodEnd.toISOString().split('T')[0];
+        console.log('Loading timesheet for period:', startQuery, 'to', endQuery);
         
         const { data: shifts, error } = await supabaseClient
             .from('shifts')
@@ -8816,121 +9026,28 @@ async function loadTimesheet() {
             .lte('date', endQuery)
             .is('deleted_at', null)
             .order('date', { ascending: true });
-
+        
         if (error) throw error;
         
+        // Store shifts and update display
         AppState.shifts.my = shifts || [];
         
-        // Update displays
         if (shifts && shifts.length > 0) {
             calculateTimesheetHours(shifts);
             renderTimesheetShifts();
         } else {
-            document.getElementById('hoursGrid').innerHTML = '<div style="padding: 20px; text-align: center; color: #999;">No hours</div>';
+            // Show empty state
+            document.getElementById('timesheetShifts').innerHTML = 
+                '<div style="padding: 40px; text-align: center; color: #999;">No shifts in this period</div>';
             document.getElementById('totalHours').textContent = '0.0h';
-            document.getElementById('timesheetShifts').innerHTML = '<div style="padding: 40px; text-align: center; color: #999;">No shifts</div>';
         }
         
     } catch (error) {
-        console.error('Error:', error);
+        console.error('Error loading timesheet:', error);
         showToast('Failed to load timesheet', 'error');
     }
 }
 
-async function loadTransferModalData() {
-    try {
-        // Get future shifts only (can't transfer past shifts)
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        
-        const { data: futureShifts } = await supabaseClient
-            .from('shifts')
-            .select(`
-                *,
-                participants(first_name, last_name)
-            `)
-            .eq('staff_id', currentStaff.id)
-            .gte('date', tomorrow.toISOString().split('T')[0])
-            .is('deleted_at', null)
-            .order('date', { ascending: true });
-        
-        console.log('Future shifts for transfer:', futureShifts);
-        
-        // Populate the dropdown
-        const select = document.getElementById('transferShiftSelect');
-        if (select) {
-            select.innerHTML = '<option value="">Select a shift</option>';
-            
-            if (futureShifts && futureShifts.length > 0) {
-                futureShifts.forEach(shift => {
-                    const participant = shift.participants;
-                    const clientName = participant ? 
-                        `${participant.first_name} ${participant.last_name}` : 'Unassigned';
-                    const option = document.createElement('option');
-                    option.value = shift.id;
-                    option.textContent = `${formatDateShort(shift.date)} - ${clientName} (${shift.start_time || 'Sleepover'})`;
-                    select.appendChild(option);
-                });
-            } else {
-                select.innerHTML = '<option value="">No future shifts available to transfer</option>';
-            }
-        }
-        
-        // Load other staff members...
-        // (rest of function)
-    } catch (error) {
-        console.error('Error loading transfer modal data:', error);
-    }
-}
-
-async function loadAdjustmentModalData() {
-    try {
-        // Get all your shifts (past and future for adjustments)
-        const { data: yourShifts } = await supabaseClient
-            .from('shifts')
-            .select(`
-                *,
-                participants(first_name, last_name)
-            `)
-            .eq('staff_id', currentStaff.id)
-            .order('date', { ascending: false })
-            .limit(20);
-        
-        console.log('Shifts for adjustment:', yourShifts);
-        
-        const select = document.getElementById('adjustmentShift');
-        if (select) {
-            select.innerHTML = '<option value="">Select a shift</option>';
-            
-            if (yourShifts && yourShifts.length > 0) {
-                yourShifts.forEach(shift => {
-                    const participant = shift.participants;
-                    const clientName = participant ? 
-                        `${participant.first_name} ${participant.last_name}` : 'Unassigned';
-                    const option = document.createElement('option');
-                    option.value = shift.id;
-                    option.dataset.start = shift.start_time || '';
-                    option.dataset.end = shift.end_time || '';
-                    option.textContent = `${formatDateShort(shift.date)} - ${clientName} (${shift.start_time || 'Sleepover'})`;
-                    select.appendChild(option);
-                });
-                
-                // Auto-fill times when shift is selected
-                select.onchange = function() {
-                    const selected = this.options[this.selectedIndex];
-                    if (selected && selected.dataset.start) {
-                        document.getElementById('adjustmentStartTime').value = selected.dataset.start;
-                        document.getElementById('adjustmentEndTime').value = selected.dataset.end;
-                    }
-                };
-            } else {
-                select.innerHTML = '<option value="">No shifts available</option>';
-            }
-        }
-    } catch (error) {
-        console.error('Error loading adjustment modal data:', error);
-    }
-}
 
 function calculateHoursBreakdown() {
     const breakdown = {
@@ -9313,25 +9430,232 @@ function toggleTimesheetView(view) {
     renderTimesheetShifts();
 }
 
-// 4. Also make sure the view toggle buttons work
-document.addEventListener('DOMContentLoaded', function() {
-    // View toggle buttons
-    const dateViewBtn = document.querySelector('.toggle-btn:first-child');
-    const clientViewBtn = document.querySelector('.toggle-btn:last-child');
-    
-    if (dateViewBtn) {
-        dateViewBtn.onclick = function() {
-            toggleTimesheetView('date');
-        };
-    }
-    
-    if (clientViewBtn) {
-        clientViewBtn.onclick = function() {
-            toggleTimesheetView('participant');
-        };
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        console.log('Initializing application...');
+        
+        // ===== UNIVERSAL EVENT DELEGATION (ONLY ONCE, COMPREHENSIVE VERSION) =====
+        document.addEventListener('click', (e) => {
+            const target = e.target.closest('[data-modal-close], [data-modal-open], [data-timesheet-view], [data-transfer-tab], [data-section], [data-action], [data-action-with-param], [data-action-with-two-params]');
+            
+            if (!target) return;
+            
+            // Handle modal closes
+            if (target.dataset.modalClose) {
+                closeModal(target.dataset.modalClose);
+                return;
+            }
+            
+            // Handle modal opens
+            if (target.dataset.modalOpen) {
+                const modalName = target.dataset.modalOpen;
+                const modal = document.getElementById(modalName);
+                if (modal) {
+                    modal.style.display = 'flex';
+                }
+                return;
+            }
+            
+            // Handle specific actions FIRST (before generic handler)
+            if (target.dataset.action === 'submitTransfer') {
+                submitTransfer();
+                return;
+            }
+            if (target.dataset.action === 'submitAdjustment') {
+                submitAdjustment();
+                return;
+            }
+            if (target.dataset.action === 'submitLeave') {
+                submitLeave();
+                return;
+            }
+            if (target.dataset.action === 'acceptTransfer') {
+                const transferId = target.dataset.transferId;
+                if (transferId) acceptTransfer(transferId);
+                return;
+            }
+            if (target.dataset.action === 'rejectTransfer') {
+                const transferId = target.dataset.transferId;
+                if (transferId) rejectTransfer(transferId);
+                return;
+            }
+            
+            // Handle remove modal (special case for .remove())
+            if (target.dataset.action === 'removeModal' && target.dataset.modalId) {
+                const modal = document.getElementById(target.dataset.modalId);
+                if (modal) {
+                    modal.remove();
+                }
+                return;
+            }
+            
+            // Handle reload page
+            if (target.dataset.action === 'reloadPage') {
+                location.reload();
+                return;
+            }
+            
+            // Handle toggle shift details (special case - needs 'this')
+            if (target.dataset.action === 'toggleShiftDetails') {
+                toggleShiftDetails(target);
+                return;
+            }
+            
+            // Handle show participant shifts (special case - multiple params)
+            if (target.dataset.action === 'showParticipantShifts') {
+                const participantId = target.dataset.participantId;
+                const participantName = target.dataset.participantName;
+                if (participantId && participantName) {
+                    showParticipantShifts(participantId, participantName);
+                }
+                return;
+            }
+            
+            // Handle timesheet view toggles
+            if (target.dataset.timesheetView) {
+                toggleTimesheetView(target.dataset.timesheetView);
+                // Update active state for toggle buttons
+                document.querySelectorAll('[data-timesheet-view]').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                target.classList.add('active');
+                return;
+            }
+            
+            // Handle transfer tabs
+            if (target.dataset.transferTab) {
+                switchTransferTab(target.dataset.transferTab);
+                return;
+            }
+            
+            // Handle section switches
+            if (target.dataset.section) {
+                switchSection(target.dataset.section);
+                return;
+            }
+            
+            // Handle trigger click
+            if (target.dataset.triggerClick) {
+                const elementToClick = document.getElementById(target.dataset.triggerClick);
+                if (elementToClick) {
+                    elementToClick.click();
+                }
+                return;
+            }
+            
+            // Handle generic actions (no parameters) - LAST
+            if (target.dataset.action && !target.dataset.param) {
+                const actionName = target.dataset.action;
+                if (typeof window[actionName] === 'function') {
+                    window[actionName]();
+                }
+                return;
+            }
+            
+            // Handle actions with single parameter
+            if (target.dataset.actionWithParam && target.dataset.param) {
+                const actionName = target.dataset.actionWithParam;
+                const param = target.dataset.param;
+                
+                if (typeof window[actionName] === 'function') {
+                    // Handle numeric parameters
+                    if (!isNaN(param) && param !== '') {
+                        window[actionName](parseInt(param));
+                    } else {
+                        window[actionName](param);
+                    }
+                }
+                return;
+            }
+        });
+        
+        // Add banner upload listeners
+        const bannerUploadBtn = document.getElementById('bannerUploadBtn');
+        if (bannerUploadBtn) {
+            bannerUploadBtn.addEventListener('click', () => {
+                document.getElementById('bannerUpload').click();
+            });
+        }
+        
+        const bannerUpload = document.getElementById('bannerUpload');
+        if (bannerUpload) {
+            bannerUpload.addEventListener('change', uploadProfileBanner);
+        }
+        
+        // Phase 2: Initialize app
+        await initializeApp();
+        await ensureStaffLoaded();
+        
+        // Phase 3: Setup period navigation controls (NEW - PROPERLY TIMED)
+        setTimeout(() => {
+            const prevBtn = document.getElementById('prevPeriodBtn');
+            const nextBtn = document.getElementById('nextPeriodBtn');
+            
+            if (prevBtn) {
+                prevBtn.addEventListener('click', () => {
+                    console.log('Previous period clicked');
+                    changePeriod(-1);
+                });
+            }
+            
+            if (nextBtn) {
+                nextBtn.addEventListener('click', () => {
+                    console.log('Next period clicked');
+                    changePeriod(1);
+                });
+            }
+            
+            console.log('Period navigation buttons initialized');
+        }, 500); // Small delay to ensure DOM is ready
+        
+        // Phase 4: Post-init tasks (with delay)
+        setTimeout(async () => {
+            if (AppState.staff.current) {
+                const selector = document.getElementById('staffSelector');
+                if (selector) {
+                    selector.style.display = 'block';
+                }
+            }
+        }, 2000);
+        
+        // Initialize pay period - ONLY call the GOOD setCurrentPayPeriod
+        // Make sure you've deleted the OLD one that uses currentPeriodOffset
+        if (typeof setCurrentPayPeriod === 'function') {
+            setCurrentPayPeriod();
+        }
+        
+        // Phase 6: Setup any remaining event listeners for special cases
+        // For example, if you have file inputs or other special elements
+        const fileInputs = document.querySelectorAll('input[type="file"]');
+        fileInputs.forEach(input => {
+            input.addEventListener('change', (e) => {
+                if (e.target.id === 'documentFile') {
+                    // Handle document upload preview if needed
+                    if (typeof previewDocument === 'function') {
+                        previewDocument(e);
+                    }
+                }
+            });
+        });
+        
+        // Load profile banner
+        await loadProfileBanner();
+        
+        console.log('Application ready');
+        console.log('Event delegation active for:', {
+            modals: 'data-modal-close, data-modal-open',
+            navigation: 'data-section',
+            actions: 'data-action, data-action-with-param',
+            timesheets: 'data-timesheet-view',
+            transfers: 'data-transfer-tab',
+            special: 'toggleShiftDetails, showParticipantShifts, removeModal'
+        });
+        
+    } catch (error) {
+        console.error('Initialization failed:', error);
+        showToast('Failed to start application', 'error');
     }
 });
-
 
 // ============================================
 // FIX 10: Initialize on Section Switch
@@ -9348,7 +9672,7 @@ window.switchSection = function(section) {
     // Update nav items
     document.querySelectorAll('.nav-item').forEach(item => {
         item.classList.remove('active');
-        if (item.getAttribute('onclick')?.includes(section)) {
+        if (item.dataset.section === section) {
             item.classList.add('active');
         }
     });
@@ -9369,82 +9693,6 @@ window.switchSection = function(section) {
     }
 }
 
-// ============================================
-// FIX FOR changePeriod FUNCTION
-// ============================================
-
-// Make sure the function is defined globally
-window.changePeriod = function(direction) {
-    console.log('changePeriod called with:', direction);
-    
-    // Initialize offset if not set
-    if (AppState.ui.periodOffset === undefined) {
-        AppState.ui.periodOffset = 0;
-    }
-    
-    // Update offset
-    AppState.ui.periodOffset += direction;
-    console.log('New offset:', AppState.ui.periodOffset);
-    
-    // Reload timesheet
-    loadTimesheet();
-}
-
-
-// Also ensure setCurrentPayPeriod exists and works correctly
-window.setCurrentPayPeriod = function() {
-    try {
-        const PERIOD_LENGTH = 14; // 14-day pay periods
-        const PAY_PERIOD_START = new Date('2025-07-28')
-        const today = new Date();
-        
-        // Calculate which pay period we're in
-        const daysSinceStart = Math.floor((today - PAY_PERIOD_START) / (1000 * 60 * 60 * 24));
-        const periodNumber = Math.floor(daysSinceStart / PERIOD_LENGTH);
-        
-        // Apply any offset (for navigating periods)
-        const adjustedPeriodNumber = periodNumber + (window.currentPeriodOffset || 0);
-        
-        // Calculate current period start (Sunday)
-        window.currentPeriodStart = new Date(PAY_PERIOD_START);
-        window.currentPeriodStart.setDate(PAY_PERIOD_START.getDate() + (adjustedPeriodNumber * PERIOD_LENGTH));
-        
-        // Calculate period end (Saturday, 13 days later)
-        window.currentPeriodEnd = new Date(window.currentPeriodStart);
-        window.currentPeriodEnd.setDate(window.currentPeriodStart.getDate() + 13);
-        
-        console.log('Pay period set:', {
-            start: window.currentPeriodStart.toISOString(),
-            end: window.currentPeriodEnd.toISOString(),
-            offset: window.currentPeriodOffset || 0
-        });
-        
-        // Update the display
-        updatePeriodDisplay();
-        
-    } catch (error) {
-        console.error('Error setting pay period:', error);
-        // Emergency fallback
-        window.currentPeriodStart = new Date();
-        window.currentPeriodEnd = new Date();
-        window.currentPeriodEnd.setDate(window.currentPeriodEnd.getDate() + 13);
-    }
-}
-
-// Ensure updatePeriodDisplay exists
-window.updatePeriodDisplay = function() {
-    const periodDatesElement = document.getElementById('periodDates');
-    if (periodDatesElement && window.currentPeriodStart && window.currentPeriodEnd) {
-        const options = { day: 'numeric', month: 'short', year: 'numeric' };
-        const startStr = window.currentPeriodStart.toLocaleDateString('en-AU', options);
-        const endStr = window.currentPeriodEnd.toLocaleDateString('en-AU', options);
-        periodDatesElement.textContent = `${startStr} - ${endStr}`;
-    }
-}
-
-
-
-// Also fix toggleTimesheetView if it has similar issues
 window.toggleTimesheetView = function(view) {
     try {
         AppState.ui.timesheetView = view;
@@ -9691,6 +9939,7 @@ function openModal(modalId) {
 }
 
 
+
         function addButtonStyles() {
             const style = document.createElement('style');
             style.textContent = `
@@ -9800,107 +10049,6 @@ window.initializeApp = async function() {
     } catch (error) {
         console.error('Enhanced initialization error:', error);
         showToast('Initialization failed: ' + error.message, 'error');
-    }
-}
-
-// ==========================================
-// FIX: Add Staff Selector with Proper Check
-// ==========================================
-
-window.addStaffSelector = async function() {
-    try {
-        console.log('Adding staff selector...');
-        
-        // First ensure current staff is loaded
-        if (!AppState.staff.current) {
-            await ensureStaffLoaded();
-            if (!AppState.staff.current) {
-                console.error('Cannot add staff selector - no current staff');
-                return;
-            }
-        }
-        
-        // Load all staff members
-        const { data: allStaff, error } = await supabaseClient
-            .from('staff')
-            .select('id, first_name, last_name, email')
-            .eq('is_active', true)
-            .order('first_name');
-        
-        if (error) throw error;
-        
-        // Remove existing selector if present
-        const existingSelector = document.getElementById('staffSelector');
-        if (existingSelector) {
-            existingSelector.remove();
-        }
-        
-        // Create the selector UI
-        const selectorHTML = `
-            <div id="staffSelector" style="
-                position: fixed;
-                bottom: 20px;
-                right: 20px;
-                background: white;
-                padding: 15px;
-                border-radius: 8px;
-                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-                z-index: 9999;
-                max-width: 300px;
-                display: none;
-            ">
-                <div style="font-weight: bold; margin-bottom: 10px; color: #333;">
-                    🧪 Test as Different Staff:
-                </div>
-                <div style="margin-bottom: 5px; font-size: 12px; color: #666;">
-                    Currently: ${AppState.staff.current.first_name} ${AppState.staff.current.last_name}
-                </div>
-                <select id="staffTestSelect" style="
-                    width: 100%;
-                    padding: 8px;
-                    border: 1px solid #ddd;
-                    border-radius: 4px;
-                    margin-bottom: 10px;
-                ">
-                    <option value="">-- Select Staff Member --</option>
-                    ${allStaff.map(s => `
-                        <option value="${s.id}" ${s.id === AppState.staff.current.id ? 'disabled' : ''}>
-                            ${s.first_name} ${s.last_name} 
-                            ${s.id === AppState.staff.current.id ? '(You)' : ''}
-                        </option>
-                    `).join('')}
-                </select>
-                <button onclick="testSelectedStaff()" style="
-                    width: 100%;
-                    padding: 8px;
-                    background: #004990;
-                    color: white;
-                    border: none;
-                    border-radius: 4px;
-                    cursor: pointer;
-                    font-weight: bold;
-                ">Switch View</button>
-                <button onclick="document.getElementById('staffSelector').style.display='none'" style="
-                    width: 100%;
-                    padding: 8px;
-                    background: #f0f0f0;
-                    color: #666;
-                    border: none;
-                    border-radius: 4px;
-                    cursor: pointer;
-                    margin-top: 5px;
-                    font-size: 12px;
-                ">Hide</button>
-            </div>
-        `;
-        
-        // Add to page
-        document.body.insertAdjacentHTML('beforeend', selectorHTML);
-        console.log('Staff selector added successfully');
-        
-    } catch (error) {
-        console.error('Error loading staff list:', error);
-        showToast('Failed to load staff list', 'error');
     }
 }
 
