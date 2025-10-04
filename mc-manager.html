@@ -7414,17 +7414,14 @@ function generatePayrollSummary() {
        if (!staffPayroll[staffId]) {
            staffPayroll[staffId] = {
                staff: shift.staff,
-               // Hours at staff's default rate
                defaultRateHours: { 
                    total: 0, weekdayDay: 0, weekdayEvening: 0, weekdayNight: 0, 
                    saturday: 0, sunday: 0, publicHoliday: 0
                },
                defaultRateSleepoverCount: 0,
-               // Hours at override rates - max 3 overrides
                override1Hours: null,
                override2Hours: null,
                override3Hours: null,
-               // Track all hours for limit calculation
                allHours: {
                    total: 0, weekdayDay: 0, weekdayEvening: 0, weekdayNight: 0, 
                    saturday: 0, sunday: 0, publicHoliday: 0
@@ -7432,7 +7429,7 @@ function generatePayrollSummary() {
                totalPay: 0,
                shifts: [],
                totalSleepoverCount: 0,
-               overrideRatesMap: new Map() // Map override ID to override index
+               overrideRatesMap: new Map()
            };
        }
        
@@ -7451,24 +7448,26 @@ function generatePayrollSummary() {
        entry.allHours.sunday += hours.sunday || 0;
        entry.allHours.publicHoliday += hours.publicHoliday || 0;
        
-       // Count total sleepovers
        if (hours.sleepover > 0) {
            entry.totalSleepoverCount++;
        }
        
        // Determine which rate bucket to add hours to
-       if (shift.pay_override_id && shift.pay_override_id !== '00000000-0000-0000-0000-000000000002') {
-           // This is an override rate (not the default UUID)
+       const hasOverride = shift.pay_override_id && shift.pay_override_id !== '00000000-0000-0000-0000-000000000002';
+       
+       if (hasOverride) {
            let overrideIndex = entry.overrideRatesMap.get(shift.pay_override_id);
            
            if (overrideIndex === undefined) {
-               // Assign new override slot
+               const overrideRate = payRates.find(pr => pr.id === shift.pay_override_id) || {};
+               const overrideLabel = payRateLabels.get(shift.pay_override_id) || `Override Rate`;
+               
                if (!entry.override1Hours) {
                    overrideIndex = 1;
                    entry.override1Hours = {
                        rateId: shift.pay_override_id,
-                       rate: payRates.find(pr => pr.id === shift.pay_override_id) || {},
-                       label: payRateLabels.get(shift.pay_override_id) || 'Override 1',
+                       rate: overrideRate,
+                       label: overrideLabel,
                        hours: { total: 0, weekdayDay: 0, weekdayEvening: 0, weekdayNight: 0, 
                                saturday: 0, sunday: 0, publicHoliday: 0 },
                        sleepoverCount: 0
@@ -7477,8 +7476,8 @@ function generatePayrollSummary() {
                    overrideIndex = 2;
                    entry.override2Hours = {
                        rateId: shift.pay_override_id,
-                       rate: payRates.find(pr => pr.id === shift.pay_override_id) || {},
-                       label: payRateLabels.get(shift.pay_override_id) || 'Override 2',
+                       rate: overrideRate,
+                       label: overrideLabel,
                        hours: { total: 0, weekdayDay: 0, weekdayEvening: 0, weekdayNight: 0, 
                                saturday: 0, sunday: 0, publicHoliday: 0 },
                        sleepoverCount: 0
@@ -7487,37 +7486,34 @@ function generatePayrollSummary() {
                    overrideIndex = 3;
                    entry.override3Hours = {
                        rateId: shift.pay_override_id,
-                       rate: payRates.find(pr => pr.id === shift.pay_override_id) || {},
-                       label: payRateLabels.get(shift.pay_override_id) || 'Override 3',
+                       rate: overrideRate,
+                       label: overrideLabel,
                        hours: { total: 0, weekdayDay: 0, weekdayEvening: 0, weekdayNight: 0, 
                                saturday: 0, sunday: 0, publicHoliday: 0 },
                        sleepoverCount: 0
                    };
-               } else {
-                   console.warn(`Staff ${entry.staff.first_name} ${entry.staff.last_name} has more than 3 override rates`);
-                   overrideIndex = 3; // Add to override 3 if exceeded
                }
                entry.overrideRatesMap.set(shift.pay_override_id, overrideIndex);
            }
            
-           // Add hours to the appropriate override bucket
            const overrideBucket = overrideIndex === 1 ? entry.override1Hours : 
                                  overrideIndex === 2 ? entry.override2Hours : 
                                  entry.override3Hours;
            
-           overrideBucket.hours.total += hours.total || 0;
-           overrideBucket.hours.weekdayDay += hours.weekdayDay || 0;
-           overrideBucket.hours.weekdayEvening += hours.weekdayEvening || 0;
-           overrideBucket.hours.weekdayNight += hours.weekdayNight || 0;
-           overrideBucket.hours.saturday += hours.saturday || 0;
-           overrideBucket.hours.sunday += hours.sunday || 0;
-           overrideBucket.hours.publicHoliday += hours.publicHoliday || 0;
-           
-           if (hours.sleepover > 0) {
-               overrideBucket.sleepoverCount++;
+           if (overrideBucket) {
+               overrideBucket.hours.total += hours.total || 0;
+               overrideBucket.hours.weekdayDay += hours.weekdayDay || 0;
+               overrideBucket.hours.weekdayEvening += hours.weekdayEvening || 0;
+               overrideBucket.hours.weekdayNight += hours.weekdayNight || 0;
+               overrideBucket.hours.saturday += hours.saturday || 0;
+               overrideBucket.hours.sunday += hours.sunday || 0;
+               overrideBucket.hours.publicHoliday += hours.publicHoliday || 0;
+               
+               if (hours.sleepover > 0) {
+                   overrideBucket.sleepoverCount++;
+               }
            }
        } else {
-           // Default rate hours (null or default UUID)
            entry.defaultRateHours.total += hours.total || 0;
            entry.defaultRateHours.weekdayDay += hours.weekdayDay || 0;
            entry.defaultRateHours.weekdayEvening += hours.weekdayEvening || 0;
@@ -7534,120 +7530,165 @@ function generatePayrollSummary() {
    
    // Generate export data
    const payrollData = Object.values(staffPayroll).map(entry => {
-       const staff = entry.staff || { first_name: 'Unknown', last_name: 'Staff', staff_code: '', limits: 76 };
+       const staff = entry.staff || { first_name: 'Unknown', middle_name: '', last_name: 'Staff', staff_code: '', limits: 76, payg_withholding: 0 };
        const hourLimit = parseFloat(staff.limits) || 76;
        
-       // Calculate total for limit check - sleepovers already included in total
+       // Calculate total for limit check
        const totalForLimit = entry.allHours.total;
        const overLimit = totalForLimit > hourLimit;
        const hoursToDeduct = overLimit ? totalForLimit - hourLimit : 0;
        
        // Get default pay rate
-       let defaultPayRate = null;
-       if (staff.pay_rate_id) {
-           defaultPayRate = payRates.find(pr => pr.id === staff.pay_rate_id);
-       }
-       if (!defaultPayRate) {
-           defaultPayRate = {};
-       }
-       const defaultPayRateLabel = staff.pay_rate_id ? 
-           (payRateLabels.get(staff.pay_rate_id) || 'Standard Rate') : 
-           'Standard Rate';
+       let defaultPayRate = payRates.find(pr => pr.id === staff.pay_rate_id) || {};
+       const defaultPayRateLabel = payRateLabels.get(staff.pay_rate_id) || 'Standard Rate';
+       
+       // Build name with middle name
+       const fullName = staff.middle_name ? 
+           `${staff.first_name} ${staff.middle_name} ${staff.last_name}` :
+           `${staff.first_name} ${staff.last_name}`;
        
        // Start building the row
        const row = {
            // === STAFF INFO ===
-           StaffName: `${staff.first_name} ${staff.last_name}`,
-           StaffCode: staff.staff_code || '',
-           HourLimit: hourLimit.toFixed(0),
-           TotalHoursRaw: formatHours(entry.allHours.total),
-           TotalSleepovers: entry.totalSleepoverCount,
-           TotalForLimit: formatHours(totalForLimit),
-           OverLimit: overLimit ? 'YES' : 'NO',
-           HoursToDeduct: formatHours(hoursToDeduct),
+           'Name': fullName,
+           'PAYG': staff.payg_withholding ? 'YES' : 'NO',           
+           'Code': staff.staff_code || '',
+           'Limit': hourLimit.toFixed(0),
+           'Total Hrs': formatHours(entry.allHours.total),
+           'Sleepovers': entry.totalSleepoverCount,
+           'For Limit': formatHours(totalForLimit),
+           'Over': overLimit ? 'YES' : 'NO',
+           'Deduct': formatHours(hoursToDeduct),
            
            // === DEFAULT PAY RATE INFO ===
-           DefaultRateLabel: defaultPayRateLabel,
-           DefaultDayRate: `$${(defaultPayRate.hourly_pay_rate || 0).toFixed(2)}`,
-           DefaultEveningRate: `$${(defaultPayRate.afternoon || 0).toFixed(2)}`,
-           DefaultNightRate: `$${(defaultPayRate.night || 0).toFixed(2)}`,
-           DefaultSaturdayRate: `$${(defaultPayRate.saturday || 0).toFixed(2)}`,
-           DefaultSundayRate: `$${(defaultPayRate.sunday || 0).toFixed(2)}`,
-           DefaultPublicHolidayRate: `$${(defaultPayRate.public_holiday || 0).toFixed(2)}`,
-           DefaultSleepoverRate: `$${(defaultPayRate.sleepover || 0).toFixed(2)}`,
+           'Rate': defaultPayRateLabel,
+           'Weekday $': `$${(defaultPayRate.hourly_pay_rate || 0).toFixed(2)}`,
+           'Evening $': `$${(defaultPayRate.afternoon || 0).toFixed(2)}`,
+           'Night $': `$${(defaultPayRate.night || 0).toFixed(2)}`,
+           'Saturday $': `$${(defaultPayRate.saturday || 0).toFixed(2)}`,
+           'Sunday $': `$${(defaultPayRate.sunday || 0).toFixed(2)}`,
+           'Holiday $': `$${(defaultPayRate.public_holiday || 0).toFixed(2)}`,
+           'Sleepover $': `$${(defaultPayRate.sleepover || 0).toFixed(2)}`,
            
            // === DEFAULT RATE HOURS ===
-           DefaultWeekdayHours: formatHours(entry.defaultRateHours.weekdayDay),
-           DefaultEveningHours: formatHours(entry.defaultRateHours.weekdayEvening),
-           DefaultNightHours: formatHours(entry.defaultRateHours.weekdayNight),
-           DefaultSaturdayHours: formatHours(entry.defaultRateHours.saturday),
-           DefaultSundayHours: formatHours(entry.defaultRateHours.sunday),
-           DefaultPublicHolidayHours: formatHours(entry.defaultRateHours.publicHoliday),
-           DefaultSleepoverCount: entry.defaultRateSleepoverCount
+           'Weekday': formatHours(entry.defaultRateHours.weekdayDay),
+           'Evening': formatHours(entry.defaultRateHours.weekdayEvening),
+           'Night': formatHours(entry.defaultRateHours.weekdayNight),
+           'Saturday': formatHours(entry.defaultRateHours.saturday),
+           'Sunday': formatHours(entry.defaultRateHours.sunday),
+           'Holiday': formatHours(entry.defaultRateHours.publicHoliday),
+           'Sleepover #': entry.defaultRateSleepoverCount
        };
        
        // === OVERRIDE RATE 1 ===
        if (entry.override1Hours) {
            const o1 = entry.override1Hours;
-           row['Override1_Label'] = o1.label;
-           row['Override1_DayRate'] = `$${(o1.rate.hourly_pay_rate || 0).toFixed(2)}`;
-           row['Override1_EveningRate'] = `$${(o1.rate.afternoon || 0).toFixed(2)}`;
-           row['Override1_NightRate'] = `$${(o1.rate.night || 0).toFixed(2)}`;
-           row['Override1_SaturdayRate'] = `$${(o1.rate.saturday || 0).toFixed(2)}`;
-           row['Override1_SundayRate'] = `$${(o1.rate.sunday || 0).toFixed(2)}`;
-           row['Override1_PublicHolidayRate'] = `$${(o1.rate.public_holiday || 0).toFixed(2)}`;
-           row['Override1_SleepoverRate'] = `$${(o1.rate.sleepover || 0).toFixed(2)}`;
-           row['Override1_WeekdayHours'] = formatHours(o1.hours.weekdayDay);
-           row['Override1_EveningHours'] = formatHours(o1.hours.weekdayEvening);
-           row['Override1_NightHours'] = formatHours(o1.hours.weekdayNight);
-           row['Override1_SaturdayHours'] = formatHours(o1.hours.saturday);
-           row['Override1_SundayHours'] = formatHours(o1.hours.sunday);
-           row['Override1_PublicHolidayHours'] = formatHours(o1.hours.publicHoliday);
-           row['Override1_SleepoverCount'] = o1.sleepoverCount;
+           row['Alt1 Rate'] = o1.label;
+           row['Alt1 Weekday $'] = `$${(o1.rate.hourly_pay_rate || 0).toFixed(2)}`;
+           row['Alt1 Evening $'] = `$${(o1.rate.afternoon || 0).toFixed(2)}`;
+           row['Alt1 Night $'] = `$${(o1.rate.night || 0).toFixed(2)}`;
+           row['Alt1 Saturday $'] = `$${(o1.rate.saturday || 0).toFixed(2)}`;
+           row['Alt1 Sunday $'] = `$${(o1.rate.sunday || 0).toFixed(2)}`;
+           row['Alt1 Holiday $'] = `$${(o1.rate.public_holiday || 0).toFixed(2)}`;
+           row['Alt1 Sleepover $'] = `$${(o1.rate.sleepover || 0).toFixed(2)}`;
+           row['Alt1 Weekday'] = formatHours(o1.hours.weekdayDay);
+           row['Alt1 Evening'] = formatHours(o1.hours.weekdayEvening);
+           row['Alt1 Night'] = formatHours(o1.hours.weekdayNight);
+           row['Alt1 Saturday'] = formatHours(o1.hours.saturday);
+           row['Alt1 Sunday'] = formatHours(o1.hours.sunday);
+           row['Alt1 Holiday'] = formatHours(o1.hours.publicHoliday);
+           row['Alt1 Sleepover #'] = o1.sleepoverCount;
+       } else {
+           row['Alt1 Rate'] = '';
+           row['Alt1 Weekday $'] = '';
+           row['Alt1 Evening $'] = '';
+           row['Alt1 Night $'] = '';
+           row['Alt1 Saturday $'] = '';
+           row['Alt1 Sunday $'] = '';
+           row['Alt1 Holiday $'] = '';
+           row['Alt1 Sleepover $'] = '';
+           row['Alt1 Weekday'] = '';
+           row['Alt1 Evening'] = '';
+           row['Alt1 Night'] = '';
+           row['Alt1 Saturday'] = '';
+           row['Alt1 Sunday'] = '';
+           row['Alt1 Holiday'] = '';
+           row['Alt1 Sleepover #'] = '';
        }
        
        // === OVERRIDE RATE 2 ===
        if (entry.override2Hours) {
            const o2 = entry.override2Hours;
-           row['Override2_Label'] = o2.label;
-           row['Override2_DayRate'] = `$${(o2.rate.hourly_pay_rate || 0).toFixed(2)}`;
-           row['Override2_EveningRate'] = `$${(o2.rate.afternoon || 0).toFixed(2)}`;
-           row['Override2_NightRate'] = `$${(o2.rate.night || 0).toFixed(2)}`;
-           row['Override2_SaturdayRate'] = `$${(o2.rate.saturday || 0).toFixed(2)}`;
-           row['Override2_SundayRate'] = `$${(o2.rate.sunday || 0).toFixed(2)}`;
-           row['Override2_PublicHolidayRate'] = `$${(o2.rate.public_holiday || 0).toFixed(2)}`;
-           row['Override2_SleepoverRate'] = `$${(o2.rate.sleepover || 0).toFixed(2)}`;
-           row['Override2_WeekdayHours'] = formatHours(o2.hours.weekdayDay);
-           row['Override2_EveningHours'] = formatHours(o2.hours.weekdayEvening);
-           row['Override2_NightHours'] = formatHours(o2.hours.weekdayNight);
-           row['Override2_SaturdayHours'] = formatHours(o2.hours.saturday);
-           row['Override2_SundayHours'] = formatHours(o2.hours.sunday);
-           row['Override2_PublicHolidayHours'] = formatHours(o2.hours.publicHoliday);
-           row['Override2_SleepoverCount'] = o2.sleepoverCount;
+           row['Alt2 Rate'] = o2.label;
+           row['Alt2 Weekday $'] = `$${(o2.rate.hourly_pay_rate || 0).toFixed(2)}`;
+           row['Alt2 Evening $'] = `$${(o2.rate.afternoon || 0).toFixed(2)}`;
+           row['Alt2 Night $'] = `$${(o2.rate.night || 0).toFixed(2)}`;
+           row['Alt2 Saturday $'] = `$${(o2.rate.saturday || 0).toFixed(2)}`;
+           row['Alt2 Sunday $'] = `$${(o2.rate.sunday || 0).toFixed(2)}`;
+           row['Alt2 Holiday $'] = `$${(o2.rate.public_holiday || 0).toFixed(2)}`;
+           row['Alt2 Sleepover $'] = `$${(o2.rate.sleepover || 0).toFixed(2)}`;
+           row['Alt2 Weekday'] = formatHours(o2.hours.weekdayDay);
+           row['Alt2 Evening'] = formatHours(o2.hours.weekdayEvening);
+           row['Alt2 Night'] = formatHours(o2.hours.weekdayNight);
+           row['Alt2 Saturday'] = formatHours(o2.hours.saturday);
+           row['Alt2 Sunday'] = formatHours(o2.hours.sunday);
+           row['Alt2 Holiday'] = formatHours(o2.hours.publicHoliday);
+           row['Alt2 Sleepover #'] = o2.sleepoverCount;
+       } else {
+           row['Alt2 Rate'] = '';
+           row['Alt2 Weekday $'] = '';
+           row['Alt2 Evening $'] = '';
+           row['Alt2 Night $'] = '';
+           row['Alt2 Saturday $'] = '';
+           row['Alt2 Sunday $'] = '';
+           row['Alt2 Holiday $'] = '';
+           row['Alt2 Sleepover $'] = '';
+           row['Alt2 Weekday'] = '';
+           row['Alt2 Evening'] = '';
+           row['Alt2 Night'] = '';
+           row['Alt2 Saturday'] = '';
+           row['Alt2 Sunday'] = '';
+           row['Alt2 Holiday'] = '';
+           row['Alt2 Sleepover #'] = '';
        }
        
        // === OVERRIDE RATE 3 ===
        if (entry.override3Hours) {
            const o3 = entry.override3Hours;
-           row['Override3_Label'] = o3.label;
-           row['Override3_DayRate'] = `$${(o3.rate.hourly_pay_rate || 0).toFixed(2)}`;
-           row['Override3_EveningRate'] = `$${(o3.rate.afternoon || 0).toFixed(2)}`;
-           row['Override3_NightRate'] = `$${(o3.rate.night || 0).toFixed(2)}`;
-           row['Override3_SaturdayRate'] = `$${(o3.rate.saturday || 0).toFixed(2)}`;
-           row['Override3_SundayRate'] = `$${(o3.rate.sunday || 0).toFixed(2)}`;
-           row['Override3_PublicHolidayRate'] = `$${(o3.rate.public_holiday || 0).toFixed(2)}`;
-           row['Override3_SleepoverRate'] = `$${(o3.rate.sleepover || 0).toFixed(2)}`;
-           row['Override3_WeekdayHours'] = formatHours(o3.hours.weekdayDay);
-           row['Override3_EveningHours'] = formatHours(o3.hours.weekdayEvening);
-           row['Override3_NightHours'] = formatHours(o3.hours.weekdayNight);
-           row['Override3_SaturdayHours'] = formatHours(o3.hours.saturday);
-           row['Override3_SundayHours'] = formatHours(o3.hours.sunday);
-           row['Override3_PublicHolidayHours'] = formatHours(o3.hours.publicHoliday);
-           row['Override3_SleepoverCount'] = o3.sleepoverCount;
+           row['Alt3 Rate'] = o3.label;
+           row['Alt3 Weekday $'] = `$${(o3.rate.hourly_pay_rate || 0).toFixed(2)}`;
+           row['Alt3 Evening $'] = `$${(o3.rate.afternoon || 0).toFixed(2)}`;
+           row['Alt3 Night $'] = `$${(o3.rate.night || 0).toFixed(2)}`;
+           row['Alt3 Saturday $'] = `$${(o3.rate.saturday || 0).toFixed(2)}`;
+           row['Alt3 Sunday $'] = `$${(o3.rate.sunday || 0).toFixed(2)}`;
+           row['Alt3 Holiday $'] = `$${(o3.rate.public_holiday || 0).toFixed(2)}`;
+           row['Alt3 Sleepover $'] = `$${(o3.rate.sleepover || 0).toFixed(2)}`;
+           row['Alt3 Weekday'] = formatHours(o3.hours.weekdayDay);
+           row['Alt3 Evening'] = formatHours(o3.hours.weekdayEvening);
+           row['Alt3 Night'] = formatHours(o3.hours.weekdayNight);
+           row['Alt3 Saturday'] = formatHours(o3.hours.saturday);
+           row['Alt3 Sunday'] = formatHours(o3.hours.sunday);
+           row['Alt3 Holiday'] = formatHours(o3.hours.publicHoliday);
+           row['Alt3 Sleepover #'] = o3.sleepoverCount;
+       } else {
+           row['Alt3 Rate'] = '';
+           row['Alt3 Weekday $'] = '';
+           row['Alt3 Evening $'] = '';
+           row['Alt3 Night $'] = '';
+           row['Alt3 Saturday $'] = '';
+           row['Alt3 Sunday $'] = '';
+           row['Alt3 Holiday $'] = '';
+           row['Alt3 Sleepover $'] = '';
+           row['Alt3 Weekday'] = '';
+           row['Alt3 Evening'] = '';
+           row['Alt3 Night'] = '';
+           row['Alt3 Saturday'] = '';
+           row['Alt3 Sunday'] = '';
+           row['Alt3 Holiday'] = '';
+           row['Alt3 Sleepover #'] = '';
        }
        
        // === DEDUCTIONS AND ADJUSTED HOURS ===
-       // Initialize deductions (will be 0 if not over limit)
        const deductions = {
            default: { weekdayDay: 0, weekdayEvening: 0, weekdayNight: 0, saturday: 0, sunday: 0, publicHoliday: 0 },
            override1: { weekdayDay: 0, weekdayEvening: 0, weekdayNight: 0, saturday: 0, sunday: 0, publicHoliday: 0 },
@@ -7656,10 +7697,8 @@ function generatePayrollSummary() {
        };
        
        if (overLimit) {
-           // Build list of all hour buckets with their rates for prioritization
            const deductionPriority = [];
            
-           // Add default rate hours
            ['weekdayDay', 'weekdayEvening', 'weekdayNight', 'saturday', 'sunday', 'publicHoliday'].forEach(cat => {
                if (entry.defaultRateHours[cat] > 0) {
                    const rateField = cat === 'weekdayDay' ? 'hourly_pay_rate' :
@@ -7675,7 +7714,6 @@ function generatePayrollSummary() {
                }
            });
            
-           // Add override hours
            [entry.override1Hours, entry.override2Hours, entry.override3Hours].forEach((override, idx) => {
                if (override) {
                    ['weekdayDay', 'weekdayEvening', 'weekdayNight', 'saturday', 'sunday', 'publicHoliday'].forEach(cat => {
@@ -7695,12 +7733,9 @@ function generatePayrollSummary() {
                }
            });
            
-           // Sort by rate (lowest first)
            deductionPriority.sort((a, b) => a.rate - b.rate);
            
-           // Apply deductions
            let remainingToDeduct = hoursToDeduct;
-           
            for (const item of deductionPriority) {
                if (remainingToDeduct <= 0) break;
                const toDeduct = Math.min(item.hours, remainingToDeduct);
@@ -7709,59 +7744,76 @@ function generatePayrollSummary() {
            }
        }
        
-       // === ADJUSTED HOURS COLUMNS (always included) ===
-       // Default adjusted
-       row['DefaultWeekdayAdjusted'] = formatHours(entry.defaultRateHours.weekdayDay - deductions.default.weekdayDay);
-       row['DefaultEveningAdjusted'] = formatHours(entry.defaultRateHours.weekdayEvening - deductions.default.weekdayEvening);
-       row['DefaultNightAdjusted'] = formatHours(entry.defaultRateHours.weekdayNight - deductions.default.weekdayNight);
-       row['DefaultSaturdayAdjusted'] = formatHours(entry.defaultRateHours.saturday - deductions.default.saturday);
-       row['DefaultSundayAdjusted'] = formatHours(entry.defaultRateHours.sunday - deductions.default.sunday);
-       row['DefaultPublicHolidayAdjusted'] = formatHours(entry.defaultRateHours.publicHoliday - deductions.default.publicHoliday);
+       // === ADJUSTED HOURS COLUMNS ===
+       row['Adj Weekday'] = formatHours(entry.defaultRateHours.weekdayDay - deductions.default.weekdayDay);
+       row['Adj Evening'] = formatHours(entry.defaultRateHours.weekdayEvening - deductions.default.weekdayEvening);
+       row['Adj Night'] = formatHours(entry.defaultRateHours.weekdayNight - deductions.default.weekdayNight);
+       row['Adj Saturday'] = formatHours(entry.defaultRateHours.saturday - deductions.default.saturday);
+       row['Adj Sunday'] = formatHours(entry.defaultRateHours.sunday - deductions.default.sunday);
+       row['Adj Holiday'] = formatHours(entry.defaultRateHours.publicHoliday - deductions.default.publicHoliday);
        
-       // Override 1 adjusted
        if (entry.override1Hours) {
-           row['Override1_WeekdayAdjusted'] = formatHours(entry.override1Hours.hours.weekdayDay - deductions.override1.weekdayDay);
-           row['Override1_EveningAdjusted'] = formatHours(entry.override1Hours.hours.weekdayEvening - deductions.override1.weekdayEvening);
-           row['Override1_NightAdjusted'] = formatHours(entry.override1Hours.hours.weekdayNight - deductions.override1.weekdayNight);
-           row['Override1_SaturdayAdjusted'] = formatHours(entry.override1Hours.hours.saturday - deductions.override1.saturday);
-           row['Override1_SundayAdjusted'] = formatHours(entry.override1Hours.hours.sunday - deductions.override1.sunday);
-           row['Override1_PublicHolidayAdjusted'] = formatHours(entry.override1Hours.hours.publicHoliday - deductions.override1.publicHoliday);
+           row['Alt1 Adj Weekday'] = formatHours(entry.override1Hours.hours.weekdayDay - deductions.override1.weekdayDay);
+           row['Alt1 Adj Evening'] = formatHours(entry.override1Hours.hours.weekdayEvening - deductions.override1.weekdayEvening);
+           row['Alt1 Adj Night'] = formatHours(entry.override1Hours.hours.weekdayNight - deductions.override1.weekdayNight);
+           row['Alt1 Adj Saturday'] = formatHours(entry.override1Hours.hours.saturday - deductions.override1.saturday);
+           row['Alt1 Adj Sunday'] = formatHours(entry.override1Hours.hours.sunday - deductions.override1.sunday);
+           row['Alt1 Adj Holiday'] = formatHours(entry.override1Hours.hours.publicHoliday - deductions.override1.publicHoliday);
+       } else {
+           row['Alt1 Adj Weekday'] = '';
+           row['Alt1 Adj Evening'] = '';
+           row['Alt1 Adj Night'] = '';
+           row['Alt1 Adj Saturday'] = '';
+           row['Alt1 Adj Sunday'] = '';
+           row['Alt1 Adj Holiday'] = '';
        }
        
-       // Override 2 adjusted
        if (entry.override2Hours) {
-           row['Override2_WeekdayAdjusted'] = formatHours(entry.override2Hours.hours.weekdayDay - deductions.override2.weekdayDay);
-           row['Override2_EveningAdjusted'] = formatHours(entry.override2Hours.hours.weekdayEvening - deductions.override2.weekdayEvening);
-           row['Override2_NightAdjusted'] = formatHours(entry.override2Hours.hours.weekdayNight - deductions.override2.weekdayNight);
-           row['Override2_SaturdayAdjusted'] = formatHours(entry.override2Hours.hours.saturday - deductions.override2.saturday);
-           row['Override2_SundayAdjusted'] = formatHours(entry.override2Hours.hours.sunday - deductions.override2.sunday);
-           row['Override2_PublicHolidayAdjusted'] = formatHours(entry.override2Hours.hours.publicHoliday - deductions.override2.publicHoliday);
+           row['Alt2 Adj Weekday'] = formatHours(entry.override2Hours.hours.weekdayDay - deductions.override2.weekdayDay);
+           row['Alt2 Adj Evening'] = formatHours(entry.override2Hours.hours.weekdayEvening - deductions.override2.weekdayEvening);
+           row['Alt2 Adj Night'] = formatHours(entry.override2Hours.hours.weekdayNight - deductions.override2.weekdayNight);
+           row['Alt2 Adj Saturday'] = formatHours(entry.override2Hours.hours.saturday - deductions.override2.saturday);
+           row['Alt2 Adj Sunday'] = formatHours(entry.override2Hours.hours.sunday - deductions.override2.sunday);
+           row['Alt2 Adj Holiday'] = formatHours(entry.override2Hours.hours.publicHoliday - deductions.override2.publicHoliday);
+       } else {
+           row['Alt2 Adj Weekday'] = '';
+           row['Alt2 Adj Evening'] = '';
+           row['Alt2 Adj Night'] = '';
+           row['Alt2 Adj Saturday'] = '';
+           row['Alt2 Adj Sunday'] = '';
+           row['Alt2 Adj Holiday'] = '';
        }
        
-       // Override 3 adjusted
        if (entry.override3Hours) {
-           row['Override3_WeekdayAdjusted'] = formatHours(entry.override3Hours.hours.weekdayDay - deductions.override3.weekdayDay);
-           row['Override3_EveningAdjusted'] = formatHours(entry.override3Hours.hours.weekdayEvening - deductions.override3.weekdayEvening);
-           row['Override3_NightAdjusted'] = formatHours(entry.override3Hours.hours.weekdayNight - deductions.override3.weekdayNight);
-           row['Override3_SaturdayAdjusted'] = formatHours(entry.override3Hours.hours.saturday - deductions.override3.saturday);
-           row['Override3_SundayAdjusted'] = formatHours(entry.override3Hours.hours.sunday - deductions.override3.sunday);
-           row['Override3_PublicHolidayAdjusted'] = formatHours(entry.override3Hours.hours.publicHoliday - deductions.override3.publicHoliday);
+           row['Alt3 Adj Weekday'] = formatHours(entry.override3Hours.hours.weekdayDay - deductions.override3.weekdayDay);
+           row['Alt3 Adj Evening'] = formatHours(entry.override3Hours.hours.weekdayEvening - deductions.override3.weekdayEvening);
+           row['Alt3 Adj Night'] = formatHours(entry.override3Hours.hours.weekdayNight - deductions.override3.weekdayNight);
+           row['Alt3 Adj Saturday'] = formatHours(entry.override3Hours.hours.saturday - deductions.override3.saturday);
+           row['Alt3 Adj Sunday'] = formatHours(entry.override3Hours.hours.sunday - deductions.override3.sunday);
+           row['Alt3 Adj Holiday'] = formatHours(entry.override3Hours.hours.publicHoliday - deductions.override3.publicHoliday);
+       } else {
+           row['Alt3 Adj Weekday'] = '';
+           row['Alt3 Adj Evening'] = '';
+           row['Alt3 Adj Night'] = '';
+           row['Alt3 Adj Saturday'] = '';
+           row['Alt3 Adj Sunday'] = '';
+           row['Alt3 Adj Holiday'] = '';
        }
        
-       // === AGGREGATE TOTALS ===
-       // Simple calculation: original total minus deductions
+       // === TOTALS ===
        const adjustedTotal = entry.allHours.total - hoursToDeduct;
        
-       row['AdjustedTotalHours'] = formatHours(adjustedTotal);
-       row['GrossSalary'] = `$${entry.totalPay.toFixed(2)}`;
-       row['ShiftCount'] = entry.shifts.length;
-       row['DateRange'] = `${startDate} to ${endDate}`;
+       row['Final Hours'] = formatHours(adjustedTotal);
+       row['Gross Pay'] = `$${entry.totalPay.toFixed(2)}`;
+       row['Shifts'] = entry.shifts.length;
+       row['Period'] = `${startDate} to ${endDate}`;
        
        return row;
    });
    
    downloadCSV(payrollData, `payroll-summary-${startDate}-to-${endDate}.csv`);
 }
+
         function exportData() {
             // Fixed export with proper staff name handling
             const exportData = filteredShifts.map(shift => {
