@@ -36,6 +36,256 @@
             --radius-lg: 12px;
         }
 
+/* Loading overlay */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.98);
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(5px);
+}
+
+.loading-content {
+    text-align: center;
+    max-width: 400px;
+}
+
+.loading-spinner {
+    width: 60px;
+    height: 60px;
+    margin: 0 auto 20px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid var(--primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loading-content h2 {
+    color: #333;
+    margin-bottom: 10px;
+    font-size: 24px;
+}
+
+#loadingStatus {
+    color: #666;
+    margin-bottom: 20px;
+    font-size: 14px;
+}
+
+.loading-progress {
+    width: 100%;
+    height: 6px;
+    background: #f0f0f0;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.loading-progress-bar {
+    height: 100%;
+    background: var(--primary);
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+/* Hide everything else while loading */
+body.loading {
+    overflow: hidden;
+}
+        /* Filter bar */
+.notes-filter-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    background: white;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.filter-toggle-btn {
+    padding: 6px 12px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.filter-toggle-btn:hover {
+    background: #f5f5f5;
+}
+
+.notes-info {
+    font-size: 14px;
+    color: #666;
+}
+
+/* Filter panel */
+.filter-panel {
+    padding: 15px;
+    background: #f9f9f9;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.filter-section {
+    margin-bottom: 15px;
+}
+
+.filter-section label {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.date-range {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.filter-input, .filter-select {
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+.filter-bar {
+    display: flex;
+    gap: 12px;
+    padding: 16px;
+    background: var(--bg-light);
+    border-bottom: 1px solid var(--border-color);
+    align-items: center;
+}
+
+.filter-select {
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background: white;
+}
+
+.request-item {
+    display: flex;
+    align-items: center;
+    padding: 16px;
+    border-bottom: 1px solid var(--border-color);
+    gap: 12px;
+    transition: background 0.2s;
+}
+
+.request-item:hover {
+    background: var(--bg-light);
+}
+
+.request-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-full);
+    background: var(--bg-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary-color);
+}
+
+.request-details {
+    flex: 1;
+}
+
+.request-title {
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.request-info {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.request-meta {
+    font-size: 12px;
+    color: var(--text-light);
+    margin-top: 4px;
+}
+
+.status-pill {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: capitalize;
+}
+
+.status-pending {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.status-approved {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-rejected {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.btn-icon {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-light);
+}
+
+.btn-icon:hover {
+    background: var(--bg-light);
+    color: var(--text-dark);
+}
+
+/* Load more buttons */
+.load-more-container {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    padding: 20px;
+}
+
+.load-btn {
+    padding: 8px 16px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.load-btn:hover {
+    background: #f5f5f5;
+}
 
         .quick-image-preview {
     display: flex;
@@ -133,18 +383,7 @@
     margin-bottom: 12px;
 }
 
-.compose-toolbar button {
-    padding: 6px 10px;
-    border: 1px solid var(--border-color);
-    background: white;
-    border-radius: 4px;
-    cursor: pointer;
-}
 
-.compose-toolbar button:hover {
-    background: var(--primary);
-    color: white;
-}
 
 .compose-input-wrapper {
     display: flex;
@@ -152,7 +391,32 @@
     align-items: flex-end;
 }
 
+/* Fix compose toolbar button states */
+.compose-toolbar button {
+    padding: 6px 10px;
+    border: 1px solid var(--border-color);
+    background: white;
+    border-radius: 4px;
+    cursor: pointer;
+    color: #333; /* Ensure icons are visible */
+    transition: all 0.2s;
+}
 
+.compose-toolbar button:hover {
+    background: #f0f0f0;
+    color: #000;
+}
+
+/* Active/selected state for formatting buttons */
+.compose-toolbar button.active {
+    background: var(--primary, #2196f3);
+    color: white !important;
+    border-color: var(--primary, #2196f3);
+}
+
+.compose-toolbar button.active i {
+    color: white !important;
+}
 
 .send-button:hover {
     transform: scale(1.1);
@@ -600,6 +864,73 @@
     gap: 10px;
     margin: 20px 0;
     border-bottom: 2px solid var(--border-color);
+}
+
+/* Container styles */
+.requests-tabs {
+    display: flex;
+    gap: 10px;
+    margin: 20px 0;
+    border-bottom: 2px solid var(--border-color);
+    overflow-x: auto;
+}
+
+.requests-content {
+    padding: 20px 0;
+}
+
+/* Badge in tab */
+.tab-btn .badge {
+    margin-left: 5px;
+    padding: 2px 6px;
+    background: var(--primary);
+    color: white;
+    border-radius: 10px;
+    font-size: 11px;
+    display: inline-block;
+}
+
+/* Request cards */
+.request-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 12px;
+}
+
+.request-card.incoming {
+    border-left: 4px solid var(--primary);
+}
+
+.request-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.request-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.request-actions button {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.btn-success {
+    background: #28a745;
+    color: white;
+}
+
+.btn-danger {
+    background: #dc3545;
+    color: white;
 }
 
 .tab-btn {
@@ -1376,6 +1707,13 @@
             color: var(--primary-color);
             border: 1px solid var(--primary-color);
         }
+        .transfer-content {
+    display: none;
+}
+
+.transfer-content.active {
+    display: block;
+}
 
         /* Transfers View */
         .transfer-tabs {
@@ -2388,6 +2726,17 @@
     
 </head>
 <body>
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <h2>Loading My Carers Portal</h2>
+            <p id="loadingStatus">Quality Care From People Who Care</p>
+            <div class="loading-progress">
+                <div class="loading-progress-bar" id="loadingProgressBar"></div>
+            </div>
+        </div>
+    </div>
+    
      <!-- Header with Profile Banner -->
      <header class="header">
         <div class="profile-info">
@@ -2455,11 +2804,12 @@
             <div class="quick-action-btn" data-action="showTransportModal">
                 <span class="icon"><i class="fa-solid fa-car"></i></span>
                 <span>Transport Claim</span>
-            </div>            
+            </div>
+            <div class="quick-action-btn" data-action="showSchoolHolidayModal">
+                <span class="icon"><i class="fa-solid fa-graduation-cap"></i></span>
+                <span>School Holidays</span>
+            </div>
         </div>
-
-
-
     
         <!-- Pending Requests Summary -->
         <div class="requests-summary">
@@ -2535,50 +2885,58 @@
         </div>
     </div>
 
-    <!-- Transfers Section -->
-    <div id="transfers" class="content-section">
-        <div class="transfer-tabs">
-            <div class="transfer-tab active" data-transfer-tab="incoming">
-                Incoming Requests
-                <span class="badge" id="incomingCount">0</span>
-            </div>
-            <div class="transfer-tab" data-transfer-tab="outgoing">
-                My Requests
-            </div>
-            <div class="transfer-tab" data-transfer-tab="available">
-                Available Shifts
-            </div>
+    <!-- My Requests Section -->
+<div id="requests" class="content-section">
+    <h2>My Requests & Transfers</h2>
+    
+    <div class="transfer-tabs">
+        <div class="transfer-tab active" data-transfer-tab="incoming">
+            Incoming Requests
+            <span class="badge" id="incomingCount">0</span>
         </div>
-
-        <div id="incomingTransfers" class="transfer-content active">
-            <div class="transfer-list" id="incomingList">
-                <!-- Will be populated dynamically -->
-            </div>
+        <div class="transfer-tab" data-transfer-tab="my-requests">
+            My Requests
         </div>
-
-        <div id="outgoingTransfers" class="transfer-content">
-            <div class="transfer-list" id="outgoingList">
-                <!-- Will be populated dynamically -->
-            </div>
-        </div>
-
-        <div id="availableTransfers" class="transfer-content">
-            <div class="transfer-list" id="availableList">
-                <!-- Will be populated dynamically -->
-            </div>
+        <div class="transfer-tab" data-transfer-tab="available">
+            Available Shifts
         </div>
     </div>
 
-    <!-- Profile Section -->
-    <div id="profile" class="content-section">
-        <div class="profile-banner" id="profileBanner" onclick="document.getElementById('bannerUpload').click()">
-            <div class="banner-overlay">
-                <i class="fas fa-camera"></i>
-                <span>Tap to upload photo</span>
-            </div>
-            <input type="file" id="bannerUpload" accept="image/*" capture="environment" style="display: none;">
-        </div>        
-        
+    <!-- Incoming Transfers Content -->
+    <div id="incomingRequests" class="transfer-content active">
+        <div class="transfer-list" id="incomingList">
+            <!-- Incoming transfers from other staff -->
+        </div>
+    </div>
+
+    <!-- My Requests Content -->
+    <div id="myRequestsContent" class="transfer-content">
+        <div class="transfer-list" id="myRequestsList">
+            <!-- All user's outgoing requests -->
+        </div>
+    </div>
+
+    <!-- Available Shifts Content -->
+    <div id="availableContent" class="transfer-content">
+        <div class="transfer-list" id="availableList">
+            <!-- Available shifts to pick up -->
+        </div>
+    </div>
+</div>
+
+      <!-- Profile Section -->
+<div id="profile" class="content-section">
+    <div class="profile-banner" id="profileBanner" onclick="document.getElementById('bannerUpload').click()">
+        <div class="banner-overlay">
+            <i class="fas fa-camera"></i>
+            <span>Tap to upload photo</span>
+        </div>
+        <input type="file" 
+               id="bannerUpload" 
+               accept="image/*" 
+               style="display: none;">
+    </div>
+
         <!-- Personal Information -->
         <div class="profile-section">
             <div class="profile-section-header">
@@ -2614,35 +2972,18 @@
 
         <!-- Documents -->
         <div class="profile-section">
-            <div class="profile-section-header">
-                Documents
-            </div>
-            <div class="profile-content">
-                <div class="document-upload-area" onclick="showDocumentUploadModal()">
-                    <div>📎 Upload Document</div>
-                    <div style="font-size: 12px; color: var(--text-light); margin-top: 8px;">
-                        Click to upload certifications, ID, checks, etc.
-                    </div>
-                </div>
-                <div class="document-list" id="documentList">
-                    <!-- Will be populated dynamically -->
-                </div>
+            <h3>Documents</h3>
+            <button class="edit-btn" onclick="openUploadDocumentModal()">
+                <i class="fa-solid fa-file-arrow-up"></i>
+                Upload Document
+            </button>
+            <div id="documentsList" class="documents-list">
+                <!-- Documents list here -->
             </div>
         </div>
-
-        <!-- Availability Pattern -->
-        <div class="profile-section">
-            <div class="profile-section-header">
-                Weekly Availability
-                <button class="edit-btn" data-action="saveAvailability">Save</button>
-            </div>
-            <div class="profile-content">
-                <div class="availability-grid" id="availabilityGrid">
-                    <!-- Will be populated dynamically -->
-                </div>
-            </div>
         </div>
     </div>
+        
 <!-- Mobile Navigation -->
 <nav class="mobile-nav" role="tablist" aria-label="Main navigation">
     <button class="nav-item active" 
@@ -2677,34 +3018,35 @@
     </button>
     
     <button class="nav-item" 
-            data-section="transfers" 
-            aria-label="Navigate to transfers" 
-            role="tab" 
-            aria-selected="false"
-            id="nav-transfers">
-        <div class="icon"><i class="fa-solid fa-arrow-right-arrow-left" aria-hidden="true"></i></div>
-        <div>Transfers</div>
-        <span class="badge hidden" id="transferBadge" aria-label="pending transfers">0</span>
-    </button>
-    
-    <button class="nav-item" 
-            data-section="profile" 
-            aria-label="Navigate to profile" 
-            role="tab" 
-            aria-selected="false"
-            id="nav-profile">
-        <div class="icon"><i class="fa-solid fa-user" aria-hidden="true"></i></div>
-        <div>Profile</div>
-    </button>
-</nav>
+    data-section="requests" 
+    aria-label="Navigate to requests" 
+    role="tab" 
+    aria-selected="false"
+    id="nav-requests">
+<div class="icon"><i class="fa-solid fa-inbox"></i></div>
+<div>My Requests</div>
+<span class="badge hidden" id="requestsBadge">0</span>
+</button>
 
+
+<!-- Continue with profile button -->
+<button class="nav-item" 
+data-section="profile" 
+aria-label="Navigate to profile" 
+role="tab" 
+aria-selected="false"
+id="nav-profile">
+<div class="icon"><i class="fa-solid fa-user" aria-hidden="true"></i></div>
+<div>Profile</div>
+</button>
+</nav>
 <!-- Updated Participants Section with Menu -->
 <div id="participants" class="content-section" style="display: none;">
     <!-- Participant Selector -->
     <div class="participant-selector">
         <label class="field-label">Select Participant</label>
         <select class="participant-select" id="participantSelect" onchange="loadParticipantData()">
-            <option value="">Choose a participant...</option>
+            <option value="">Select a participant...</option>
         </select>
     </div>
     
@@ -2778,8 +3120,75 @@
         </div>        
     </div>
 </div>
-    <!-- MODALS SECTION -->
 
+
+<!-- Place this with your other content sections (after dashboard, timesheet, etc.) -->
+<div id="requests" class="content-section" style="display: none;">
+    <h2>My Requests & Submissions</h2>
+    
+    <!-- Tab Navigation -->
+    <div class="requests-tabs">
+        <button class="tab-btn active" data-request-tab="incoming">
+            Incoming <span class="badge" id="incomingCount">0</span>
+        </button>
+        <button class="tab-btn" data-request-tab="shifts">My Shifts</button>
+        <button class="tab-btn" data-request-tab="leave">Leave</button>
+        <button class="tab-btn" data-request-tab="transfers">Transfers</button>
+        <button class="tab-btn" data-request-tab="adjustments">Adjustments</button>
+    </div>
+    
+    <!-- Content Container -->
+    <div id="requestsContent" class="requests-content">
+        <!-- Content loads here -->
+    </div>
+</div>
+    <!-- MODALS SECTION -->
+    
+
+    <!-- Upload Document Modal -->
+<div id="uploadDocumentModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Upload Document</h3>
+            <button class="modal-close" onclick="closeModal('uploadDocumentModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="uploadDocumentForm">
+                <div class="form-group">
+                    <label class="required">Document Type</label>
+                    <select id="documentType" class="form-control" required>
+                        <option value="">Select type...</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="required">Title</label>
+                    <input type="text" id="documentTitle" class="form-control" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Expiry Date</label>
+                    <input type="date" id="documentExpiry" class="form-control">
+                </div>
+                
+                <div class="form-group">
+                    <label>Notes</label>
+                    <textarea id="documentNotes" class="form-control" rows="3"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="required">Select File</label>
+                    <input type="file" id="documentFile" class="form-control" 
+                           accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" required>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="modal-btn secondary" onclick="closeModal('uploadDocumentModal')">Cancel</button>
+            <button class="modal-btn primary" onclick="uploadDocument()">Upload</button>
+        </div>
+    </div>
+</div>
 
     <!-- Profile Photo Editor Modal -->
 <div id="photoEditorModal" class="modal">
@@ -3096,6 +3505,51 @@
             </footer>
         </div>
     </div>
+
+    <!-- School Holiday Modal -->
+<div id="schoolHolidayModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Submit School Holiday Period</h3>
+            <button class="modal-close" 
+                        data-modal-close="leaveModal" 
+                        aria-label="Close modal"
+                        type="button">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="schoolHolidayForm">
+                <div class="form-group">
+                    <label class="required">Start Date</label>
+                    <input type="date" 
+                           id="schoolStartDate" 
+                           class="form-control" 
+                           required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="required">End Date</label>
+                    <input type="date" 
+                           id="schoolEndDate" 
+                           class="form-control" 
+                           required>
+                </div>
+                
+                <div class="info-box">
+                    <i class="fa-solid fa-info-circle"></i>
+                    Submit your school holiday periods for roster planning and limit management
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="modal-btn secondary" onclick="closeModal('schoolHolidayModal')">
+                Cancel
+            </button>
+            <button type="button" class="modal-btn primary" onclick="submitSchoolHoliday()">
+                Submit
+            </button>
+        </div>
+    </div>
+</div>
 
     <!-- Leave Request Modal -->
     <div id="leaveModal" class="modal" role="dialog" aria-labelledby="leaveTitle" aria-hidden="true">
@@ -3432,6 +3886,68 @@ window.dutyTypes = window.dutyTypes || [];
     }
 };
 
+// Loading manager
+const LoadingManager = {
+    progress: 0,
+    steps: [
+        'Authenticating user...',
+        'Loading user data...',
+        'Loading reference data...',
+        'Loading shifts...',
+    ],
+    currentStep: 0,
+    
+    updateStatus(message) {
+        const statusElement = document.getElementById('loadingStatus');
+        if (statusElement) {
+            statusElement.textContent = message;
+        }
+    },
+    
+    updateProgress(percent) {
+        const progressBar = document.getElementById('loadingProgressBar');
+        if (progressBar) {
+            progressBar.style.width = `${percent}%`;
+        }
+    },
+    
+    nextStep() {
+        if (this.currentStep < this.steps.length) {
+            this.updateStatus(this.steps[this.currentStep]);
+            this.currentStep++;
+            const percent = (this.currentStep / this.steps.length) * 100;
+            this.updateProgress(percent);
+        }
+    },
+    
+    complete() {
+        this.updateStatus('Welcome');
+        this.updateProgress(100);
+        
+        setTimeout(() => {
+            const overlay = document.getElementById('loadingOverlay');
+            if (overlay) {
+                overlay.style.opacity = '0';
+                overlay.style.transition = 'opacity 0.3s ease';
+                setTimeout(() => {
+                    overlay.style.display = 'none';
+                    document.body.classList.remove('loading');
+                }, 300);
+            }
+        }, 500);
+    },
+    
+    error(message) {
+        this.updateStatus(`Error: ${message}`);
+        const spinner = document.querySelector('.loading-spinner');
+        if (spinner) {
+            spinner.style.borderTopColor = '#dc3545';
+        }
+    }
+};
+
+
+
 // Create currentStaff as a property that syncs with AppState
 Object.defineProperty(window, 'currentStaff', {
     get() { 
@@ -3651,54 +4167,70 @@ const ModalManager = {
 // ENHANCED: Initialize App with Staff Check
 // ==========================================
 const originalInitializeApp = window.initializeApp;
+// Updated initialization with loading states
 window.initializeApp = async function() {
     try {
+        // Add loading class to body
+        document.body.classList.add('loading');
+        
         console.log('Enhanced initialization starting...');
+        LoadingManager.nextStep(); // Authenticating
         
         // Ensure staff is loaded first
         await ensureStaffLoaded();
         
         if (!AppState.staff.current) {
+            LoadingManager.error('Failed to load staff data');
             console.error('Failed to load staff during initialization');
             showToast('Failed to load staff data. Please refresh the page.', 'error');
             return;
         }
         
-        // Call YOUR MAIN initializeApp function
+        LoadingManager.nextStep(); // Loading staff data
+        
+        // Call original initialization if exists
         if (typeof originalInitializeApp === 'function') {
             await originalInitializeApp();
         }
+        
+        LoadingManager.nextStep(); // Loading reference data
         
         // Load reference data if not already loaded
         if (typeof loadReferenceData === 'function') {
             await loadReferenceData();
         }
         
-        // CHECK LEAVE BUTTON VISIBILITY
-        await checkLeaveButtonVisibility();
+        LoadingManager.nextStep(); // Loading shifts
         
-        // LOAD CURRENT SHIFT CARD ON DASHBOARD
+        // Check visibility buttons
+        await checkLeaveButtonVisibility();
+        await checkSchoolHolidayVisibility();
+        
+        // Load current shift card on dashboard
         if (typeof loadCurrentShift === 'function') {
             console.log('Loading current shift for dashboard...');
             await loadCurrentShift();
         }
         
-        // LOAD OTHER DASHBOARD COMPONENTS
+        LoadingManager.nextStep(); // Setting up interface
+        
+        // Load other dashboard components
         if (typeof updateDashboard === 'function') {
             await updateDashboard();
         }
         
-         // INITIALIZE PARTICIPANT MANAGEMENT
-         if (typeof initializeParticipantManagement === 'function') {
-            await initializeParticipantManagement();
-        }
-        // INITIALIZE TIMESHEET VIEW AND RENDER
+        // Initialize timesheet view and render
         initializeTimesheetView();
         
-        // SET UP PERIOD NAVIGATION BUTTONS
+        // Set up period navigation
         setupPeriodNavigationButtons();
         
-        // ENSURE TIMESHEET IS RENDERED ON INIT
+        // Initialize participant management
+        if (typeof initializeParticipantManagement === 'function') {
+            await initializeParticipantManagement();
+        }
+        
+        // Ensure timesheet is rendered on init
         if (typeof renderTimesheetShifts === 'function') {
             setTimeout(() => {
                 console.log('Initial timesheet render');
@@ -3706,7 +4238,7 @@ window.initializeApp = async function() {
             }, 100);
         }
         
-        // SET UP TRANSPORT CLAIM BUTTON
+        // Set up transport claim button
         const transportBtn = document.getElementById('submitTransportClaim');
         if (transportBtn) {
             transportBtn.replaceWith(transportBtn.cloneNode(true));
@@ -3720,14 +4252,37 @@ window.initializeApp = async function() {
         // Set up transport input formatters
         setupTransportInputFormatters();
         
+        LoadingManager.nextStep(); // Finalizing
+        
         console.log('Enhanced initialization complete');
+        
+        // Complete loading
+        LoadingManager.complete();
         
     } catch (error) {
         console.error('Enhanced initialization error:', error);
+        LoadingManager.error(error.message);
         showToast('Initialization failed: ' + error.message, 'error');
+        
+        // Still hide overlay after error so user can refresh
+        setTimeout(() => {
+            LoadingManager.complete();
+        }, 3000);
     }
 }
 
+// Start initialization when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    // Show loading immediately
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) {
+        overlay.style.display = 'flex';
+    }
+    document.body.classList.add('loading');
+    
+    // Start initialization
+    initializeApp();
+});
 
 // Add this new function to handle timesheet initialization
 function initializeTimesheetView() {
@@ -3783,9 +4338,7 @@ function initializeTimesheetView() {
 }
 
 async function initializeApp() {
-    try {
-        console.log('Initializing team app...');
-        
+    try {        
         const { data: { session }, error } = await supabaseClient.auth.getSession();
         
         if (error || !session) {
@@ -3795,8 +4348,7 @@ async function initializeApp() {
         }
 
         currentUser = session.user;
-        console.log('User authenticated:', currentUser.email);
-        console.log('Auth User ID:', currentUser.id);
+
         
         // Try multiple methods to find staff record
         let staffData = null;
@@ -4669,6 +5221,277 @@ function renderNotesView(notes, participantId) {
     }, 100);
 }
 
+document.addEventListener('selectionchange', () => {
+    const compose = document.getElementById('noteCompose');
+    if (compose && document.activeElement === compose) {
+        updateToolbarStates();
+    }
+});
+
+
+// Load participant notes with pagination and filters
+async function loadParticipantNotes(participantId, page = 1, filters = {}) {
+    try {
+        const notesPerPage = 20;
+        const offset = (page - 1) * notesPerPage;
+        
+        // Build query
+        let query = supabaseClient
+            .from('shift_notes')
+            .select(`
+                id,
+                note,
+                attachments,
+                created_at,
+                staff:staff_id (
+                    id,
+                    first_name,
+                    last_name
+                )
+            `, { count: 'exact' });
+        
+        // Apply filters
+        if (filters.startDate) {
+            query = query.gte('created_at', filters.startDate);
+        }
+        if (filters.endDate) {
+            query = query.lte('created_at', filters.endDate + 'T23:59:59');
+        }
+        if (filters.staffId) {
+            query = query.eq('staff_id', filters.staffId);
+        }
+        
+        // Get data with pagination
+        const { data: notes, error, count } = await query
+            .order('created_at', { ascending: false })
+            .range(offset, offset + notesPerPage - 1);
+        
+        if (error) throw error;
+        
+        // Store for reference
+        window.currentNotes = notes;
+        window.currentNotesPage = page;
+        window.currentNotesFilters = filters;
+        window.totalNotesPages = Math.ceil(count / notesPerPage);
+        
+        renderNotesViewWithControls(notes, participantId, page, window.totalNotesPages);
+        
+    } catch (error) {
+        console.error('Error loading notes:', error);
+        showToast('Failed to load shift notes', 'error');
+    }
+}
+
+// Render with filter controls
+function renderNotesViewWithControls(notes, participantId, currentPage, totalPages) {
+    const container = document.getElementById('notesView');
+    if (!container) return;
+    
+    container.innerHTML = `
+        <div class="comments-wrapper">
+            <!-- Filter Bar -->
+            <div class="notes-filter-bar">
+                <button class="filter-toggle-btn" onclick="toggleFilterPanel()">
+                    <i class="fa-solid fa-filter"></i> Filters
+                </button>
+                <div class="notes-info">
+                    Page ${currentPage} of ${totalPages || 1}
+                </div>
+            </div>
+            
+            <!-- Hidden Filter Panel -->
+            <div id="filterPanel" class="filter-panel" style="display: none;">
+                <div class="filter-section">
+                    <label>Date Range</label>
+                    <div class="date-range">
+                        <input type="date" id="filterStartDate" class="filter-input">
+                        <span>to</span>
+                        <input type="date" id="filterEndDate" class="filter-input">
+                    </div>
+                </div>
+                <div class="filter-section">
+                    <label>Staff Member</label>
+                    <select id="filterStaff" class="filter-select">
+                        <option value="">All Staff</option>
+                    </select>
+                </div>
+                <div class="filter-actions">
+                    <button class="modal-btn secondary"="clearFilters()">Clear</button>
+                    <button class="modal-btn primary"="applyFilters('${participantId}')">Apply</button>
+                </div>
+            </div>
+            
+            <!-- Messages/Notes Area - Scrollable -->
+            <div class="messages-container" id="notesContainer">
+                <div class="messages-list">
+                    ${renderNotesList(notes.reverse())}
+                </div>
+                ${totalPages > 1 ? `
+                    <div class="load-more-container">
+                        ${currentPage > 1 ? `
+                            <button onclick="loadMoreNotes('${participantId}', ${currentPage - 1})" class="load-btn">
+                                <i class="fa-solid fa-chevron-up"></i> Previous
+                            </button>
+                        ` : ''}
+                        ${currentPage < totalPages ? `
+                            <button onclick="loadMoreNotes('${participantId}', ${currentPage + 1})" class="load-btn">
+                                <i class="fa-solid fa-chevron-down"></i> Load More
+                            </button>
+                        ` : ''}
+                    </div>
+                ` : ''}
+            </div>
+            
+            <!-- Fixed Compose Area remains the same -->
+            <div class="compose-container">
+                <div class="compose-toolbar">
+                    <button onclick="formatText('bold')" title="Bold">
+                        <i class="fa-solid fa-bold"></i>
+                    </button>
+                    <button onclick="formatText('italic')" title="Italic">
+                        <i class="fa-solid fa-italic"></i>
+                    </button>
+                    <button onclick="formatText('underline')" title="Underline">
+                        <i class="fa-solid fa-underline"></i>
+                    </button>
+                    <button onclick="formatText('list')" title="Bullet List">
+                        <i class="fa-solid fa-list"></i>
+                    </button>
+                    <button onclick="document.getElementById('noteImageInput').click()" title="Add Image">
+                        <i class="fa-solid fa-image"></i>
+                    </button>
+                </div>
+                
+                <input type="file" 
+                       id="noteImageInput" 
+                       accept="image/*" 
+                       multiple 
+                       style="display: none;"
+                       onchange="handleQuickImageUpload(event)">
+                
+                <div id="quickImagePreview" class="quick-image-preview"></div>
+                
+                <div class="compose-input-wrapper">
+                    <div id="noteCompose" 
+                         contenteditable="true" 
+                         class="compose-input" 
+                         placeholder="Type your note here..."></div>
+                    <button class="send-button" onclick="confirmAndSubmitNote('${participantId}')">
+                        <i class="fa-solid fa-arrow-up"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Populate staff filter
+    populateStaffFilter();
+    
+    // Scroll to bottom for latest
+    setTimeout(() => {
+        const container = document.getElementById('notesContainer');
+        if (container && currentPage === 1) {
+            container.scrollTop = container.scrollHeight;
+        }
+    }, 100);
+}
+
+// Toggle filter panel
+function toggleFilterPanel() {
+    const panel = document.getElementById('filterPanel');
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+}
+
+// Apply filters
+function applyFilters(participantId) {
+    const filters = {
+        startDate: document.getElementById('filterStartDate').value,
+        endDate: document.getElementById('filterEndDate').value,
+        staffId: document.getElementById('filterStaff').value
+    };
+    
+    loadParticipantNotes(participantId, 1, filters);
+    toggleFilterPanel();
+}
+
+// Clear filters
+function clearFilters() {
+    document.getElementById('filterStartDate').value = '';
+    document.getElementById('filterEndDate').value = '';
+    document.getElementById('filterStaff').value = '';
+    const participantId = document.getElementById('participantSelect').value;
+    loadParticipantNotes(participantId, 1, {});
+}
+
+// Load more notes
+function loadMoreNotes(participantId, page) {
+    loadParticipantNotes(participantId, page, window.currentNotesFilters || {});
+}
+
+// Populate staff dropdown
+async function populateStaffFilter() {
+    const select = document.getElementById('filterStaff');
+    if (!select) return;
+    
+    // Get unique staff who have written notes
+    const { data: staffList } = await supabaseClient
+        .from('shift_notes')
+        .select('staff:staff_id(id, first_name, last_name)')
+        .order('staff_id');
+    
+    const uniqueStaff = [];
+    const seen = new Set();
+    
+    staffList?.forEach(item => {
+        if (item.staff && !seen.has(item.staff.id)) {
+            seen.add(item.staff.id);
+            uniqueStaff.push(item.staff);
+        }
+    });
+    
+    select.innerHTML = '<option value="">All Staff</option>';
+    uniqueStaff.forEach(staff => {
+        select.innerHTML += `<option value="${staff.id}">${staff.first_name} ${staff.last_name}</option>`;
+    });
+}
+
+
+// Update submit to refresh with current filters
+async function submitQuickNote(participantId) {
+    const compose = document.getElementById('noteCompose');
+    const noteText = compose.innerHTML.trim();
+    const attachments = window.pendingNoteImages || [];
+    
+    if (!noteText || noteText === '<br>') {
+        if (attachments.length === 0) return;
+    }
+    
+    try {
+        const { error } = await supabaseClient
+            .from('shift_notes')
+            .insert({
+                staff_id: currentStaff.id,
+                note: noteText || 'Image attachment',
+                shift_id: null,
+                attachments: attachments,
+                created_at: new Date().toISOString()
+            });
+        
+        if (error) throw error;
+        
+        // Clear inputs
+        compose.innerHTML = '';
+        window.pendingNoteImages = [];
+        document.getElementById('quickImagePreview').innerHTML = '';
+        
+        // Reload with current filters and page
+        await loadParticipantNotes(participantId, 1, window.currentNotesFilters || {});
+        
+    } catch (error) {
+        console.error('Error adding note:', error);
+        showToast('Failed to add note', 'error');
+    }
+}
 // Updated format text to include underline
 function formatText(command) {
     const compose = document.getElementById('noteCompose');
@@ -4688,7 +5511,39 @@ function formatText(command) {
             document.execCommand('insertUnorderedList', false, null);
             break;
     }
+    
+    // Update button states after executing command
+    updateToolbarStates();
 }
+
+// Add this new function
+function updateToolbarStates() {
+    const buttons = document.querySelectorAll('.compose-toolbar button');
+    
+    buttons.forEach(btn => {
+        const icon = btn.querySelector('i');
+        if (!icon) return;
+        
+        let isActive = false;
+        
+        if (icon.classList.contains('fa-bold')) {
+            isActive = document.queryCommandState('bold');
+        } else if (icon.classList.contains('fa-italic')) {
+            isActive = document.queryCommandState('italic');
+        } else if (icon.classList.contains('fa-underline')) {
+            isActive = document.queryCommandState('underline');
+        } else if (icon.classList.contains('fa-list')) {
+            isActive = document.queryCommandState('insertUnorderedList');
+        }
+        
+        if (isActive) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+}
+
 
 // Updated keypress handler - Enter for new line, not submit
 function handleNoteKeypress(event) {
@@ -4761,43 +5616,6 @@ function renderNotesList(notes) {
     }).join('');
 }
 
-async function submitQuickNote(participantId) {
-    const compose = document.getElementById('noteCompose');
-    const noteText = compose.innerHTML.trim();
-    const attachments = window.pendingNoteImages || [];
-    
-    if (!noteText || noteText === '<br>') {
-        if (attachments.length === 0) {
-            return; // Nothing to send
-        }
-    }
-    
-    try {
-        const { error } = await supabaseClient
-            .from('shift_notes')
-            .insert({
-                staff_id: currentStaff.id,
-                note: noteText || 'Image attachment',
-                shift_id: null, // If nullable
-                attachments: attachments,
-                created_at: new Date().toISOString()
-            });
-        
-        if (error) throw error;
-        
-        // Clear everything
-        compose.innerHTML = '';
-        window.pendingNoteImages = [];
-        document.getElementById('quickImagePreview').innerHTML = '';
-        
-        await loadParticipantNotes(participantId);
-        
-    } catch (error) {
-        console.error('Error adding note:', error);
-        showToast('Failed to add note', 'error');
-    }
-}
-
 
 
 function formatMessageTime(date) {
@@ -4816,38 +5634,6 @@ function formatMessageTime(date) {
     }
 }
 
-async function submitQuickNote(participantId) {
-    const compose = document.getElementById('noteCompose');
-    const noteText = compose.innerHTML.trim();
-    const attachments = window.pendingNoteImages || [];
-    
-    if (!noteText || noteText === '<br>') {
-        return;
-    }
-    
-    try {
-        const { error } = await supabaseClient
-            .from('shift_notes')
-            .insert({
-                staff_id: currentStaff.id,
-                note: noteText,
-                shift_id: null, // Only works if you make shift_id nullable
-                attachments: attachments,
-                created_at: new Date().toISOString()
-            });
-        
-        if (error) throw error;
-        
-        // Clear and reload
-        compose.innerHTML = '';
-        window.pendingNoteImages = [];
-        await loadParticipantNotes(participantId);
-        
-    } catch (error) {
-        console.error('Error adding note:', error);
-        showToast('Failed to add note', 'error');
-    }
-}
 
 
 async function populateParticipantShifts(participantId) {
@@ -5020,9 +5806,152 @@ function formatTime12Hour(time) {
     return `${displayHour}:${minutes} ${ampm}`;
 }
 
+// Open school holiday modal
+function showSchoolHolidayModal() {
+    const modal = document.getElementById('schoolHolidayModal');
+    if (modal) {
+        // Set minimum date to today
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('schoolStartDate').min = today;
+        document.getElementById('schoolEndDate').min = today;
+        
+        modal.style.display = 'flex';
+    }
+}
 
+// Submit school holiday
+async function submitSchoolHoliday() {
+    const submitBtn = document.querySelector('[onclick="submitSchoolHoliday()"]');
+    if (!submitBtn || submitBtn.disabled) return; // Already processing
+    
+    try {
+        // Disable button immediately
+        submitBtn.disabled = true;
+        const originalText = submitBtn.textContent;
+        submitBtn.textContent = 'Submitting...';
+        
+        const startDate = document.getElementById('schoolStartDate').value;
+        const endDate = document.getElementById('schoolEndDate').value;
+        
+        // Validation
+        if (!startDate || !endDate) {
+            showToast('Please select both start and end dates', 'error');
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+            return;
+        }
+        
+        if (new Date(endDate) < new Date(startDate)) {
+            showToast('End date must be after start date', 'error');
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+            return;
+        }
+        
+        // Check for overlapping submissions
+        const { data: existing } = await supabaseClient
+            .from('school_holidays')
+            .select('*')
+            .eq('staff_id', currentStaff.id)
+            .or(`start_date.lte.${endDate},end_date.gte.${startDate}`);
+        
+        if (existing && existing.length > 0) {
+            showToast('You already have a holiday submission for this period', 'error');
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+            return;
+        }
+        
+        // Submit
+        const { error } = await supabaseClient
+            .from('school_holidays')
+            .insert({
+                staff_id: currentStaff.id,
+                start_date: startDate,
+                end_date: endDate,
+                status: 'pending'
+            });
+        
+        if (error) throw error;
+        
+        showToast('School holiday period submitted successfully', 'success');
+        closeModal('schoolHolidayModal');
+        document.getElementById('schoolHolidayForm').reset();
+        
+        // Re-enable after delay
+        setTimeout(() => {
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+        }, 2000);
+        
+    } catch (error) {
+        console.error('Error submitting school holiday:', error);
+        showToast('Failed to submit school holiday', 'error');
+        
+        // Re-enable on error
+        const submitBtn = document.querySelector('[onclick="submitSchoolHoliday()"]');
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Submit';
+        }
+    }
+}
 
-// Add these placeholder functions to prevent errors
+// Validate dates on change
+document.getElementById('schoolStartDate')?.addEventListener('change', function() {
+    const endDate = document.getElementById('schoolEndDate');
+    endDate.min = this.value;
+    
+    if (endDate.value && endDate.value < this.value) {
+        endDate.value = this.value;
+    }
+});
+
+async function checkSchoolHolidayVisibility() {
+    try {
+        // Fetch the limits value from database (note: column is 'limits' not 'limit')
+        const { data, error } = await supabaseClient
+            .from('staff')
+            .select('limits')
+            .eq('id', currentStaff.id)
+            .single();
+        
+        if (error) {
+            console.error('Error fetching staff limits:', error);
+            return;
+        }
+        
+        const staffLimits = data?.limits;
+        console.log('Fetched staff limits from DB:', staffLimits);
+        
+        // Store it for future use
+        if (currentStaff) {
+            currentStaff.limits = staffLimits;
+        }
+        
+        // Check if limits equals 48
+        const hasSchoolHolidayAccess = staffLimits === 48 || staffLimits === '48';
+        
+        // Wait for DOM
+        setTimeout(() => {
+            const holidayBtn = document.querySelector('[data-action="showSchoolHolidayModal"]');
+            console.log('School holiday button in DOM:', !!holidayBtn);
+            
+            if (holidayBtn) {
+                if (hasSchoolHolidayAccess) {
+                    console.log('✓ Keeping school holiday button - limits is 48');
+                } else {
+                    console.log('✗ Removing school holiday button - limits is:', staffLimits);
+                    holidayBtn.remove();
+                }
+            }
+        }, 1000);
+        
+    } catch (error) {
+        console.error('Error in checkSchoolHolidayVisibility:', error);
+    }
+}
+
 async function loadParticipantProfile(participantId) {
     const container = document.getElementById('profileContent');
     if (!container) return;
@@ -5283,17 +6212,42 @@ function formatTime12Hour(time) {
     return `${displayHour}:${minutes} ${ampm}`;
 }
 
-// Close participant panel
 function closeParticipantPanel() {
     const panel = document.getElementById('participantPanel');
     const overlay = document.querySelector('.panel-overlay');
     
     panel.classList.remove('active');
-    if (overlay) {
+    
+    // Remove ALL overlays, not just one
+    document.querySelectorAll('.panel-overlay').forEach(overlay => {
         overlay.classList.remove('active');
-        setTimeout(() => overlay.remove(), 300);
-    }
+        overlay.remove();
+    });
 }
+
+function debounceButton(button, callback, delay = 1000) {
+    let isProcessing = false;
+    
+    return async function(...args) {
+        if (isProcessing) return;
+        
+        isProcessing = true;
+        button.disabled = true;
+        const originalText = button.textContent;
+        button.textContent = 'Processing...';
+        
+        try {
+            await callback.apply(this, args);
+        } finally {
+            setTimeout(() => {
+                isProcessing = false;
+                button.disabled = false;
+                button.textContent = originalText;
+            }, delay);
+        }
+    };
+}
+
 
 // Update initialization
 async function initializeParticipantManagement() {
@@ -5316,7 +6270,7 @@ async function initializeParticipantManagement() {
         .eq('participants.is_active', true);
     
     if (!error && assignments) {
-        select.innerHTML = '<option value="">Choose a participant...</option>';
+        select.innerHTML = '<option value="">Select participant...</option>';
         assignments.forEach(assignment => {
             const participant = assignment.participants;
             if (participant) {
@@ -6156,31 +7110,7 @@ function ensureRequiredElements() {
             loadHandoverNotes(shift.id);
         }
 
-function switchTransferTab(tab) {
-    // Update tab styling
-    document.querySelectorAll('.transfer-tab').forEach(t => {
-        t.classList.remove('active');
-    });
-    event.currentTarget.classList.add('active');
-    
-    // Hide all transfer content divs
-    document.getElementById('incomingTransfers').classList.remove('active');
-    document.getElementById('outgoingTransfers').classList.remove('active');
-    document.getElementById('availableTransfers').classList.remove('active');
-    
-    // Show selected tab content
-    if (tab === 'incoming') {
-        document.getElementById('incomingTransfers').classList.add('active');
-    } else if (tab === 'outgoing') {
-        document.getElementById('outgoingTransfers').classList.add('active');
-    } else if (tab === 'available') {
-        document.getElementById('availableTransfers').classList.add('active');
-        // Load available shifts if needed
-        if (typeof loadAvailableTransfers === 'function') {
-            loadAvailableTransfers();
-        }
-    }
-}
+
 async function enrichRequestData(requests, type) {
     if (!requests || requests.length === 0) return [];
     
@@ -6274,248 +7204,9 @@ function showDocumentUploadModal() {
     }
 }
 
-async function loadAvailableTransfers() {
-    try {
-        // Load shifts available for transfer (from other staff)
-        const { data: available } = await supabaseClient
-            .from('transfer_requests')
-            .select(`
-                *,
-                shift:shift_id(date, start_time, end_time, participant:participant_id(first_name, last_name)),
-                from_staff:from_staff_id(first_name, last_name)
-            `)
-            .is('to_staff_id', null) // Open to anyone
-            .eq('status', 'pending')
-            .neq('from_staff_id', currentStaff.id) // Not your own
-            .order('created_at', { ascending: false });
-
-        const container = document.getElementById('availableList');
-        if (!container) return;
-        
-        if (!available || available.length === 0) {
-            container.innerHTML = '<div class="text-center p-2" style="color: var(--text-light);">No available shifts to pick up</div>';
-            return;
-        }
-
-        container.innerHTML = available.map(transfer => `
-            <div class="transfer-item">
-                <div class="transfer-header">
-                    <div>
-                        <div class="transfer-date">${formatDateLong(transfer.shift.date)}</div>
-                        <div class="transfer-time">
-                            ${transfer.shift.start_time ? formatTime(transfer.shift.start_time) : 'Sleepover'} - 
-                            ${transfer.shift.end_time ? formatTime(transfer.shift.end_time) : ''}
-                        </div>
-                    </div>
-                </div>
-                <div class="transfer-from">
-                    From: ${transfer.from_staff.first_name} ${transfer.from_staff.last_name}
-                </div>
-                ${transfer.reason ? `<div class="transfer-reason">"${transfer.reason}"</div>` : ''}
-                <div class="transfer-actions">
-                    <button class="transfer-btn accept" data-action-with-param="acceptTransfer" data-param="${transfer.id}">Pick Up Shift</button>
-                </div>
-            </div>
-        `).join('');
-
-    } catch (error) {
-        console.error('Error loading available transfers:', error);
-    }
-}
 
 
 
-async function loadPendingRequests() {
-    try {
-        // Get shifts with pending transfers or adjustments
-        const { data: pendingShifts } = await supabaseClient
-            .from('shifts')
-            .select(`
-                *,
-                participants(first_name, last_name)
-            `)
-            .or(`transfer_to_staff.eq.${currentStaff.id},and(staff_id.eq.${currentStaff.id},adjustment_status.eq.pending)`)
-            .eq('transfer_status', 'pending')
-            .is('deleted_at', null)
-            .order('date', { ascending: true });
-
-        const container = document.getElementById('pendingRequestsList');
-        if (!container) return;
-
-        if (!pendingShifts || pendingShifts.length === 0) {
-            container.innerHTML = '<p style="text-align: center; color: var(--text-light);">No pending requests</p>';
-            return;
-        }
-
-        container.innerHTML = pendingShifts.map(shift => {
-            const isTransfer = shift.transfer_to_staff === currentStaff.id;
-            const isAdjustment = shift.adjustment_status === 'pending' && shift.staff_id === currentStaff.id;
-            
-            return `
-                <div class="request-item">
-                    <div class="request-badge">${isTransfer ? 'Transfer' : 'Adjustment'}</div>
-                    <div class="request-date">${formatDateShort(shift.date)}</div>
-                    <div class="request-details">
-                        ${shift.participants ? 
-                            `${shift.participants.first_name} ${shift.participants.last_name}` : 
-                            'Unknown Client'}
-                        ${shift.start_time ? ` - ${formatTime12Hour(shift.start_time)}` : ' - Sleepover'}
-                    </div>
-                    ${isTransfer ? 
-                        `<button data-action-with-param="approveTransfer" data-param="${shift.id}"
- class="btn btn-sm btn-primary">Accept</button>` :
-                        `<div class="text-muted">Pending Admin Approval</div>`
-                    }
-                </div>
-            `;
-        }).join('');
-
-    } catch (error) {
-        console.error('Error loading pending requests:', error);
-    }
-}
-        
-
-
-function showLoading() {
-    document.body.classList.add('loading');
-}
-function hideLoading() {
-    document.body.classList.remove('loading');
-}
-
-        
-
-        async function loadNotifications() {
-    try {
-        // Ensure we have currentUser from auth
-        if (!currentUser) {
-            const { data: { user } } = await supabaseClient.auth.getUser();
-            if (!user) return;
-            currentUser = user;
-        }
-
-        // Use correct column names: user_id and read_at
-        const { data: notifications, error } = await supabaseClient
-            .from('notifications')
-            .select('*')
-            .eq('user_id', currentUser.id)
-            .is('read_at', null)
-            .order('created_at', { ascending: false })
-            .limit(5);
-
-        if (error) {
-            console.error('Error loading notifications:', error);
-            return;
-        }
-
-        const container = document.getElementById('recentNotifications');
-        if (!container) return;
-
-        if (!notifications || notifications.length === 0) {
-            container.innerHTML = '<div class="notification-item">No new notifications</div>';
-            return;
-        }
-
-        container.innerHTML = notifications.map(note => `
-            <div class="notification-item ${note.notification_type || ''}" data-action-with-param="markAsRead" data-param="${note.id}">
-                <div class="notification-content">${note.message || 'New notification'}</div>
-                <div class="notification-time">${formatDateTime(note.created_at)}</div>
-            </div>
-        `).join('');
-
-    } catch (error) {
-        console.error('Error in loadNotifications:', error);
-        const container = document.getElementById('recentNotifications');
-        if (container) {
-            container.innerHTML = '<div class="notification-item">Unable to load notifications</div>';
-        }
-    }
-}
-
-async function acceptTransfer(transferRequestId) {
-    try {
-        const { data: transferRequest, error: fetchError } = await supabaseClient
-            .from('transfer_requests')
-            .select('*')
-            .eq('id', transferRequestId)
-            .single();
-        
-        if (fetchError) throw fetchError;
-        
-        const { error: transferError } = await supabaseClient
-            .from('transfer_requests')
-            .update({
-                status: 'accepted',
-                approved_by: currentStaff.id,
-                approved_at: new Date().toISOString()
-            })
-            .eq('id', transferRequestId);
-        
-        if (transferError) throw transferError;
-        
-        const { error: shiftError } = await supabaseClient
-            .from('shifts')
-            .update({
-                staff_id: currentStaff.id,
-                transfer_status: 'completed',
-                transfer_approved_by: currentStaff.id,
-                transfer_approved_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-            })
-            .eq('id', transferRequest.shift_id);
-        
-        if (shiftError) throw shiftError;
-        
-        showToast('Transfer accepted successfully', 'success');
-        loadIncomingTransfers();
-        loadSchedule();
-        
-    } catch (error) {
-        console.error('Error accepting transfer:', error);
-        showToast('Failed to accept transfer', 'error');
-    }
-}
-
-async function rejectTransfer(transferRequestId) {
-    try {
-        const { data: transferRequest, error: fetchError } = await supabaseClient
-            .from('transfer_requests')
-            .select('shift_id')
-            .eq('id', transferRequestId)
-            .single();
-        
-        if (fetchError) throw fetchError;
-        
-        const { error: transferError } = await supabaseClient
-            .from('transfer_requests')
-            .update({
-                status: 'rejected',
-                rejected_by: currentStaff.id,
-                rejected_at: new Date().toISOString()
-            })
-            .eq('id', transferRequestId);
-        
-        if (transferError) throw transferError;
-        
-        const { error: shiftError } = await supabaseClient
-            .from('shifts')
-            .update({
-                transfer_status: 'none',
-                updated_at: new Date().toISOString()
-            })
-            .eq('id', transferRequest.shift_id);
-        
-        if (shiftError) throw shiftError;
-        
-        showToast('Transfer rejected', 'info');
-        loadIncomingTransfers();
-        
-    } catch (error) {
-        console.error('Error rejecting transfer:', error);
-        showToast('Failed to reject transfer', 'error');
-    }
-}
 
 async function fetchNotes(shiftId) {
     if (!shiftId) return [];
@@ -7312,53 +8003,75 @@ async function submitTransfer() {
         const toStaffId = document.getElementById('transferToStaff').value;
         const reason = document.getElementById('transferReason').value;
         
-        if (!shiftId || !toStaffId || !reason) {
-            showToast('Please fill in all required fields', 'error');
+        if (!shiftId) {
+            showToast('Please select a shift to transfer', 'error');
+            return;
+        }
+        
+        // Reason is required, but toStaffId is optional (open transfer)
+        if (!reason) {
+            showToast('Please provide a reason for the transfer', 'error');
             return;
         }
         
         // Create transfer request
+        const transferData = {
+            shift_id: parseInt(shiftId),
+            from_staff_id: currentStaff.id,
+            to_staff_id: toStaffId || null, // null means open to all eligible staff
+            status: 'pending', // Always pending initially
+            reason: reason,
+            created_at: new Date().toISOString()
+        };
+        
         const { data, error } = await supabaseClient
             .from('transfer_requests')
-            .insert({
-                shift_id: parseInt(shiftId),
-                from_staff_id: currentStaff.id,
-                to_staff_id: toStaffId,
-                status: window.transferRequiresApproval ? 'pending_approval' : 'pending',
-                reason: reason,
-                created_at: new Date().toISOString()
-            });
-        
-        if (!error) {
-            // Update shift transfer status
-            await supabaseClient
-                .from('shifts')
-                .update({
-                    transfer_status: 'requested'
-                })
-                .eq('id', parseInt(shiftId));
-        }
+            .insert(transferData)
+            .select()
+            .single();
         
         if (error) {
             console.error('Transfer request error:', error);
             showToast('Failed to submit transfer request', 'error');
-        } else {
-            const message = window.transferRequiresApproval 
-                ? 'Transfer request submitted for manager approval' 
-                : 'Transfer request submitted successfully';
-            showToast(message, 'success');
-            closeModal('transferShiftModal');
-            document.getElementById('transferForm').reset();
-            // Remove these lines - elements don't exist:
-            // document.getElementById('transferToStaffSearch').value = '';
-            document.getElementById('transferToStaff').value = '';
+            return;
         }
+        
+        // Update shift transfer status
+        const { error: updateError } = await supabaseClient
+            .from('shifts')
+            .update({
+                transfer_status: 'requested',
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', parseInt(shiftId));
+        
+        if (updateError) {
+            console.error('Error updating shift status:', updateError);
+        }
+        
+        // Success message
+        const message = toStaffId 
+            ? 'Transfer request sent to staff member' 
+            : 'Transfer request posted - available to all eligible staff';
+        
+        showToast(message, 'success');
+        closeModal('transferShiftModal');
+        document.getElementById('transferForm').reset();
+        document.getElementById('transferToStaff').value = '';
+        
+        // Refresh displays
+        if (typeof loadMyRequests === 'function') {
+            await loadMyRequests();
+        }
+        if (typeof loadSchedule === 'function') {
+            await loadSchedule();
+        }
+        
     } catch (error) {
         console.error('Error submitting transfer:', error);
         showToast('Failed to submit transfer request', 'error');
     }
 }
-
 function showAdjustmentModal() {
     loadAdjustmentShifts();
     ModalManager.show('adjustment');
@@ -7368,12 +8081,738 @@ function showLeaveModal() {
     ModalManager.show('leave');
 }
 
+// ==========================================
+// REQUESTS SECTION - COMPLETE REPLACEMENT
+// ==========================================
+
+// Initialize requests tabs when switching to requests section
+function initializeRequestsTabs() {
+    if (window.requestsTabsInitialized) return;
+    
+    document.querySelectorAll('[data-transfer-tab]').forEach(tab => {
+        tab.addEventListener('click', function() {
+            const tabName = this.dataset.transferTab;
+            
+            // Update active tab
+            document.querySelectorAll('.transfer-tab').forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Hide ALL content areas first
+            document.getElementById('incomingRequests').classList.remove('active');
+            document.getElementById('myRequestsContent').classList.remove('active');
+            document.getElementById('availableContent').classList.remove('active');
+            
+            // Show only the selected content
+            switch(tabName) {
+                case 'incoming':
+                    document.getElementById('incomingRequests').classList.add('active');
+                    loadIncomingRequests();
+                    break;
+                case 'my-requests':
+                    document.getElementById('myRequestsContent').classList.add('active');
+                    loadMyRequests();
+                    break;
+                case 'available':
+                    document.getElementById('availableContent').classList.add('active');
+                    loadAvailableShifts();
+                    break;
+            }
+        });
+    });
+    
+    window.requestsTabsInitialized = true;
+}
+
+
+// Update loadMyRequests to use shift-list CSS classes
+async function loadMyRequests() {
+    const container = document.getElementById('myRequestsList');
+    if (!container) return;
+    
+    try {
+        // Load data (same as before)
+        const [shifts, leave, transport, holidays] = await Promise.all([
+            supabaseClient.from('shifts').select('*, participants(first_name, last_name)').eq('staff_id', currentStaff.id).eq('status', 'pending').order('date', { ascending: false }),
+            supabaseClient.from('leave_requests').select('*').eq('staff_id', currentStaff.id).order('created_at', { ascending: false }),
+            supabaseClient.from('transport_claims').select('*').eq('staff_id', currentStaff.id).order('date', { ascending: false }).limit(10),
+            supabaseClient.from('school_holidays').select('*').eq('staff_id', currentStaff.id).order('created_at', { ascending: false })
+        ]);
+        
+        let html = '<div class="shift-list">';
+        
+        // Pending Shifts Section
+        if (shifts.data?.length > 0) {
+            html += `
+                <div class="shift-group">
+                    <div class="shift-group-header">
+                        <span>Shift Requests</span>
+                        <span class="shift-count">${shifts.data.length}</span>
+                    </div>`;
+            
+            shifts.data.forEach(shift => {
+                html += `
+                    <div class="shift-item">
+                        <div class="shift-time">
+                            <span class="shift-date">${new Date(shift.date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}</span>
+                            <span class="shift-hours">${shift.start_time || 'Sleepover'}</span>
+                        </div>
+                        <div class="shift-details">
+                            <div class="shift-client">${shift.participants?.first_name} ${shift.participants?.last_name}</div>
+                            <div class="shift-meta">
+                                <span class="status-badge status-pending">Pending</span>
+                            </div>
+                        </div>
+                    </div>`;
+            });
+            html += '</div>';
+        }
+        
+        // Leave Requests Section
+        if (leave.data?.length > 0) {
+            html += `
+                <div class="shift-group">
+                    <div class="shift-group-header">
+                        <span>Leave Requests</span>
+                        <span class="shift-count">${leave.data.length}</span>
+                    </div>`;
+            
+            leave.data.forEach(req => {
+                html += `
+                    <div class="shift-item">
+                        <div class="shift-time">
+                            <span class="shift-date">${new Date(req.start_date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}</span>
+                            <span class="shift-hours">${req.leave_type}</span>
+                        </div>
+                        <div class="shift-details">
+                            <div class="shift-client">${new Date(req.start_date).toLocaleDateString('en-AU')} - ${new Date(req.end_date).toLocaleDateString('en-AU')}</div>
+                            <div class="shift-meta">
+                                <span class="status-badge status-${req.status}">${req.status}</span>
+                                ${req.reason ? `<span class="shift-location">${req.reason}</span>` : ''}
+                            </div>
+                        </div>
+                    </div>`;
+            });
+            html += '</div>';
+        }
+        
+        // Transport Claims Section
+        if (transport.data?.length > 0) {
+            html += `
+                <div class="shift-group">
+                    <div class="shift-group-header">
+                        <span>Transport Claims</span>
+                        <span class="shift-count">${transport.data.length}</span>
+                    </div>`;
+            
+            transport.data.forEach(claim => {
+                html += `
+                    <div class="shift-item">
+                        <div class="shift-time">
+                            <span class="shift-date">${new Date(claim.date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}</span>
+                            <span class="shift-hours">$${claim.total_claim?.toFixed(2) || '0.00'}</span>
+                        </div>
+                        <div class="shift-details">
+                            <div class="shift-client">${claim.total_km || 0}km total</div>
+                            <div class="shift-meta">
+                                <span class="status-badge status-${claim.status || 'submitted'}">${claim.status || 'submitted'}</span>
+                            </div>
+                        </div>
+                    </div>`;
+            });
+            html += '</div>';
+        }
+        
+        // School Holidays Section
+        if (holidays.data?.length > 0) {
+            html += `
+                <div class="shift-group">
+                    <div class="shift-group-header">
+                        <span>School Holidays</span>
+                        <span class="shift-count">${holidays.data.length}</span>
+                    </div>`;
+            
+            holidays.data.forEach(holiday => {
+                html += `
+                    <div class="shift-item">
+                        <div class="shift-time">
+                            <span class="shift-date">${new Date(holiday.start_date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}</span>
+                            <span class="shift-hours">Holiday</span>
+                        </div>
+                        <div class="shift-details">
+                            <div class="shift-client">${new Date(holiday.start_date).toLocaleDateString('en-AU')} - ${new Date(holiday.end_date).toLocaleDateString('en-AU')}</div>
+                            <div class="shift-meta">
+                                <span class="status-badge status-${holiday.status}">${holiday.status}</span>
+                            </div>
+                        </div>
+                    </div>`;
+            });
+            html += '</div>';
+        }
+        
+        html += '</div>';
+        
+        container.innerHTML = html || '<p class="no-data">No requests submitted</p>';
+        
+    } catch (error) {
+        console.error('Error loading my requests:', error);
+        container.innerHTML = '<p class="error">Failed to load requests</p>';
+    }
+}
+
+
+
+// Update available shifts similarly
+async function loadAvailableShifts() {
+    const container = document.getElementById('availableList');
+    if (!container) return;
+    
+    container.innerHTML = `
+        <div class="shift-list">
+            <div class="empty-state">
+                <i class="fa-solid fa-calendar-plus"></i>
+                <p>Available shifts feature coming soon</p>
+            </div>
+        </div>`;
+}
+async function loadPendingShifts() {
+    const container = document.getElementById('shiftsList');
+    if (!container) return;
+    
+    try {
+        const { data: shifts } = await supabaseClient
+            .from('shifts')
+            .select('*, participants(first_name, last_name), locations(name)')
+            .eq('staff_id', currentStaff.id)
+            .eq('status', 'pending')
+            .order('date', { ascending: false });
+        
+        container.innerHTML = shifts?.length ? shifts.map(shift => `
+            <div class="request-card">
+                <div class="request-header">
+                    <span>${new Date(shift.date).toLocaleDateString('en-AU')}</span>
+                    <span class="status-badge status-pending">Pending Approval</span>
+                </div>
+                <div class="request-body">
+                    <p><strong>${shift.participants?.first_name} ${shift.participants?.last_name}</strong></p>
+                    <p>Time: ${shift.start_time || 'Sleepover'} ${shift.end_time ? `- ${shift.end_time}` : ''}</p>
+                    <p>Location: ${shift.locations?.name || 'Client Home'}</p>
+                </div>
+            </div>
+        `).join('') : '<p class="no-data">No pending shift requests</p>';
+        
+    } catch (error) {
+        console.error('Error loading shifts:', error);
+        container.innerHTML = '<p class="error">Failed to load shift requests</p>';
+    }
+}
+
+// Load leave requests
+async function loadLeaveRequests() {
+    const container = document.getElementById('leaveList');
+    if (!container) return;
+    
+    try {
+        const { data: leave } = await supabaseClient
+            .from('leave_requests')
+            .select('*')
+            .eq('staff_id', currentStaff.id)
+            .order('created_at', { ascending: false });
+        
+        container.innerHTML = leave?.length ? leave.map(req => `
+            <div class="request-card">
+                <div class="request-header">
+                    <span>${new Date(req.start_date).toLocaleDateString('en-AU')} - ${new Date(req.end_date).toLocaleDateString('en-AU')}</span>
+                    <span class="status-badge status-${req.status}">${req.status}</span>
+                </div>
+                <div class="request-body">
+                    <p>Type: ${req.leave_type}</p>
+                    <p>Reason: ${req.reason || 'N/A'}</p>
+                </div>
+            </div>
+        `).join('') : '<p class="no-data">No leave requests</p>';
+        
+    } catch (error) {
+        console.error('Error loading leave:', error);
+        container.innerHTML = '<p class="error">Failed to load leave requests</p>';
+    }
+}
+
+// Load outgoing transfers
+async function loadOutgoingTransfers() {
+    const container = document.getElementById('transferList');
+    if (!container) return;
+    
+    try {
+        const { data: transfers } = await supabaseClient
+            .from('shift_transfers')
+            .select(`
+                *,
+                shifts(date, start_time, end_time, participants(first_name, last_name)),
+                to_staff:to_staff_id(first_name, last_name)
+            `)
+            .eq('from_staff_id', currentStaff.id)
+            .order('created_at', { ascending: false });
+        
+        container.innerHTML = transfers?.length ? transfers.map(transfer => `
+            <div class="request-card">
+                <div class="request-header">
+                    <span>${new Date(transfer.shifts?.date).toLocaleDateString('en-AU')}</span>
+                    <span class="status-badge status-${transfer.status}">${transfer.status}</span>
+                </div>
+                <div class="request-body">
+                    <p>To: ${transfer.to_staff?.first_name || 'Open to all'} ${transfer.to_staff?.last_name || ''}</p>
+                    <p>Client: ${transfer.shifts?.participants?.first_name} ${transfer.shifts?.participants?.last_name}</p>
+                    ${transfer.reason ? `<p>Reason: ${transfer.reason}</p>` : ''}
+                </div>
+            </div>
+        `).join('') : '<p class="no-data">No outgoing transfer requests</p>';
+        
+    } catch (error) {
+        console.error('Error loading transfers:', error);
+        container.innerHTML = '<p class="error">Failed to load transfer requests</p>';
+    }
+}
+
+// Load time adjustments
+async function loadTimeAdjustments() {
+    const container = document.getElementById('adjustmentList');
+    if (!container) return;
+    
+    try {
+        const { data: adjustments } = await supabaseClient
+            .from('time_adjustments')
+            .select('*, shifts(date, participants(first_name, last_name))')
+            .eq('staff_id', currentStaff.id)
+            .order('created_at', { ascending: false });
+        
+        container.innerHTML = adjustments?.length ? adjustments.map(adj => `
+            <div class="request-card">
+                <div class="request-header">
+                    <span>${adj.shifts?.date ? new Date(adj.shifts.date).toLocaleDateString('en-AU') : 'Unknown date'}</span>
+                    <span class="status-badge status-${adj.status}">${adj.status}</span>
+                </div>
+                <div class="request-body">
+                    <p>Client: ${adj.shifts?.participants?.first_name} ${adj.shifts?.participants?.last_name}</p>
+                    <p>Original: ${adj.original_start || 'N/A'} - ${adj.original_end || 'N/A'}</p>
+                    <p>Requested: ${adj.new_start || 'N/A'} - ${adj.new_end || 'N/A'}</p>
+                    <p>Reason: ${adj.reason || 'N/A'}</p>
+                </div>
+            </div>
+        `).join('') : '<p class="no-data">No time adjustment requests</p>';
+        
+    } catch (error) {
+        console.error('Error loading adjustments:', error);
+        container.innerHTML = '<p class="error">Failed to load time adjustments</p>';
+    }
+}
+
+
+
+async function loadIncomingRequests() {
+    const container = document.getElementById('incomingList');
+    if (!container) return;
+    
+    try {
+        // Load incoming transfer requests where current staff is the target
+        const { data: transfers, error } = await supabaseClient
+            .from('transfer_requests')
+            .select(`
+                *,
+                shifts!inner(
+                    id,
+                    date,
+                    start_time,
+                    end_time,
+                    participants(first_name, last_name),
+                    locations(name),
+                    duty_types(name)
+                ),
+                from_staff:staff!transfer_requests_from_staff_id_fkey(
+                    id,
+                    first_name,
+                    last_name
+                )
+            `)
+            .eq('to_staff_id', currentStaff.id)
+            .eq('status', 'pending')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        if (!transfers || transfers.length === 0) {
+            container.innerHTML = `
+                <div class="shift-list">
+                    <div class="empty-state">
+                        <i class="fa-solid fa-inbox"></i>
+                        <p>No incoming transfer requests</p>
+                    </div>
+                </div>`;
+            updateIncomingCount(0);
+            return;
+        }
+
+        // Render incoming transfers
+        let html = '<div class="shift-list">';
+        
+        transfers.forEach(req => {
+            const shift = req.shifts;
+            html += `
+                <div class="shift-item">
+                    <div class="shift-time">
+                        <span class="shift-date">${formatDateShort(shift.date)}</span>
+                        <span class="shift-hours">
+                            ${shift.start_time ? formatTime12Hour(shift.start_time) : 'Sleepover'}
+                            ${shift.end_time ? '- ' + formatTime12Hour(shift.end_time) : ''}
+                        </span>
+                    </div>
+                    <div class="shift-details">
+                        <div class="shift-client">
+                            ${shift.participants?.first_name || ''} ${shift.participants?.last_name || ''}
+                        </div>
+                        <div class="shift-location">
+                            <i class="fa-solid fa-location-dot"></i> ${shift.locations?.name || 'Client Home'}
+                        </div>
+                        <div class="transfer-from">
+                            From: ${req.from_staff?.first_name || ''} ${req.from_staff?.last_name || ''}
+                        </div>
+                        ${req.reason ? `<div class="transfer-reason"><small>${req.reason}</small></div>` : ''}
+                    </div>
+                    <div class="shift-actions">
+                        <button class="btn btn-sm btn-success" onclick="acceptTransfer('${req.id}')">
+                            <i class="fa-solid fa-check"></i> Accept
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="declineTransfer('${req.id}')">
+                            <i class="fa-solid fa-times"></i> Decline
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        container.innerHTML = html;
+        updateIncomingCount(transfers.length);
+
+    } catch (error) {
+        console.error('Error loading incoming requests:', error);
+        container.innerHTML = `
+            <div class="shift-list">
+                <div class="empty-state">
+                    <i class="fa-solid fa-exclamation-triangle"></i>
+                    <p>Error loading transfer requests</p>
+                </div>
+            </div>`;
+        updateIncomingCount(0);
+    }
+}
+
+// Accept transfer function
+async function acceptTransfer(transferId) {
+    try {
+        // Get the transfer request details
+        const { data: transfer, error: fetchError } = await supabaseClient
+            .from('transfer_requests')
+            .select('*, shifts(*)')
+            .eq('id', transferId)
+            .single();
+
+        if (fetchError) throw fetchError;
+
+        // Update the shift with new staff
+        const { error: shiftError } = await supabaseClient
+            .from('shifts')
+            .update({
+                staff_id: currentStaff.id,
+                transfer_status: 'completed',
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', transfer.shift_id);
+
+        if (shiftError) throw shiftError;
+
+        // Update transfer request status
+        const { error: transferError } = await supabaseClient
+            .from('transfer_requests')
+            .update({
+                status: 'accepted',
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', transferId);
+
+        if (transferError) throw transferError;
+
+        showToast('Transfer accepted successfully', 'success');
+        await loadIncomingRequests();
+        await loadSchedule(); // Refresh schedule if visible
+
+    } catch (error) {
+        console.error('Error accepting transfer:', error);
+        showToast('Failed to accept transfer', 'error');
+    }
+}
+
+// Decline transfer function
+async function declineTransfer(transferId) {
+    try {
+        const { error } = await supabaseClient
+            .from('transfer_requests')
+            .update({
+                status: 'declined',
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', transferId);
+
+        if (error) throw error;
+
+        showToast('Transfer declined', 'info');
+        await loadIncomingRequests();
+
+    } catch (error) {
+        console.error('Error declining transfer:', error);
+        showToast('Failed to decline transfer', 'error');
+    }
+}
+
+
+
+async function loadAvailableShifts() {
+    const container = document.getElementById('availableList');
+    if (!container) return;
+    
+    try {
+        const { data: available } = await supabaseClient
+            .from('transfer_requests')
+            .select(`
+                *,
+                shifts(date, start_time, end_time, participants(first_name, last_name)),
+                from_staff:from_staff_id(first_name, last_name)
+            `)
+            .is('to_staff_id', null)
+            .eq('status', 'pending')
+            .neq('from_staff_id', currentStaff.id)
+            .order('shifts(date)', { ascending: true });
+        
+        container.innerHTML = available?.length ? available.map(transfer => `
+            <div class="request-card available">
+                <div class="request-header">
+                    <span>${new Date(transfer.shifts?.date).toLocaleDateString('en-AU')}</span>
+                    <span class="available-badge">Available to Pick Up</span>
+                </div>
+                <div class="request-body">
+                    <p><strong>${transfer.shifts?.participants?.first_name} ${transfer.shifts?.participants?.last_name}</strong></p>
+                    <p>Time: ${transfer.shifts?.start_time || 'Sleepover'}</p>
+                    <p>From: ${transfer.from_staff?.first_name} ${transfer.from_staff?.last_name}</p>
+                </div>
+                <div class="request-actions">
+                    <button onclick="pickUpShift('${transfer.id}')" class="btn-primary">Pick Up Shift</button>
+                </div>
+            </div>
+        `).join('') : '<p class="no-data">No available shifts</p>';
+        
+    } catch (error) {
+        console.error('Error loading available shifts:', error);
+        container.innerHTML = '<p class="error">Failed to load available shifts</p>';
+    }
+}
+
+async function loadNotifications() {
+    try {
+        // Check if notifications table exists, otherwise show placeholder
+        const { data: notifications, error } = await supabaseClient
+            .from('notifications')
+            .select('*')
+            .eq('user_id', currentUser?.id || currentStaff.user_id)
+            .is('read_at', null)
+            .order('created_at', { ascending: false })
+            .limit(5);
+
+        const container = document.getElementById('recentNotifications');
+        if (!container) return;
+
+        // If notifications table doesn't exist, show default message
+        if (error || !notifications || notifications.length === 0) {
+            container.innerHTML = '<div class="notification-item">No new notifications</div>';
+            return;
+        }
+
+        container.innerHTML = notifications.map(note => `
+            <div class="notification-item">
+                <div class="notification-content">${note.message || 'New notification'}</div>
+                <div class="notification-time">${new Date(note.created_at).toLocaleDateString('en-AU')}</div>
+            </div>
+        `).join('');
+
+    } catch (error) {
+        console.error('Error loading notifications:', error);
+        const container = document.getElementById('recentNotifications');
+        if (container) {
+            container.innerHTML = '<div class="notification-item">No new notifications</div>';
+        }
+    }
+}
+async function loadPendingRequests() {
+    try {
+        // Load all types of pending requests
+        const [transfers, adjustments, pendingShifts] = await Promise.all([
+            // Transfer requests where this staff is involved
+            supabaseClient
+                .from('transfer_requests')
+                .select(`
+                    *,
+                    shifts(date, start_time, end_time, participants(first_name, last_name)),
+                    from_staff:staff!transfer_requests_from_staff_id_fkey(first_name, last_name),
+                    to_staff:staff!transfer_requests_to_staff_id_fkey(first_name, last_name)
+                `)
+                .or(`from_staff_id.eq.${currentStaff.id},to_staff_id.eq.${currentStaff.id}`)
+                .eq('status', 'pending')
+                .order('created_at', { ascending: false })
+                .limit(5),
+            
+            // Adjustment requests for this staff's shifts
+            supabaseClient
+                .from('shift_adjustment_requests')
+                .select(`
+                    *,
+                    shifts(date, start_time, end_time, participants(first_name, last_name)),
+                    staff(first_name, last_name)
+                `)
+                .eq('staff_id', currentStaff.id)
+                .eq('status', 'pending')
+                .order('created_at', { ascending: false })
+                .limit(5),
+            
+            // Pending shifts awaiting approval
+            supabaseClient
+                .from('shifts')
+                .select('*, participants(first_name, last_name)')
+                .eq('staff_id', currentStaff.id)
+                .eq('status', 'pending')
+                .order('date', { ascending: true })
+                .limit(5)
+        ]);
+
+        const container = document.getElementById('pendingRequestsList');
+        if (!container) return;
+
+        const allRequests = [];
+
+        // Add transfer requests
+        if (transfers.data) {
+            transfers.data.forEach(req => {
+                const isIncoming = req.to_staff_id === currentStaff.id;
+                allRequests.push({
+                    type: 'transfer',
+                    date: req.shifts?.date || 'Unknown',
+                    time: req.shifts?.start_time ? `${formatTime12Hour(req.shifts.start_time)} - ${formatTime12Hour(req.shifts.end_time)}` : 'Sleepover',
+                    details: isIncoming ? 
+                        `Transfer from ${req.from_staff?.first_name || 'Unknown'} ${req.from_staff?.last_name || ''}` :
+                        `Transfer to ${req.to_staff ? `${req.to_staff.first_name} ${req.to_staff.last_name}` : 'Open'}`,
+                    participant: req.shifts?.participants ? `${req.shifts.participants.first_name} ${req.shifts.participants.last_name}` : 'Unknown',
+                    status: 'pending',
+                    created: req.created_at
+                });
+            });
+        }
+
+        // Add adjustment requests
+        if (adjustments.data) {
+            adjustments.data.forEach(req => {
+                allRequests.push({
+                    type: 'adjustment',
+                    date: req.shifts?.date || 'Unknown',
+                    time: `${formatTime12Hour(req.requested_start_time)} - ${formatTime12Hour(req.requested_end_time)}`,
+                    details: 'Time adjustment request',
+                    participant: req.shifts?.participants ? `${req.shifts.participants.first_name} ${req.shifts.participants.last_name}` : 'Unknown',
+                    status: 'pending',
+                    created: req.created_at
+                });
+            });
+        }
+
+        // Add pending shifts
+        if (pendingShifts.data) {
+            pendingShifts.data.forEach(shift => {
+                allRequests.push({
+                    type: 'shift',
+                    date: shift.date,
+                    time: shift.start_time ? `${formatTime12Hour(shift.start_time)} - ${formatTime12Hour(shift.end_time)}` : 'Sleepover',
+                    details: 'Shift approval pending',
+                    participant: `${shift.participants?.first_name || ''} ${shift.participants?.last_name || ''}`,
+                    status: 'pending',
+                    created: shift.created_at
+                });
+            });
+        }
+
+        // Sort all requests by date
+        allRequests.sort((a, b) => new Date(b.created) - new Date(a.created));
+
+        if (allRequests.length === 0) {
+            container.innerHTML = '<p style="text-align: center; color: var(--text-light);">No pending requests</p>';
+            return;
+        }
+
+        // Render combined requests
+        container.innerHTML = allRequests.slice(0, 5).map(req => `
+            <div class="request-item">
+                <div class="request-badge">${req.type.charAt(0).toUpperCase() + req.type.slice(1)}</div>
+                <div class="request-date">${new Date(req.date).toLocaleDateString('en-AU')}</div>
+                <div class="request-details">
+                    <strong>${req.participant}</strong><br>
+                    ${req.time}<br>
+                    <small>${req.details}</small>
+                </div>
+                <div class="status-badge status-${req.status}">${req.status.charAt(0).toUpperCase() + req.status.slice(1)}</div>
+            </div>
+        `).join('');
+
+    } catch (error) {
+        console.error('Error loading pending requests:', error);
+        const container = document.getElementById('pendingRequestsList');
+        if (container) {
+            container.innerHTML = '<p style="color: var(--text-light);">Unable to load pending requests</p>';
+        }
+    }
+}
+
+// Pick up available shift
+async function pickUpShift(transferId) {
+    try {
+        await acceptTransfer(transferId);
+        loadAvailableShifts();
+    } catch (error) {
+        console.error('Error picking up shift:', error);
+        showToast('Failed to pick up shift', 'error');
+    }
+}
+
+// Update incoming count badge
+function updateIncomingCount(count) {
+    const badge = document.getElementById('incomingCount');
+    if (badge) {
+        badge.textContent = count;
+        badge.style.display = count > 0 ? 'inline-block' : 'none';
+    }
+    
+    // Also update main nav badge
+    const navBadge = document.getElementById('requestsBadge');
+    if (navBadge) {
+        navBadge.textContent = count;
+        navBadge.classList.toggle('hidden', count === 0);
+    }
+}
+
+// Add to your switchSection function
+function handleRequestsSection() {
+    initializeRequestsTabs();
+    loadIncomingRequests(); 
+}
+
 
 // ==========================================
 // APPSTATE IMPLEMENTATION
 // ==========================================
 
-// Since you've already replaced window.* with AppState.*, here's the actual AppState object:
 
 const AppState = {
     staff: {
@@ -7870,31 +9309,35 @@ async function submitAdjustment() {
             }
         }
         
-        // Get original times from the selected option
-        const originalStartTime = selectedOption.dataset.startTime || null;
-        const originalEndTime = selectedOption.dataset.endTime || null;
-        
         // Add seconds to times for database storage
         const formattedStartTime = newStartTime ? `${newStartTime}:00` : null;
         const formattedEndTime = newEndTime ? `${newEndTime}:00` : null;
         
-        // Update the shift record directly
+        // Create adjustment request in adjustment_requests table
         const { data, error } = await supabaseClient
-            .from('shifts')
-            .update({
-                original_start_time: originalStartTime,
-                original_end_time: originalEndTime,
-                adjusted_start_time: formattedStartTime,
-                adjusted_end_time: formattedEndTime,
-                adjustment_reason: reason,
-                adjustment_status: 'pending'
-            })
-            .eq('id', parseInt(shiftId));
+            .from('adjustment_requests')
+            .insert({
+                shift_id: parseInt(shiftId),
+                staff_id: currentStaff.id,
+                requested_start_time: formattedStartTime,
+                requested_end_time: formattedEndTime,
+                reason: reason,
+                status: 'pending',
+                created_at: new Date().toISOString()
+            });
         
         if (error) {
             console.error('Adjustment request error:', error);
             showToast('Failed to submit adjustment request', 'error');
         } else {
+            // Update shift adjustment_status
+            await supabaseClient
+                .from('shifts')
+                .update({
+                    adjustment_status: 'requested'
+                })
+                .eq('id', parseInt(shiftId));
+            
             showToast('Adjustment request submitted', 'success');
             closeModal('adjustmentModal');
             document.getElementById('adjustmentForm').reset();
@@ -7909,7 +9352,6 @@ async function submitAdjustment() {
         showToast('Failed to submit adjustment request', 'error');
     }
 }
-
 async function loadDutyTypes() {
     try {
         const { data, error } = await supabaseClient
@@ -8025,9 +9467,14 @@ function removeImage(index) {
 }
 
 async function uploadDocument() {
+    const uploadBtn = document.querySelector('[onclick="uploadDocument()"]');
+    
+    // Prevent double submission
+    if (uploadBtn && uploadBtn.disabled) return;
+    
     const fileInput = document.getElementById('documentFile');
     const file = fileInput.files[0];
-    const documentTypeId = document.getElementById('documentType').value; // UUID from dropdown
+    const documentTypeId = document.getElementById('documentType').value;
     const title = document.getElementById('documentTitle').value;
     const expiryDate = document.getElementById('documentExpiry').value;
     const notes = document.getElementById('documentNotes').value;
@@ -8038,15 +9485,25 @@ async function uploadDocument() {
     }
     
     try {
+        // Disable button and show loading
+        if (uploadBtn) {
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = 'Uploading...';
+        }
+        
         // Check file size (10MB limit)
         if (file.size > 10 * 1024 * 1024) {
             showToast('File size must be less than 10MB', 'error');
+            if (uploadBtn) {
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = 'Upload';
+            }
             return;
         }
         
         // Get file extension
         const fileExt = file.name.split('.').pop();
-        const fileName = `${currentStaff.id}/${Date.now()}_${title}.${fileExt}`;
+        const fileName = `${currentStaff.id}/${Date.now()}_${title.replace(/[^a-z0-9]/gi, '_')}.${fileExt}`;
         
         // Upload to Supabase Storage
         const { data: uploadData, error: uploadError } = await supabaseClient.storage
@@ -8060,24 +9517,26 @@ async function uploadDocument() {
             .from('documents')
             .getPublicUrl(fileName);
         
-        // Save to database with correct column name
+        // Save to database
         const { error: dbError } = await supabaseClient
-            .from('documents')
-            .insert({
-                entity_type: 'staff',
-                entity_id: currentStaff.id,
-                type_id: documentTypeId,
-                title: title,
-                file_url: urlData.publicUrl,
-                expiry_date: expiryDate || null,
-                notes: notes || null,
-                created_at: new Date().toISOString()
-            });
+    .from('documents')
+    .insert({
+        entity_type: 'staff',
+        entity_id: currentStaff.id,
+        document_type_id: documentTypeId,  // CHANGED from type_id to document_type_id
+        title: title,
+        file_url: urlData.publicUrl,
+        expiry_date: expiryDate || null,
+        notes: notes || null,
+        created_at: new Date().toISOString()
+    });
+
         
         if (dbError) throw dbError;
         
         showToast('Document uploaded successfully', 'success');
         closeModal('uploadDocumentModal');
+        document.getElementById('uploadDocumentForm').reset();
         
         // Reload documents list
         await loadDocuments();
@@ -8085,6 +9544,44 @@ async function uploadDocument() {
     } catch (error) {
         console.error('Error uploading document:', error);
         showToast('Failed to upload document', 'error');
+    } finally {
+        // Re-enable button
+        if (uploadBtn) {
+            uploadBtn.disabled = false;
+            uploadBtn.textContent = 'Upload';
+        }
+    }
+}
+
+// Add this function to open the document upload modal
+function openUploadDocumentModal() {
+    const modal = document.getElementById('uploadDocumentModal');
+    if (modal) {
+        // Load document types for dropdown
+        loadDocumentTypes();
+        modal.style.display = 'flex';
+    }
+}
+
+// Load document types for the dropdown
+async function loadDocumentTypes() {
+    try {
+        const { data: types, error } = await supabaseClient
+            .from('document_types')
+            .select('id, name')
+            .order('name');
+        
+        if (error) throw error;
+        
+        const select = document.getElementById('documentType');
+        if (select) {
+            select.innerHTML = '<option value="">Select type...</option>';
+            types?.forEach(type => {
+                select.innerHTML += `<option value="${type.id}">${type.name}</option>`;
+            });
+        }
+    } catch (error) {
+        console.error('Error loading document types:', error);
     }
 }
 function loadProfilePicture() {
@@ -9585,9 +11082,11 @@ window.showParticipantShifts = async function(participantId, participantName) {
         // Get staff names separately to avoid the foreign key ambiguity
         const staffIds = [...new Set(participantShifts?.map(s => s.staff_id) || [])];
         const { data: staffData } = await supabaseClient
-            .from('staff')
-            .select('id, first_name, last_name')
-            .in('id', staffIds);
+    .from('staff')
+    .select('id, user_id, ndis_worker_number, pay_rate_id, first_name, last_name, email, phone, limit') // <-- Add limit here
+    .eq('user_id', currentUser.id)
+    .single();
+
         
         const staffMap = {};
         staffData?.forEach(s => {
@@ -10621,14 +12120,21 @@ function renderCalendar(targetDate, shifts) {
     container.innerHTML = html;
 }
 
-// Update the original renderSchedule function
-function renderSchedule() {
-    const container = document.getElementById('scheduleGrid');
-    const filterValue = document.getElementById('participantFilter')?.value;
+function renderScheduleDay(date, dayShifts) {
+    const dayName = date.toLocaleDateString('en-AU', { weekday: 'long' });
+    const dateStr = date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
     
-    CalendarTemplates.renderSchedule(container, filterValue, allShifts);
+    return `
+        <div class="shift-group">
+            <div class="shift-group-header">
+                <span>${dayName}, ${dateStr}</span>
+                <span class="shift-count">${dayShifts.length} shift(s)</span>
+                <!-- Removed: <span class="shift-group-hours">${totalHours}h</span> -->
+            </div>
+            <!-- shifts content -->
+        </div>
+    `;
 }
-
         
         // Add all the edit profile functions
         function editPersonalInfo() {
@@ -10889,20 +12395,16 @@ async function checkNavigationBoundaries() {
     }
 }
 
-// Update setupPeriodNavigationButtons to respect disabled state
 function setupPeriodNavigationButtons() {
     const prevButton = document.getElementById('prevPeriodBtn');
     if (prevButton) {
         const newPrevButton = prevButton.cloneNode(true);
         prevButton.parentNode.replaceChild(newPrevButton, prevButton);
         
-        newPrevButton.addEventListener('click', (e) => {
+        newPrevButton.addEventListener('click', debounceButton(newPrevButton, (e) => {
             e.preventDefault();
-            if (!newPrevButton.disabled) {
-                console.log('Previous period clicked from offset:', window.periodOffset || 0);
-                changePeriod(-1);
-            }
-        });
+            changePeriod(-1);
+        }, 500));
     }
     
     const nextButton = document.getElementById('nextPeriodBtn');
@@ -10910,15 +12412,13 @@ function setupPeriodNavigationButtons() {
         const newNextButton = nextButton.cloneNode(true);
         nextButton.parentNode.replaceChild(newNextButton, nextButton);
         
-        newNextButton.addEventListener('click', (e) => {
+        newNextButton.addEventListener('click', debounceButton(newNextButton, (e) => {
             e.preventDefault();
-            if (!newNextButton.disabled) {
-                console.log('Next period clicked from offset:', window.periodOffset || 0);
-                changePeriod(1);
-            }
-        });
+            changePeriod(1);
+        }, 500));
     }
 }
+
 
 function resetToCurrentPeriod() {
     console.log('Resetting to current period (offset 0)');
@@ -11392,9 +12892,7 @@ function toggleTimesheetView(view) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-    try {
-        console.log('Initializing application...');
-        
+    try {        
         // ===== UNIVERSAL EVENT DELEGATION (ONLY ONCE, COMPREHENSIVE VERSION) =====
         document.addEventListener('click', (e) => {
             const target = e.target.closest('[data-modal-close], [data-modal-open], [data-timesheet-view], [data-transfer-tab], [data-section], [data-action], [data-action-with-param], [data-action-with-two-params]');
@@ -11435,9 +12933,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (transferId) acceptTransfer(transferId);
                 return;
             }
-            if (target.dataset.action === 'rejectTransfer') {
+            if (target.dataset.action === 'declinetransfer') {
                 const transferId = target.dataset.transferId;
-                if (transferId) rejectTransfer(transferId);
+                if (transferId) declinetransfer(transferId);
                 return;
             }
             
@@ -11480,12 +12978,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     btn.classList.remove('active');
                 });
                 target.classList.add('active');
-                return;
-            }
-            
-            // Handle transfer tabs
-            if (target.dataset.transferTab) {
-                switchTransferTab(target.dataset.transferTab);
                 return;
             }
             
@@ -11963,6 +13455,9 @@ function switchSection(section) {
                     loadTransfers();
                 }
                 break;
+                case 'requests':
+    handleRequestsSection();
+    break;
             case 'profile':
                 if (typeof loadProfile === 'function') {
                     loadProfile();
