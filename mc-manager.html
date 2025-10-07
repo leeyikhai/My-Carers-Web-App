@@ -6872,54 +6872,37 @@ function editShift(shiftId) {
     }
 
     console.log('Editing shift:', shift);
-    
-    // First, ensure the modal exists
-    const modal = document.getElementById('editShiftModal');
-    if (!modal) {
-        console.error('Edit shift modal not found');
-        return;
-    }
 
-    // Helper function to safely set value
-    const safeSetValue = (elementId, value) => {
-        const element = document.getElementById(elementId);
-        if (element) {
-            element.value = value || '';
-        } else {
-            console.warn(`Element ${elementId} not found`);
-        }
-    };
-
-    // Populate edit form with safe checks
-    safeSetValue('editShiftId', shift.id);
-    safeSetValue('editShiftDate', shift.date);
-    safeSetValue('editShiftStartTime', shift.start_time);
-    safeSetValue('editShiftEndTime', shift.end_time);
+    // Populate edit form
+    document.getElementById('editShiftId').value = shift.id;
+    document.getElementById('editShiftDate').value = shift.date;
+    document.getElementById('editShiftStartTime').value = shift.start_time || '';
+    document.getElementById('editShiftEndTime').value = shift.end_time || '';
     
     // Set staff selection
     if (shift.staff) {
         const staffName = `${shift.staff.first_name} ${shift.staff.last_name}`;
-        safeSetValue('editShiftStaffInput', staffName);
-        safeSetValue('editShiftStaff', shift.staff_id);
+        document.getElementById('editShiftStaffInput').value = staffName;
+        document.getElementById('editShiftStaff').value = shift.staff_id;
     } else {
-        safeSetValue('editShiftStaffInput', '');
-        safeSetValue('editShiftStaff', '');
+        document.getElementById('editShiftStaffInput').value = '';
+        document.getElementById('editShiftStaff').value = '';
     }
     
     // Set participant selection
     if (shift.participant) {
         const participantName = `${shift.participant.first_name} ${shift.participant.last_name}`;
-        safeSetValue('editShiftParticipantInput', participantName);
-        safeSetValue('editShiftParticipant', shift.participant_id);
+        document.getElementById('editShiftParticipantInput').value = participantName;
+        document.getElementById('editShiftParticipant').value = shift.participant_id;
     } else {
-        safeSetValue('editShiftParticipantInput', '');
-        safeSetValue('editShiftParticipant', '');
+        document.getElementById('editShiftParticipantInput').value = '';
+        document.getElementById('editShiftParticipant').value = '';
     }
     
-    safeSetValue('editShiftLocation', shift.location_id);
-    safeSetValue('editShiftDutyType', shift.duty_type_id);
+    document.getElementById('editShiftLocation').value = shift.location_id || '';
+    document.getElementById('editShiftDutyType').value = shift.duty_type_id || '';
     
-    // Handle pay rate override
+    // Handle pay rate override - ensure the select has the value as an option
     const payRateSelect = document.getElementById('editShiftPayRate');
     if (payRateSelect) {
         // First, ensure the option exists
@@ -6937,7 +6920,7 @@ function editShift(shiftId) {
             if (!optionExists && shift.pay_override) {
                 const option = document.createElement('option');
                 option.value = shift.pay_override_id;
-                option.text = `Custom Rate - $${shift.pay_override?.hourly_pay_rate || shift.pay_override?.base_rate || 0}/hr`;
+                option.text = `Custom Rate - $${shift.pay_override.hourly_pay_rate || shift.pay_override.base_rate || 0}/hr`;
                 payRateSelect.appendChild(option);
             }
             
@@ -6949,16 +6932,10 @@ function editShift(shiftId) {
         }
     }
     
-    safeSetValue('editShiftStatus', shift.status || 'scheduled');
-    safeSetValue('editShiftNotes', shift.notes);
+    document.getElementById('editShiftStatus').value = shift.status || 'scheduled';
+    document.getElementById('editShiftNotes').value = shift.notes || '';
 
-    // Show the modal
-    modal.style.display = 'flex';
-    
-    // Load dropdowns if needed
-    if (typeof loadEditShiftDropdowns === 'function') {
-        loadEditShiftDropdowns();
-    }
+    document.getElementById('editShiftModal').style.display = 'flex';
 }
         
         function deleteShiftConfirm() {
@@ -9385,10 +9362,18 @@ function generatePayrollSummary() {
 function closeModal(modalId) {
     const modal = document.getElementById(modalId);
     
-    // Remove the modal
-    if (modal) modal.remove();
+    // Hide the modal instead of removing it
+    if (modal) {
+        modal.style.display = 'none';
+        
+        // Reset form if it exists inside the modal
+        const form = modal.querySelector('form');
+        if (form) {
+            form.reset();
+        }
+    }
     
-    // Also remove the backdrop - try multiple possible backdrop IDs
+    // Remove backdrops (these can be safely removed since they're created fresh each time)
     const backdrop1 = document.getElementById(modalId.replace('Modal', 'Backdrop'));
     const backdrop2 = document.getElementById('editAssignmentBackdrop');
     const backdrop3 = document.getElementById('addAssignmentBackdrop');
@@ -9397,94 +9382,15 @@ function closeModal(modalId) {
     if (backdrop2) backdrop2.remove();
     if (backdrop3) backdrop3.remove();
     
-    // As a fallback, remove any element with class modal-backdrop
+    // Remove any dynamically created modal backdrops
     document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
         backdrop.remove();
     });
-}
-        function clearAllFilters() {
-            document.getElementById('staffFilterInput').value = '';
-            document.getElementById('participantFilterInput').value = '';
-            document.getElementById('statusFilter').value = '';
-            
-            staffFilterValue = '';
-            participantFilterValue = '';
-            
-            // Reset to current week
-            setCurrentWeek();
-            
-            showNotification('All filters cleared, showing current week', 'info');
-            applyFilters();
-        }
-
-        async function loadInitialData() {
-    try {
-        console.log('=== LOADING REFERENCE DATA ===');
-        
-        // Load all reference data in parallel
-        const [
-            { data: staffData, error: staffError },
-            { data: participantsData, error: participantsError },
-            { data: locationsData, error: locationsError },
-            { data: dutyTypesData, error: dutyTypesError },
-            { data: payRatesData, error: payRatesError },
-            { data: payRateLabelsData, error: payRateLabelsError }
-        ] = await Promise.all([
-            supabaseClient.from('staff').select('*').eq('is_active', true).is('deleted_at', null).order('first_name'),
-            supabaseClient.from('participants').select('*').eq('is_active', true).is('deleted_at', null).order('first_name'),
-            supabaseClient.from('locations').select('*').order('name'),
-            supabaseClient.from('duty_types').select('*').order('name'),
-            supabaseClient.from('pay_rates').select('*').order('category, level, pay_point'),
-            supabaseClient.from('pay_rate_labels').select('*')
-        ]);
-
-        // Check for errors
-        if (staffError) throw staffError;
-        if (participantsError) throw participantsError;
-        if (locationsError) throw locationsError;
-        if (dutyTypesError) throw dutyTypesError;
-        if (payRatesError) throw payRatesError;
-        if (payRateLabelsError) console.warn('Pay rate labels error:', payRateLabelsError);
-        
-        // Assign to global variables
-        staff = staffData || [];
-        participants = participantsData || [];
-        locations = locationsData || [];
-        dutyTypes = dutyTypesData || [];
-        payRates = payRatesData || [];
-        
-        // Create pay rate labels map
-        payRateLabels = new Map();
-        if (payRateLabelsData) {
-            payRateLabelsData.forEach(label => {
-                payRateLabels.set(label.id, label.label);
-            });
-        }
-        
-        // Detect all care homes based on shared addresses
-        detectCareHomes();
-        
-        console.log('Reference data loaded:', {
-            staff: staff.length,
-            participants: participants.length,
-            locations: locations.length,
-            dutyTypes: dutyTypes.length,
-            payRates: payRates.length,
-            payRateLabels: payRateLabels.size,
-            careHomes: careHomes.size
-        });
-        
-        // Initialize undo/redo buttons if they exist
-        if (typeof UndoRedoManager !== 'undefined') {
-            UndoRedoManager.updateButtons();
-        }
-        
-        populateFilterDropdowns();
-        populateModalDropdowns();
-
-    } catch (error) {
-        console.error('Error loading initial data:', error);
-        showNotification('Failed to load reference data: ' + error.message, 'error');
+    
+    // For modals that should be removed (like assignment modals that are created dynamically)
+    const dynamicModals = ['editAssignmentModal', 'addAssignmentModal'];
+    if (dynamicModals.includes(modalId)) {
+        if (modal) modal.remove();
     }
 }
 
