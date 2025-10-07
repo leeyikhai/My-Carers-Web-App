@@ -7755,13 +7755,10 @@ function populateLocationDropdown() {
     }
 }
 
-
-
-
 function showAddShiftModal() {
-    populateShiftModalDropdowns();
-    ModalManager.show('addShift');
+    openShiftModal(); // Call your existing function
 }
+
 
 function showTransferModal() {
     loadTransferableShifts();
@@ -12867,6 +12864,8 @@ function calculateTimesheetHours(shifts) {
     return breakdown;
 }
 
+
+
 // 5. Helper function for formatting hours
 function formatHours(hours) {
     return (hours || 0).toFixed(1);
@@ -13181,16 +13180,11 @@ function renderTimesheetShifts() {
         // Sort dates and render
         Object.keys(grouped).sort().forEach(date => {
             const dayShifts = grouped[date];
-            const dayHours = dayShifts.reduce((sum, s) => {
-                const hours = calculateShiftHours(s);
-                return sum + (hours.total || 0);
-            }, 0);
             
             html += `
                 <div class="shift-group">
                     <div class="shift-group-header">
                         <span>${formatDateLong(date)}</span>
-                        <span class="shift-group-hours">${dayHours.toFixed(1)}h</span>
                     </div>
             `;
             
@@ -13198,12 +13192,23 @@ function renderTimesheetShifts() {
                 const hours = calculateShiftHours(shift);
                 const participant = shift.participants;
                 
+                // Build time display based on whether it's a sleepover
+                let timeDisplay = '';
+                if (shift.start_time && shift.end_time) {
+                    timeDisplay = `${formatTime12Hour(shift.start_time)} - ${formatTime12Hour(shift.end_time)}`;
+                } else if (!shift.start_time && !shift.end_time) {
+                    timeDisplay = 'Sleepover';
+                } else if (shift.start_time && !shift.end_time) {
+                    timeDisplay = `${formatTime12Hour(shift.start_time)} - End`;
+                } else {
+                    timeDisplay = `Start - ${formatTime12Hour(shift.end_time)}`;
+                }
+                
                 html += `
                     <div class="shift-list-item">
                         <div class="shift-info">
                             <div class="shift-date-time">
-                                ${shift.start_time ? formatTime12Hour(shift.start_time) : 'Sleepover'} - 
-                                ${shift.end_time ? formatTime12Hour(shift.end_time) : ''}
+                                ${timeDisplay}
                             </div>
                             <div class="shift-client">
                                 ${participant ? `${participant.first_name} ${participant.last_name}` : 'Unassigned'}
@@ -13258,13 +13263,23 @@ function renderTimesheetShifts() {
             group.shifts.sort((a, b) => a.date.localeCompare(b.date)).forEach(shift => {
                 const hours = calculateShiftHours(shift);
                 
+                // Build time display based on whether it's a sleepover
+                let timeDisplay = '';
+                if (shift.start_time && shift.end_time) {
+                    timeDisplay = `${formatTime12Hour(shift.start_time)} - ${formatTime12Hour(shift.end_time)}`;
+                } else if (!shift.start_time && !shift.end_time) {
+                    timeDisplay = 'Sleepover';
+                } else if (shift.start_time && !shift.end_time) {
+                    timeDisplay = `${formatTime12Hour(shift.start_time)} - End`;
+                } else {
+                    timeDisplay = `Start - ${formatTime12Hour(shift.end_time)}`;
+                }
+                
                 html += `
                     <div class="shift-list-item">
                         <div class="shift-info">
                             <div class="shift-date-time">
-                                ${formatDateShort(shift.date)} - 
-                                ${shift.start_time ? formatTime12Hour(shift.start_time) : 'Sleepover'} - 
-                                ${shift.end_time ? formatTime12Hour(shift.end_time) : ''}
+                                ${formatDateShort(shift.date)} - ${timeDisplay}
                             </div>
                             <div class="shift-location">
                                 📍 ${shift.locations?.name || 'Client Home'}
