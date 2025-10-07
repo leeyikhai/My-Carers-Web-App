@@ -6872,37 +6872,54 @@ function editShift(shiftId) {
     }
 
     console.log('Editing shift:', shift);
+    
+    // First, ensure the modal exists
+    const modal = document.getElementById('editShiftModal');
+    if (!modal) {
+        console.error('Edit shift modal not found');
+        return;
+    }
 
-    // Populate edit form
-    document.getElementById('editShiftId').value = shift.id;
-    document.getElementById('editShiftDate').value = shift.date;
-    document.getElementById('editShiftStartTime').value = shift.start_time || '';
-    document.getElementById('editShiftEndTime').value = shift.end_time || '';
+    // Helper function to safely set value
+    const safeSetValue = (elementId, value) => {
+        const element = document.getElementById(elementId);
+        if (element) {
+            element.value = value || '';
+        } else {
+            console.warn(`Element ${elementId} not found`);
+        }
+    };
+
+    // Populate edit form with safe checks
+    safeSetValue('editShiftId', shift.id);
+    safeSetValue('editShiftDate', shift.date);
+    safeSetValue('editShiftStartTime', shift.start_time);
+    safeSetValue('editShiftEndTime', shift.end_time);
     
     // Set staff selection
     if (shift.staff) {
         const staffName = `${shift.staff.first_name} ${shift.staff.last_name}`;
-        document.getElementById('editShiftStaffInput').value = staffName;
-        document.getElementById('editShiftStaff').value = shift.staff_id;
+        safeSetValue('editShiftStaffInput', staffName);
+        safeSetValue('editShiftStaff', shift.staff_id);
     } else {
-        document.getElementById('editShiftStaffInput').value = '';
-        document.getElementById('editShiftStaff').value = '';
+        safeSetValue('editShiftStaffInput', '');
+        safeSetValue('editShiftStaff', '');
     }
     
     // Set participant selection
     if (shift.participant) {
         const participantName = `${shift.participant.first_name} ${shift.participant.last_name}`;
-        document.getElementById('editShiftParticipantInput').value = participantName;
-        document.getElementById('editShiftParticipant').value = shift.participant_id;
+        safeSetValue('editShiftParticipantInput', participantName);
+        safeSetValue('editShiftParticipant', shift.participant_id);
     } else {
-        document.getElementById('editShiftParticipantInput').value = '';
-        document.getElementById('editShiftParticipant').value = '';
+        safeSetValue('editShiftParticipantInput', '');
+        safeSetValue('editShiftParticipant', '');
     }
     
-    document.getElementById('editShiftLocation').value = shift.location_id || '';
-    document.getElementById('editShiftDutyType').value = shift.duty_type_id || '';
+    safeSetValue('editShiftLocation', shift.location_id);
+    safeSetValue('editShiftDutyType', shift.duty_type_id);
     
-    // Handle pay rate override - ensure the select has the value as an option
+    // Handle pay rate override
     const payRateSelect = document.getElementById('editShiftPayRate');
     if (payRateSelect) {
         // First, ensure the option exists
@@ -6920,7 +6937,7 @@ function editShift(shiftId) {
             if (!optionExists && shift.pay_override) {
                 const option = document.createElement('option');
                 option.value = shift.pay_override_id;
-                option.text = `Custom Rate - $${shift.pay_override.hourly_pay_rate || shift.pay_override.base_rate || 0}/hr`;
+                option.text = `Custom Rate - $${shift.pay_override?.hourly_pay_rate || shift.pay_override?.base_rate || 0}/hr`;
                 payRateSelect.appendChild(option);
             }
             
@@ -6932,10 +6949,16 @@ function editShift(shiftId) {
         }
     }
     
-    document.getElementById('editShiftStatus').value = shift.status || 'scheduled';
-    document.getElementById('editShiftNotes').value = shift.notes || '';
+    safeSetValue('editShiftStatus', shift.status || 'scheduled');
+    safeSetValue('editShiftNotes', shift.notes);
 
-    document.getElementById('editShiftModal').style.display = 'flex';
+    // Show the modal
+    modal.style.display = 'flex';
+    
+    // Load dropdowns if needed
+    if (typeof loadEditShiftDropdowns === 'function') {
+        loadEditShiftDropdowns();
+    }
 }
         
         function deleteShiftConfirm() {
