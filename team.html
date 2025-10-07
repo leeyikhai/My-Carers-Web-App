@@ -7756,8 +7756,10 @@ function populateLocationDropdown() {
 }
 
 function showAddShiftModal() {
-    openShiftModal(); // Call your existing function
+    populateShiftModalDropdowns();
+    ModalManager.show('addShift');
 }
+
 
 
 function showTransferModal() {
