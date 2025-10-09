@@ -357,7 +357,7 @@ body.loading {
 }
 
 .message-content {
-    max-width: 70%;
+    max-width: 95%;
     background: white;
     border-radius: 12px;
     padding: 12px 16px;
@@ -695,12 +695,13 @@ body.loading {
     position: relative;
 }
 
+
 /* Messages container - scrollable */
 .messages-container {
     flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 20px;
+    padding: 5px;
     background: #f9fafb;
     -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
 }
@@ -3346,6 +3347,14 @@ id="nav-profile">
                     <textarea id="transportReason" class="form-control" required 
                               placeholder="e.g., Client appointment"></textarea>
                 </div>
+                <div class="form-group">
+    <label>Evidence/Receipt (optional)</label>
+    <input type="file" id="transportEvidence" 
+           accept="image/*,.pdf" 
+           onchange="previewTransportEvidence(this)">
+    <small class="text-muted">Upload receipt or photo (max 5MB)</small>
+    <div id="evidencePreview"></div>
+</div>
             </form>
         </div>
         
@@ -5048,39 +5057,6 @@ function changeRosterPeriod(direction) {
     loadParticipantRoster(participantId, newOffset);
 }
 
-async function loadParticipantNotes(participantId) {
-    try {
-        let query = supabaseClient
-            .from('shift_notes')
-            .select(`
-                id,
-                note,
-                attachments,
-                created_at,
-                staff:staff_id (
-                    id,
-                    first_name,
-                    last_name
-                )
-            `)
-            .order('created_at', { ascending: false })
-            .limit(50);
-        
-        // If you keep shift_id required, you'll need to filter differently
-        // For now, just get all notes
-        
-        const { data: notes, error } = await query;
-        
-        if (error) throw error;
-        
-        renderNotesView(notes, participantId);
-        
-    } catch (error) {
-        console.error('Error loading notes:', error);
-        showToast('Failed to load shift notes', 'error');
-    }
-}
-
 
 
 // Handle image upload in chat
@@ -5164,8 +5140,11 @@ function renderNotesView(notes, participantId) {
         <div class="comments-wrapper">
             <!-- Messages/Notes Area - Scrollable -->
             <div class="messages-container" id="notesContainer">
+                <button onclick="loadParticipantNotes('${participantId}', 1, {})" class="load-btn" style="text-align: center; width: 100%; padding: 10px;">
+                    Load All Messages with Filters
+                </button>
                 <div class="messages-list">
-                    ${renderNotesList(notes.reverse())} <!-- Reverse to show oldest first -->
+                    ${renderNotesList(notes.reverse())}
                 </div>
             </div>
             
@@ -5229,13 +5208,11 @@ document.addEventListener('selectionchange', () => {
 });
 
 
-// Load participant notes with pagination and filters
 async function loadParticipantNotes(participantId, page = 1, filters = {}) {
     try {
         const notesPerPage = 20;
         const offset = (page - 1) * notesPerPage;
         
-        // Build query
         let query = supabaseClient
             .from('shift_notes')
             .select(`
@@ -5248,40 +5225,51 @@ async function loadParticipantNotes(participantId, page = 1, filters = {}) {
                     first_name,
                     last_name
                 )
-            `, { count: 'exact' });
+            `, { count: 'exact' })
+            .eq('participant_id', participantId);
         
-        // Apply filters
-        if (filters.startDate) {
-            query = query.gte('created_at', filters.startDate);
-        }
-        if (filters.endDate) {
-            query = query.lte('created_at', filters.endDate + 'T23:59:59');
-        }
-        if (filters.staffId) {
-            query = query.eq('staff_id', filters.staffId);
-        }
+        // Apply filters...
         
-        // Get data with pagination
+        // Get data - CHANGE TO ASCENDING for chat view
         const { data: notes, error, count } = await query
-            .order('created_at', { ascending: false })
+            .order('created_at', { ascending: true })  // Changed to ascending
             .range(offset, offset + notesPerPage - 1);
         
         if (error) throw error;
         
-        // Store for reference
-        window.currentNotes = notes;
-        window.currentNotesPage = page;
-        window.currentNotesFilters = filters;
-        window.totalNotesPages = Math.ceil(count / notesPerPage);
+        // For chat view, we want newest at bottom
+        // Page 1 should be the most recent notes
+        // So we need to calculate offset from the END
+        const totalNotes = count;
+        const actualOffset = Math.max(0, totalNotes - (page * notesPerPage));
+        const actualEnd = totalNotes - ((page - 1) * notesPerPage) - 1;
         
-        renderNotesViewWithControls(notes, participantId, page, window.totalNotesPages);
+        // Re-query with correct offset from end
+        const { data: correctNotes, error: error2 } = await supabaseClient
+            .from('shift_notes')
+            .select(`
+                id,
+                note,
+                attachments,
+                created_at,
+                staff:staff_id (
+                    id,
+                    first_name,
+                    last_name
+                )
+            `)
+            .eq('participant_id', participantId)
+            .order('created_at', { ascending: true })
+            .range(actualOffset, actualEnd);
+        
+        if (error2) throw error2;
+        
+        renderNotesViewWithControls(correctNotes, participantId, page, Math.ceil(count / notesPerPage));
         
     } catch (error) {
         console.error('Error loading notes:', error);
-        showToast('Failed to load shift notes', 'error');
     }
 }
-
 // Render with filter controls
 function renderNotesViewWithControls(notes, participantId, currentPage, totalPages) {
     const container = document.getElementById('notesView');
@@ -5316,30 +5304,24 @@ function renderNotesViewWithControls(notes, participantId, currentPage, totalPag
                     </select>
                 </div>
                 <div class="filter-actions">
-                    <button class="modal-btn secondary"="clearFilters()">Clear</button>
-                    <button class="modal-btn primary"="applyFilters('${participantId}')">Apply</button>
+                    <button class="modal-btn secondary" onclick="clearFilters()">Clear</button>
+                    <button class="modal-btn primary" onclick="applyFilters('${participantId}')">Apply</button>
                 </div>
             </div>
             
             <!-- Messages/Notes Area - Scrollable -->
             <div class="messages-container" id="notesContainer">
+                ${currentPage < totalPages ? `
+                    <div class="load-more-container" style="text-align: center; padding: 10px;">
+                        <button onclick="loadMoreNotes('${participantId}', ${currentPage + 1})" class="load-btn">
+                            <i class="fa-solid fa-chevron-up"></i> Load Earlier Messages
+                        </button>
+                    </div>
+                ` : ''}
+                
                 <div class="messages-list">
                     ${renderNotesList(notes.reverse())}
                 </div>
-                ${totalPages > 1 ? `
-                    <div class="load-more-container">
-                        ${currentPage > 1 ? `
-                            <button onclick="loadMoreNotes('${participantId}', ${currentPage - 1})" class="load-btn">
-                                <i class="fa-solid fa-chevron-up"></i> Previous
-                            </button>
-                        ` : ''}
-                        ${currentPage < totalPages ? `
-                            <button onclick="loadMoreNotes('${participantId}', ${currentPage + 1})" class="load-btn">
-                                <i class="fa-solid fa-chevron-down"></i> Load More
-                            </button>
-                        ` : ''}
-                    </div>
-                ` : ''}
             </div>
             
             <!-- Fixed Compose Area remains the same -->
@@ -5385,7 +5367,7 @@ function renderNotesViewWithControls(notes, participantId, currentPage, totalPag
     `;
     
     // Populate staff filter
-    populateStaffFilter();
+    populateStaffFilter(participantId);
     
     // Scroll to bottom for latest
     setTimeout(() => {
@@ -5399,22 +5381,61 @@ function renderNotesViewWithControls(notes, participantId, currentPage, totalPag
 // Toggle filter panel
 function toggleFilterPanel() {
     const panel = document.getElementById('filterPanel');
-    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    if (panel) {
+        panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    }
 }
 
 // Apply filters
 function applyFilters(participantId) {
-    const filters = {
-        startDate: document.getElementById('filterStartDate').value,
-        endDate: document.getElementById('filterEndDate').value,
-        staffId: document.getElementById('filterStaff').value
-    };
+    const startDate = document.getElementById('filterStartDate').value;
+    const endDate = document.getElementById('filterEndDate').value;
+    const staffId = document.getElementById('filterStaff').value;
+    
+    const filters = {};
+    if (startDate) filters.startDate = startDate;
+    if (endDate) filters.endDate = endDate;
+    if (staffId) filters.staffId = staffId;
     
     loadParticipantNotes(participantId, 1, filters);
-    toggleFilterPanel();
 }
 
-// Clear filters
+async function populateStaffFilter(participantId) {
+    try {
+        // Get unique staff IDs who have written notes for this participant
+        const { data: notes, error } = await supabaseClient
+            .from('shift_notes')
+            .select('staff_id, staff:staff_id(first_name, last_name)')
+            .eq('participant_id', participantId)
+            .not('staff_id', 'is', null);
+        
+        if (error) throw error;
+        
+        // Get unique staff members
+        const uniqueStaff = new Map();
+        notes?.forEach(note => {
+            if (note.staff && note.staff_id) {
+                uniqueStaff.set(note.staff_id, {
+                    id: note.staff_id,
+                    name: `${note.staff.first_name} ${note.staff.last_name}`
+                });
+            }
+        });
+        
+        // Populate the dropdown
+        const select = document.getElementById('filterStaff');
+        if (select) {
+            select.innerHTML = '<option value="">All Staff</option>';
+            uniqueStaff.forEach(staff => {
+                select.innerHTML += `<option value="${staff.id}">${staff.name}</option>`;
+            });
+        }
+        
+    } catch (error) {
+        console.error('Error populating staff filter:', error);
+    }
+}
+
 function clearFilters() {
     document.getElementById('filterStartDate').value = '';
     document.getElementById('filterEndDate').value = '';
@@ -5569,7 +5590,7 @@ function renderNotesList(notes) {
         return `
             <div class="no-messages">
                 <i class="fa-solid fa-comment-slash"></i>
-                <p>No notes yet. Start the conversation!</p>
+                <p>No notes yet.</p>
             </div>
         `;
     }
@@ -5819,7 +5840,6 @@ function showSchoolHolidayModal() {
     }
 }
 
-// Submit school holiday
 async function submitSchoolHoliday() {
     const submitBtn = document.querySelector('[onclick="submitSchoolHoliday()"]');
     if (!submitBtn || submitBtn.disabled) return; // Already processing
@@ -5848,28 +5868,43 @@ async function submitSchoolHoliday() {
             return;
         }
         
-        // Check for overlapping submissions
+        // REMOVED: Past date validation - allow backdating
+        // Old code that prevented backdating has been removed
+        
+        // Optional: Add a warning for past dates but still allow submission
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (new Date(startDate) < today) {
+            // Just log or show info, don't block
+            console.log('Backdated school holiday submission');
+        }
+        
+        // Check for overlapping submissions (keep this validation)
         const { data: existing } = await supabaseClient
             .from('school_holidays')
             .select('*')
             .eq('staff_id', currentStaff.id)
-            .or(`start_date.lte.${endDate},end_date.gte.${startDate}`);
+            .lte('start_date', endDate)
+            .gte('end_date', startDate)
+            .in('status', ['pending', 'approved']); // Don't check denied ones
         
         if (existing && existing.length > 0) {
-            showToast('You already have a holiday submission for this period', 'error');
+            showToast('You already have a holiday submission overlapping this period', 'error');
             submitBtn.disabled = false;
             submitBtn.textContent = originalText;
             return;
         }
         
-        // Submit
+        // Submit with additional metadata for backdated entries
         const { error } = await supabaseClient
             .from('school_holidays')
             .insert({
                 staff_id: currentStaff.id,
                 start_date: startDate,
                 end_date: endDate,
-                status: 'pending'
+                status: 'pending',
+                is_backdated: new Date(startDate) < today, // Track if it was backdated
+                submitted_at: new Date().toISOString()
             });
         
         if (error) throw error;
@@ -5877,6 +5912,11 @@ async function submitSchoolHoliday() {
         showToast('School holiday period submitted successfully', 'success');
         closeModal('schoolHolidayModal');
         document.getElementById('schoolHolidayForm').reset();
+        
+        // Reload the view to show the new submission
+        if (typeof loadSchoolHolidays === 'function') {
+            loadSchoolHolidays();
+        }
         
         // Re-enable after delay
         setTimeout(() => {
@@ -5889,7 +5929,6 @@ async function submitSchoolHoliday() {
         showToast('Failed to submit school holiday', 'error');
         
         // Re-enable on error
-        const submitBtn = document.querySelector('[onclick="submitSchoolHoliday()"]');
         if (submitBtn) {
             submitBtn.disabled = false;
             submitBtn.textContent = 'Submit';
@@ -5897,15 +5936,18 @@ async function submitSchoolHoliday() {
     }
 }
 
-// Validate dates on change
+// Update date validation to only set minimum relationships, not restrict past dates
 document.getElementById('schoolStartDate')?.addEventListener('change', function() {
     const endDate = document.getElementById('schoolEndDate');
+    // Only ensure end date is after start date, don't restrict past dates
     endDate.min = this.value;
     
     if (endDate.value && endDate.value < this.value) {
         endDate.value = this.value;
     }
 });
+
+
 
 async function checkSchoolHolidayVisibility() {
     try {
@@ -5978,7 +6020,6 @@ async function loadParticipantProfile(participantId) {
         container.innerHTML = '<div class="error">Failed to load profile</div>';
     }
 }
-// Render shift notes
 function renderShiftNotes(notes) {
     const container = document.getElementById('notesTimeline');
     if (!container) return;
@@ -5991,7 +6032,6 @@ function renderShiftNotes(notes) {
     let html = '';
     notes.forEach(note => {
         const staff = note.staff || {};
-        const shift = note.shifts || {};
         const createdDate = new Date(note.created_at);
         
         // Determine category style
@@ -6006,7 +6046,6 @@ function renderShiftNotes(notes) {
                         </div>
                         <div class="shift-note-meta">
                             ${createdDate.toLocaleDateString('en-AU')} at ${createdDate.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}
-                            • Shift: ${new Date(shift.date).toLocaleDateString('en-AU')}
                         </div>
                     </div>
                     <span class="shift-note-category ${categoryClass}">
@@ -6016,9 +6055,9 @@ function renderShiftNotes(notes) {
                 <div class="shift-note-content">
                     ${note.note || 'No notes'}
                 </div>
-                ${note.attachments ? `
+                ${note.attachments && note.attachments.length > 0 ? `
                     <div class="shift-note-attachments">
-                        <i class="fa-solid fa-paperclip"></i> Attachments
+                        <i class="fa-solid fa-paperclip"></i> ${note.attachments.length} Attachment(s)
                     </div>
                 ` : ''}
             </div>
@@ -6028,22 +6067,21 @@ function renderShiftNotes(notes) {
     container.innerHTML = html;
 }
 
-// Enhanced submit note function with refresh
 async function submitShiftNote() {
     try {
-        const shiftId = document.getElementById('noteShiftSelect').value;
+        const participantId = document.getElementById('participantSelect').value; // Get participant ID
         const noteText = document.getElementById('noteText').value;
         const attachments = window.pendingNoteImages || [];
         
-        if (!shiftId || !noteText.trim()) {
-            showToast('Please select a shift and enter a note', 'error');
+        if (!participantId || !noteText.trim()) {
+            showToast('Please select a participant and enter a note', 'error');
             return;
         }
         
         const { error } = await supabaseClient
             .from('shift_notes')
             .insert({
-                shift_id: shiftId,
+                participant_id: participantId,  
                 staff_id: currentStaff.id,
                 note: noteText.trim(),
                 attachments: attachments,
@@ -6059,11 +6097,8 @@ async function submitShiftNote() {
             previewContainer.innerHTML = '';
         }
         
-        // Refresh notes
-        const participantId = document.getElementById('participantSelect').value;
-        if (participantId) {
-            await loadParticipantNotes(participantId);
-        }
+        // Refresh notes for this participant only
+        await loadParticipantNotes(participantId);
         
         // Reset form and close
         document.getElementById('shiftNoteForm').reset();
@@ -6076,6 +6111,7 @@ async function submitShiftNote() {
     }
 }
 
+
 async function handleNoteImageUpload(event) {
     const files = event.target.files;
     if (!files || files.length === 0) return;
@@ -6084,7 +6120,7 @@ async function handleNoteImageUpload(event) {
     const maxSizeMB = 5; // Max size per image
     const targetWidth = 1200; // Resize to max 1200px wide
     const quality = 0.8; // JPEG quality
-    
+
     if (files.length > maxFiles) {
         showToast(`Maximum ${maxFiles} images allowed`, 'error');
         return;
@@ -6755,7 +6791,7 @@ function filterSchedule() {
     // Re-render schedule with filter
     loadSchedule(); // This should use the filter value
 }
-// Also add the claim shift function
+
 async function claimShift(shiftId) {
     try {
         if (!confirm('Do you want to claim this shift?')) return;
@@ -6861,8 +6897,7 @@ async function checkTableStructure() {
     
     console.log('shift_adjustment_requests sample:', data);
     
-    // Based on the error, shift_id appears to be UUID in this table
-    // So we need to handle it differently
+    
 }
 
 
@@ -7193,6 +7228,8 @@ function showTransportModal() {
     ModalManager.show('transport');
 }
 
+
+
 function showDocumentUploadModal() {
     // Open the document upload modal
     const modal = document.getElementById('documentUploadModal');
@@ -7204,33 +7241,22 @@ function showDocumentUploadModal() {
     }
 }
 
-
-
-
-
-async function fetchNotes(shiftId) {
-    if (!shiftId) return [];
-    
+async function fetchNotes(participantId) {  // Changed parameter
     try {
-        const { data: notes, error } = await supabaseClient
+        const { data, error } = await supabaseClient
             .from('shift_notes')
             .select(`
                 *,
                 staff:staff_id(first_name, last_name)
             `)
-            .eq('shift_id', parseInt(shiftId))  // Simple integer
+            .eq('participant_id', participantId)  // Changed from shift_id
             .is('deleted_at', null)
             .order('created_at', { ascending: false });
         
-        if (error) {
-            console.error('Error fetching notes:', error);
-            return [];
-        }
-        
-        return notes || [];
-        
+        if (error) throw error;
+        return data || [];
     } catch (error) {
-        console.error('Error in fetchNotes:', error);
+        console.error('Error fetching notes:', error);
         return [];
     }
 }
@@ -7642,17 +7668,17 @@ function calculateShiftDuration(startTime, endTime) {
     return duration / 60;
 }
 
-async function displayShiftNotes(shiftId) {
+async function displayShiftNotes(participantId) {  // Changed parameter
     const container = document.getElementById('shiftNotesList');
     if (!container) return;
     
-    const notes = await fetchNotes(shiftId);
+    const notes = await fetchNotes(participantId);  // Pass participant ID
     
     if (notes.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
                 <i class="fas fa-sticky-note"></i>
-                <p>No notes for this shift</p>
+                <p>No notes for this participant</p>
             </div>
         `;
         return;
@@ -7676,7 +7702,6 @@ async function displayShiftNotes(shiftId) {
         </div>
     `).join('');
 }
-
 
 async function deleteNote(noteId) {
     if (!confirm('Are you sure you want to delete this note?')) return;
@@ -7710,11 +7735,11 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-async function checkShiftHasNotes(shiftId) {
+async function checkShiftHasNotes(participantId) {  // Changed parameter
     const { count, error } = await supabaseClient
         .from('shift_notes')
         .select('*', { count: 'exact', head: true })
-        .eq('shift_id', parseInt(shiftId))  // Simple integer
+        .eq('participant_id', participantId)  // Changed to participant_id
         .is('deleted_at', null);
     
     return count > 0;
@@ -9160,12 +9185,21 @@ async function submitLeave() {
             return;
         }
 
-        // Rest of your code stays the same...
-        // Validate dates
+        // Validate dates - only check that end is after start
+        // REMOVED check for past dates to allow backdating
         if (new Date(endDate) < new Date(startDate)) {
             showToast('End date must be after start date', 'error');
             isSubmittingLeave = false;
             return;
+        }
+
+        // Check if this is a backdated submission
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const isBackdated = new Date(startDate) < today;
+        
+        if (isBackdated) {
+            console.log('Backdated leave request detected');
         }
 
         const { data, error } = await supabaseClient
@@ -9177,6 +9211,7 @@ async function submitLeave() {
                 end_date: endDate,
                 reason: reason,
                 status: 'pending',
+                is_backdated: isBackdated,  // Add flag for backdated requests
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
             })
@@ -9398,21 +9433,20 @@ async function loadLocations() {
 }
 
 async function submitNote() {
-    const shiftId = document.getElementById('noteShiftId').value;
+    const participantId = document.getElementById('noteParticipantId').value; // Change to participant ID
     const noteType = document.getElementById('noteType').value;
     const noteText = document.getElementById('noteText').value;
     
-    if (!shiftId || !noteType || !noteText.trim()) {
+    if (!participantId || !noteType || !noteText.trim()) {
         showToast('Please fill in all required fields', 'error');
         return;
     }
     
     try {
-        // CRITICAL: Ensure shift_id is INTEGER
         const { data: noteData, error: noteError } = await supabaseClient
             .from('shift_notes')
             .insert({
-                shift_id: parseInt(shiftId), // Convert to INTEGER
+                participant_id: participantId,  // Changed from shift_id to participant_id
                 staff_id: currentStaff.id,
                 note_type: noteType,
                 note: noteText,
@@ -9423,22 +9457,17 @@ async function submitNote() {
         
         if (noteError) {
             console.error('Note creation error:', noteError);
-            if (noteError.code === DB_ERRORS.FOREIGN_KEY_VIOLATION) {
-                showToast('Invalid shift reference', 'error');
-            } else {
-                showToast('Failed to add note', 'error');
-            }
+            showToast('Failed to add note', 'error');
         } else {
             showToast('Note added successfully', 'success');
             closeModal('addNoteModal');
-            await loadShiftNotes(shiftId);
+            await loadShiftNotes(participantId);  // Pass participant ID
         }
     } catch (error) {
         console.error('Error submitting note:', error);
         showToast('Failed to add note', 'error');
     }
 }
-
 
 function previewImages() {
     const files = document.getElementById('noteImages').files;
@@ -9818,9 +9847,9 @@ async function submitTransportClaim() {
     }
     
     try {
-        isSubmittingTransport = true; // Set flag immediately
+        isSubmittingTransport = true;
         
-        // Disable submit button to prevent double submission
+        // Disable submit button
         const submitBtn = document.getElementById('submitTransportClaim');
         if (submitBtn) {
             submitBtn.disabled = true;
@@ -9833,21 +9862,22 @@ async function submitTransportClaim() {
         const parking = parseFloat(document.getElementById('transportParkingCost').value) || 0;
         const tolls = parseFloat(document.getElementById('transportTollCost').value) || 0;
         const reason = document.getElementById('transportReason').value?.trim();
+        const fileInput = document.getElementById('transportEvidence'); // New: file input
         
         // Validation
         if (!date) {
             showToast('Please select a date', 'error');
-            return; // This was the problem - skips finally block
+            return;
         }
         
         if (!reason || reason.length < 5) {
             showToast('Please provide a detailed reason (minimum 5 characters)', 'error');
-            return; // This was the problem - skips finally block
+            return;
         }
         
         if (kilometres === 0 && parking === 0 && tolls === 0) {
             showToast('Please enter at least one cost', 'error');
-            return; // This was the problem - skips finally block
+            return;
         }
         
         // Validate date is not in the future
@@ -9857,18 +9887,54 @@ async function submitTransportClaim() {
         
         if (claimDate > today) {
             showToast('Cannot submit claims for future dates', 'error');
-            return; // This was the problem - skips finally block
+            return;
         }
         
         // Validate reasonable amounts
         if (kilometres > 1000) {
             const confirm = window.confirm(`${kilometres}km seems high. Are you sure this is correct?`);
-            if (!confirm) return; // This was the problem - skips finally block
+            if (!confirm) return;
         }
         
         if (parking > 100 || tolls > 100) {
             const confirm = window.confirm(`High parking/toll costs detected. Continue?`);
-            if (!confirm) return; // This was the problem - skips finally block
+            if (!confirm) return;
+        }
+        
+        // Upload evidence file if provided
+        let evidenceUrl = null;
+        if (fileInput?.files && fileInput.files[0]) {
+            const file = fileInput.files[0];
+            
+            // Validate file size (5MB max)
+            if (file.size > 5 * 1024 * 1024) {
+                showToast('File too large. Maximum 5MB allowed', 'error');
+                return;
+            }
+            
+            // Create unique filename
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${currentStaff.id}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+            
+            showToast('Uploading evidence...', 'info');
+            
+            // Upload to Supabase storage
+            const { data: uploadData, error: uploadError } = await supabaseClient.storage
+                .from('transport-evidence')
+                .upload(fileName, file);
+            
+            if (uploadError) {
+                console.error('Upload error:', uploadError);
+                showToast('Failed to upload evidence file', 'warning');
+                // Continue without evidence rather than failing the whole submission
+            } else {
+                // Get public URL
+                const { data: urlData } = supabaseClient.storage
+                    .from('transport-evidence')
+                    .getPublicUrl(fileName);
+                
+                evidenceUrl = urlData.publicUrl;
+            }
         }
         
         // Calculate total
@@ -9886,6 +9952,7 @@ async function submitTransportClaim() {
             toll_cost: tolls,
             reason: reason,
             total_claim: total,
+            evidence_url: evidenceUrl, // New: evidence URL
             status: 'pending',
             created_at: new Date().toISOString()
         };
@@ -9902,6 +9969,7 @@ async function submitTransportClaim() {
         let successMsg = `Transport claim submitted successfully!\n`;
         successMsg += `Total: $${total.toFixed(2)}`;
         if (kilometres > 0) successMsg += ` (${kilometres}km @ $${kmRate}/km = $${mileageReimbursement.toFixed(2)})`;
+        if (evidenceUrl) successMsg += '\n✓ Evidence uploaded';
         
         showToast(successMsg, 'success');
         
@@ -9909,17 +9977,62 @@ async function submitTransportClaim() {
         closeModal('transportModal');
         document.getElementById('transportForm').reset();
         
+        // Clear file preview if exists
+        const preview = document.getElementById('evidencePreview');
+        if (preview) preview.innerHTML = '';
+        
     } catch (error) {
         console.error('Error submitting transport claim:', error);
         showToast(error.message || 'Failed to submit transport claim', 'error');
     } finally {
-        // Reset flag and button - ALWAYS runs
+        // Reset flag and button
         isSubmittingTransport = false;
         const submitBtn = document.getElementById('submitTransportClaim');
         if (submitBtn) {
             submitBtn.disabled = false;
             submitBtn.textContent = 'Submit Claim';
         }
+    }
+}
+
+// Add preview function for evidence files
+function previewTransportEvidence(input) {
+    const preview = document.getElementById('evidencePreview');
+    if (!preview) return;
+    
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        
+        // Validate file size
+        if (file.size > 5 * 1024 * 1024) {
+            showToast('File too large. Maximum 5MB allowed', 'error');
+            input.value = '';
+            preview.innerHTML = '';
+            return;
+        }
+        
+        // Show preview
+        if (file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                preview.innerHTML = `
+                    <div style="margin-top: 10px;">
+                        <img src="${e.target.result}" style="max-width: 200px; max-height: 150px; border-radius: 4px;">
+                        <p style="font-size: 12px; color: #666;">${file.name}</p>
+                    </div>
+                `;
+            };
+            reader.readAsDataURL(file);
+        } else {
+            preview.innerHTML = `
+                <div style="margin-top: 10px; padding: 10px; background: #f0f0f0; border-radius: 4px;">
+                    <i class="fas fa-file-pdf"></i> ${file.name}
+                    <span style="font-size: 12px; color: #666;">(${(file.size / 1024).toFixed(1)} KB)</span>
+                </div>
+            `;
+        }
+    } else {
+        preview.innerHTML = '';
     }
 }
 
