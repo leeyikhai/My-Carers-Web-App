@@ -36,6 +36,24 @@
             --radius-lg: 12px;
         }
 
+        .claim-filter-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.claim-filter-btn.active {
+    font-weight: 600;
+}
+
+.shift-item {
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.shift-item:hover {
+    background: #f8f9fa;
+}
+
 /* Loading overlay */
 .loading-overlay {
     position: fixed;
@@ -1311,7 +1329,7 @@ body.loading {
             color: #155724;
         }
 
-        .status-denied {
+        .status-rejected {
             background: #f8d7da;
             color: #721c24;
         }
@@ -1353,6 +1371,7 @@ body.loading {
             cursor: pointer;
             font-size: 16px;
         }
+
 
         /* Timesheet Summary */
         .timesheet-summary {
@@ -3864,6 +3883,8 @@ id="nav-profile">
         let isSubmittingLeave = false;
         let id = null;
         let isSubmittingTransport = false;
+        let staffClaimFilter = 'all';
+
 window.shifts = window.shifts || [];
 window.participants = window.participants || [];
 window.locations = window.locations || [];
@@ -4185,6 +4206,8 @@ window.initializeApp = async function() {
         console.log('Enhanced initialization starting...');
         LoadingManager.nextStep(); // Authenticating
         
+         console.log('Loading public holidays...');
+        await loadPublicHolidays();
         // Ensure staff is loaded first
         await ensureStaffLoaded();
         
@@ -4294,23 +4317,19 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Add this new function to handle timesheet initialization
+// SINGLE function to handle timesheet view - replaces all three versions
 function initializeTimesheetView() {
     console.log('Initializing timesheet view...');
     
     // Set default view if not already set
     if (!AppState.ui.timesheetView) {
-        AppState.ui.timesheetView = 'date'; // Default to "By Date" view
+        AppState.ui.timesheetView = 'date';
     }
     
-    // Set up toggle button event listeners
+    // Set up toggle button event listeners (only once!)
     const toggleButtons = document.querySelectorAll('[data-timesheet-view]');
-    toggleButtons.forEach(button => {
-        // Remove any existing listeners (prevent duplicates)
-        button.replaceWith(button.cloneNode(true));
-    });
     
-    // Re-select buttons after cloning
-    document.querySelectorAll('[data-timesheet-view]').forEach(button => {
+    toggleButtons.forEach(button => {
         // Set initial active state
         if (button.dataset.timesheetView === AppState.ui.timesheetView) {
             button.classList.add('active');
@@ -4318,32 +4337,22 @@ function initializeTimesheetView() {
             button.classList.remove('active');
         }
         
-        // Add click listener
+        // Add click listener - this will NOT duplicate because we only call initializeTimesheetView once
         button.addEventListener('click', function(e) {
             e.preventDefault();
             
             // Update active states
-            document.querySelectorAll('[data-timesheet-view]').forEach(btn => {
-                btn.classList.remove('active');
-            });
+            toggleButtons.forEach(btn => btn.classList.remove('active'));
             this.classList.add('active');
             
             // Update view state
             AppState.ui.timesheetView = this.dataset.timesheetView;
             
-            // Re-render the timesheet
-            if (typeof renderTimesheetShifts === 'function') {
-                console.log(`Switching to ${this.dataset.timesheetView} view`);
-                renderTimesheetShifts();
-            }
+            // Re-render ONCE
+            console.log(`Switching to ${this.dataset.timesheetView} view`);
+            renderTimesheetShifts();
         });
     });
-    
-    // Initial render of timesheet shifts
-    if (typeof renderTimesheetShifts === 'function') {
-        console.log('Rendering initial timesheet shifts...');
-        renderTimesheetShifts();
-    }
 }
 
 async function initializeApp() {
@@ -4640,6 +4649,8 @@ async function initializeApp() {
         // NEW: Setup participant select event listeners
         setupParticipantSelectListeners();
         
+        initializeTimesheetView();
+
         // ============================================
         // LOAD ADDITIONAL FEATURES (NON-BLOCKING)
         // ============================================
@@ -5270,7 +5281,7 @@ async function loadParticipantNotes(participantId, page = 1, filters = {}) {
         console.error('Error loading notes:', error);
     }
 }
-// Render with filter controls
+
 function renderNotesViewWithControls(notes, participantId, currentPage, totalPages) {
     const container = document.getElementById('notesView');
     if (!container) return;
@@ -5449,35 +5460,7 @@ function loadMoreNotes(participantId, page) {
     loadParticipantNotes(participantId, page, window.currentNotesFilters || {});
 }
 
-// Populate staff dropdown
-async function populateStaffFilter() {
-    const select = document.getElementById('filterStaff');
-    if (!select) return;
-    
-    // Get unique staff who have written notes
-    const { data: staffList } = await supabaseClient
-        .from('shift_notes')
-        .select('staff:staff_id(id, first_name, last_name)')
-        .order('staff_id');
-    
-    const uniqueStaff = [];
-    const seen = new Set();
-    
-    staffList?.forEach(item => {
-        if (item.staff && !seen.has(item.staff.id)) {
-            seen.add(item.staff.id);
-            uniqueStaff.push(item.staff);
-        }
-    });
-    
-    select.innerHTML = '<option value="">All Staff</option>';
-    uniqueStaff.forEach(staff => {
-        select.innerHTML += `<option value="${staff.id}">${staff.first_name} ${staff.last_name}</option>`;
-    });
-}
 
-
-// Update submit to refresh with current filters
 async function submitQuickNote(participantId) {
     const compose = document.getElementById('noteCompose');
     const noteText = compose.innerHTML.trim();
@@ -5492,8 +5475,9 @@ async function submitQuickNote(participantId) {
             .from('shift_notes')
             .insert({
                 staff_id: currentStaff.id,
+                participant_id: participantId,  // ✅ CRITICAL: Link to participant
                 note: noteText || 'Image attachment',
-                shift_id: null,
+                shift_id: null,  // ✅ OK to be null - not shift-specific
                 attachments: attachments,
                 created_at: new Date().toISOString()
             });
@@ -5508,12 +5492,14 @@ async function submitQuickNote(participantId) {
         // Reload with current filters and page
         await loadParticipantNotes(participantId, 1, window.currentNotesFilters || {});
         
+        showToast('Note added successfully', 'success');
+        
     } catch (error) {
         console.error('Error adding note:', error);
         showToast('Failed to add note', 'error');
     }
 }
-// Updated format text to include underline
+
 function formatText(command) {
     const compose = document.getElementById('noteCompose');
     compose.focus();
@@ -5831,10 +5817,13 @@ function formatTime12Hour(time) {
 function showSchoolHolidayModal() {
     const modal = document.getElementById('schoolHolidayModal');
     if (modal) {
-        // Set minimum date to today
-        const today = new Date().toISOString().split('T')[0];
-        document.getElementById('schoolStartDate').min = today;
-        document.getElementById('schoolEndDate').min = today;
+        // REMOVED: Don't set minimum date - allow backdating
+        // Staff can submit school holidays for past dates
+        
+        // Optional: Set a reasonable past limit (e.g., start of current year)
+        // const yearStart = new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
+        // document.getElementById('schoolStartDate').min = yearStart;
+        // document.getElementById('schoolEndDate').min = yearStart;
         
         modal.style.display = 'flex';
     }
@@ -5842,10 +5831,9 @@ function showSchoolHolidayModal() {
 
 async function submitSchoolHoliday() {
     const submitBtn = document.querySelector('[onclick="submitSchoolHoliday()"]');
-    if (!submitBtn || submitBtn.disabled) return; // Already processing
+    if (!submitBtn || submitBtn.disabled) return;
     
     try {
-        // Disable button immediately
         submitBtn.disabled = true;
         const originalText = submitBtn.textContent;
         submitBtn.textContent = 'Submitting...';
@@ -5868,25 +5856,14 @@ async function submitSchoolHoliday() {
             return;
         }
         
-        // REMOVED: Past date validation - allow backdating
-        // Old code that prevented backdating has been removed
-        
-        // Optional: Add a warning for past dates but still allow submission
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        if (new Date(startDate) < today) {
-            // Just log or show info, don't block
-            console.log('Backdated school holiday submission');
-        }
-        
-        // Check for overlapping submissions (keep this validation)
+        // Check for overlapping submissions
         const { data: existing } = await supabaseClient
             .from('school_holidays')
             .select('*')
             .eq('staff_id', currentStaff.id)
             .lte('start_date', endDate)
             .gte('end_date', startDate)
-            .in('status', ['pending', 'approved']); // Don't check denied ones
+            .in('status', ['pending', 'approved']);
         
         if (existing && existing.length > 0) {
             showToast('You already have a holiday submission overlapping this period', 'error');
@@ -5895,16 +5872,15 @@ async function submitSchoolHoliday() {
             return;
         }
         
-        // Submit with additional metadata for backdated entries
+        // Submit - ONLY use columns that exist in your table
         const { error } = await supabaseClient
             .from('school_holidays')
             .insert({
                 staff_id: currentStaff.id,
                 start_date: startDate,
                 end_date: endDate,
-                status: 'pending',
-                is_backdated: new Date(startDate) < today, // Track if it was backdated
-                submitted_at: new Date().toISOString()
+                status: 'pending'
+                // created_at will auto-populate if it has a default value
             });
         
         if (error) throw error;
@@ -5913,12 +5889,10 @@ async function submitSchoolHoliday() {
         closeModal('schoolHolidayModal');
         document.getElementById('schoolHolidayForm').reset();
         
-        // Reload the view to show the new submission
         if (typeof loadSchoolHolidays === 'function') {
             loadSchoolHolidays();
         }
         
-        // Re-enable after delay
         setTimeout(() => {
             submitBtn.disabled = false;
             submitBtn.textContent = originalText;
@@ -5928,7 +5902,6 @@ async function submitSchoolHoliday() {
         console.error('Error submitting school holiday:', error);
         showToast('Failed to submit school holiday', 'error');
         
-        // Re-enable on error
         if (submitBtn) {
             submitBtn.disabled = false;
             submitBtn.textContent = 'Submit';
@@ -5946,7 +5919,6 @@ document.getElementById('schoolStartDate')?.addEventListener('change', function(
         endDate.value = this.value;
     }
 });
-
 
 
 async function checkSchoolHolidayVisibility() {
@@ -7126,8 +7098,8 @@ function ensureRequiredElements() {
                         </div>
                         <div class="shift-participant">${participantName}</div>
                         <div class="shift-location">
-                            📍 ${shift.location?.name || shift.location?.address || 'Client Home'}
-                        </div>
+    <i class="fa-solid fa-location-dot"></i> ${shift.locations?.name || 'Client Home'}
+</div>
                         <div class="shift-status">${isToday ? 'TODAY' : 'TOMORROW'}</div>
                     </div>
                     <div class="shift-expand-icon">▼</div>
@@ -7183,31 +7155,69 @@ async function enrichRequestData(requests, type) {
     }));
 }
 
-async function requestTransfer(shiftId) {
-    // Ensure shift_id is INTEGER for database
-    const { data, error } = await supabaseClient
-        .from('transfer_requests')
-        .insert({
-            shift_id: parseInt(shiftId), // CRITICAL: Convert to INTEGER
-            from_staff_id: currentStaff.id,
-            to_staff_id: null,
-            status: 'pending',
-            reason: 'Personal reason',
-            created_at: new Date().toISOString() // Add required field
-        });
-    
-    if (error) {
-        console.error('Transfer request error:', error);
-        if (error.code === DB_ERRORS.FOREIGN_KEY_VIOLATION) {
-            showToast('Invalid shift reference', 'error');
-        } else {
-            showToast('Failed to request transfer', 'error');
+async function requestTransfer(shiftId, targetStaffId = null, notes = '') {
+    try {
+        console.log('Requesting transfer for shift:', shiftId);
+        
+        // Step 1: Create the transfer request record
+        const { data: transferRequest, error: insertError } = await supabaseClient
+            .from('transfer_requests')
+            .insert({
+                shift_id: shiftId,
+                from_staff_id: currentStaff.id,
+                to_staff_id: targetStaffId, // null if open to anyone
+                status: 'pending',
+                reason: notes || 'Personal reason',
+                created_at: new Date().toISOString()
+            })
+            .select()
+            .single();
+        
+        if (insertError) {
+            console.error('Error creating transfer request:', insertError);
+            showToast('Failed to create transfer request: ' + insertError.message, 'error');
+            return;
         }
-    } else {
-        showToast('Transfer request submitted', 'success');
+        
+        console.log('Transfer request created:', transferRequest);
+        
+        // Step 2: Update the shifts table with reference columns
+        const { error: updateError } = await supabaseClient
+            .from('shifts')
+            .update({
+                transfer_requested_by: currentStaff.id,
+                transfer_status: 'pending',
+                transfer_to_staff: targetStaffId, // null if open to anyone
+                transfer_notes: notes || null,
+                transfer_request_id: transferRequest.id // Link back to the request
+            })
+            .eq('id', shiftId);
+        
+        if (updateError) {
+            console.error('Error updating shift:', updateError);
+            
+            // Rollback: delete the transfer request we just created
+            await supabaseClient
+                .from('transfer_requests')
+                .delete()
+                .eq('id', transferRequest.id);
+            
+            showToast('Failed to update shift: ' + updateError.message, 'error');
+            return;
+        }
+        
+        showToast('Transfer request submitted successfully', 'success');
+        
+        // Refresh the timesheet to show updated status
+        if (typeof loadTimesheet === 'function') {
+            await loadTimesheet();
+        }
+        
+    } catch (err) {
+        console.error('Unexpected error:', err);
+        showToast('Unexpected error occurred', 'error');
     }
 }
-
 
 function toggleTimeFields() {
     const dutyType = document.getElementById('shiftDutyType');
@@ -8147,106 +8157,642 @@ function initializeRequestsTabs() {
     window.requestsTabsInitialized = true;
 }
 
+// Add these global variables at the top of your team.html file
+let staffLeaveFilter = 'all'; // 'pending', 'approved', 'rejected', 'all'
+let staffShiftFilter = 'pending'; // 'pending', 'rejected' only (no approved for shifts)
+let staffAdjustmentFilter = 'all'; // 'pending', 'approved', 'rejected', 'all'
 
-// Update loadMyRequests to use shift-list CSS classes
 async function loadMyRequests() {
     const container = document.getElementById('myRequestsList');
     if (!container) return;
     
     try {
-        // Load data (same as before)
-        const [shifts, leave, transport, holidays] = await Promise.all([
-            supabaseClient.from('shifts').select('*, participants(first_name, last_name)').eq('staff_id', currentStaff.id).eq('status', 'pending').order('date', { ascending: false }),
-            supabaseClient.from('leave_requests').select('*').eq('staff_id', currentStaff.id).order('created_at', { ascending: false }),
-            supabaseClient.from('transport_claims').select('*').eq('staff_id', currentStaff.id).order('date', { ascending: false }).limit(10),
-            supabaseClient.from('school_holidays').select('*').eq('staff_id', currentStaff.id).order('created_at', { ascending: false })
+        // Build queries with filters
+        let transportQuery = supabaseClient
+            .from('transport_claims')
+            .select(`
+                *,
+                shift:shift_id(
+                    date,
+                    participants(first_name, last_name)
+                )
+            `)
+            .eq('staff_id', currentStaff.id)
+            .order('date', { ascending: false })
+            .limit(50);
+        
+        if (staffClaimFilter !== 'all') {
+            transportQuery = transportQuery.eq('status', staffClaimFilter);
+        }
+        
+        let leaveQuery = supabaseClient
+            .from('leave_requests')
+            .select('*')
+            .eq('staff_id', currentStaff.id)
+            .order('created_at', { ascending: false });
+        
+        if (staffLeaveFilter !== 'all') {
+            leaveQuery = leaveQuery.eq('status', staffLeaveFilter);
+        }
+        
+        let shiftsQuery = supabaseClient
+            .from('shifts')
+            .select('*, participants(first_name, last_name), duty_types(name)')
+            .eq('staff_id', currentStaff.id)
+            .in('status', staffShiftFilter === 'rejected' ? ['rejected'] : ['pending'])
+            .order('date', { ascending: false });
+        
+        let adjustmentQuery = supabaseClient
+            .from('shift_adjustment_requests')
+            .select(`
+                *,
+                shift:shift_id(
+                    date,
+                    start_time,
+                    end_time,
+                    participants(first_name, last_name),
+                    duty_types(name)
+                )
+            `)
+            .eq('staff_id', currentStaff.id)
+            .order('created_at', { ascending: false });
+        
+        if (staffAdjustmentFilter !== 'all') {
+            adjustmentQuery = adjustmentQuery.eq('status', staffAdjustmentFilter);
+        }
+        
+        // Load all data
+        const [shifts, leave, transport, holidays, adjustments] = await Promise.all([
+            shiftsQuery,
+            leaveQuery,
+            transportQuery,
+            supabaseClient
+                .from('school_holidays')
+                .select('*')
+                .eq('staff_id', currentStaff.id)
+                .order('created_at', { ascending: false }),
+            adjustmentQuery
         ]);
         
         let html = '<div class="shift-list">';
         
-        // Pending Shifts Section
+        // ==========================================
+        // SHIFT REQUESTS SECTION
+        // ==========================================
+        html += `
+            <div class="shift-group">
+                <div class="shift-group-header">
+                    <span>Shift Requests</span>
+                    <span class="shift-count">${shifts.data?.length || 0}</span>
+                </div>
+                
+                <div class="claims-filter-container" style="
+                    display: flex;
+                    gap: 8px;
+                    margin: 10px 0;
+                    padding: 10px;
+                    background: #f8f9fa;
+                    border-radius: 8px;
+                    flex-wrap: wrap;
+                    align-items: center;
+                ">
+                    <span style="font-size: 12px; font-weight: 600; color: #666; margin-right: 8px;">View:</span>
+                    <button 
+                        class="claim-filter-btn ${staffShiftFilter === 'pending' ? 'active' : ''}" 
+                        onclick="filterStaffShifts('pending')"
+                        style="
+                            padding: 6px 12px;
+                            border: 1px solid ${staffShiftFilter === 'pending' ? '#ff9800' : '#ddd'};
+                            background: ${staffShiftFilter === 'pending' ? '#ff9800' : 'white'};
+                            color: ${staffShiftFilter === 'pending' ? 'white' : '#666'};
+                            border-radius: 20px;
+                            font-size: 12px;
+                            cursor: pointer;
+                            transition: all 0.2s;
+                        ">
+                        Pending
+                    </button>
+                    <button 
+                        class="claim-filter-btn ${staffShiftFilter === 'rejected' ? 'active' : ''}" 
+                        onclick="filterStaffShifts('rejected')"
+                        style="
+                            padding: 6px 12px;
+                            border: 1px solid ${staffShiftFilter === 'rejected' ? '#dc3545' : '#ddd'};
+                            background: ${staffShiftFilter === 'rejected' ? '#dc3545' : 'white'};
+                            color: ${staffShiftFilter === 'rejected' ? 'white' : '#666'};
+                            border-radius: 20px;
+                            font-size: 12px;
+                            cursor: pointer;
+                            transition: all 0.2s;
+                        ">
+                        Rejected
+                    </button>
+                </div>`;
+        
         if (shifts.data?.length > 0) {
-            html += `
-                <div class="shift-group">
-                    <div class="shift-group-header">
-                        <span>Shift Requests</span>
-                        <span class="shift-count">${shifts.data.length}</span>
-                    </div>`;
-            
             shifts.data.forEach(shift => {
+                const statusColor = shift.status === 'rejected' ? '#dc3545' : '#ff9800';
+                const statusBg = shift.status === 'rejected' ? '#f8d7da' : '#fff3cd';
+                const dutyType = shift.duty_types?.name || 'Regular';
+                
                 html += `
-                    <div class="shift-item">
-                        <div class="shift-time">
-                            <span class="shift-date">${new Date(shift.date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}</span>
-                            <span class="shift-hours">${shift.start_time || 'Sleepover'}</span>
-                        </div>
-                        <div class="shift-details">
-                            <div class="shift-client">${shift.participants?.first_name} ${shift.participants?.last_name}</div>
-                            <div class="shift-meta">
-                                <span class="status-badge status-pending">Pending</span>
+                    <div class="shift-list-item" style="border-left: 3px solid ${statusColor};">
+                        <div class="shift-info">
+                            <div class="shift-date-time">
+                                ${formatDateShort(shift.date)} - 
+                                ${shift.start_time ? formatTime12Hour(shift.start_time) : 'Sleepover'} - 
+                                ${shift.end_time ? formatTime12Hour(shift.end_time) : ''}
+                                ${dutyType !== 'Regular' ? `<span style="margin-left: 8px; font-size: 12px; color: var(--text-light);">${dutyType}</span>` : ''}
+                            </div>
+                            <div class="shift-client">
+                                ${shift.participants?.first_name || ''} ${shift.participants?.last_name || 'Unassigned'}
+                            </div>
+                            <div class="shift-location">
+                                <span class="status-badge" style="
+                                    background: ${statusBg};
+                                    color: ${statusColor};
+                                    padding: 4px 8px;
+                                    border-radius: 4px;
+                                    font-size: 11px;
+                                    font-weight: 600;
+                                    text-transform: capitalize;
+                                ">${shift.status}</span>
                             </div>
                         </div>
                     </div>`;
             });
-            html += '</div>';
+        } else {
+            html += `<div style="text-align: center; padding: 20px; color: #999; font-size: 14px;">
+                ${staffShiftFilter === 'pending' ? 'No pending shift requests' : 'No rejected shift requests'}
+            </div>`;
         }
+        html += '</div>';
         
-        // Leave Requests Section
+        // ==========================================
+        // LEAVE REQUESTS SECTION
+        // ==========================================
+        html += `
+            <div class="shift-group">
+                <div class="shift-group-header">
+                    <span>Leave Requests</span>
+                    <span class="shift-count">${leave.data?.length || 0}</span>
+                </div>
+                
+                <div class="claims-filter-container" style="
+                    display: flex;
+                    gap: 8px;
+                    margin: 10px 0;
+                    padding: 10px;
+                    background: #f8f9fa;
+                    border-radius: 8px;
+                    flex-wrap: wrap;
+                    align-items: center;
+                ">
+                    <span style="font-size: 12px; font-weight: 600; color: #666; margin-right: 8px;">View:</span>
+                    <button 
+                        class="claim-filter-btn ${staffLeaveFilter === 'all' ? 'active' : ''}" 
+                        onclick="filterStaffLeave('all')"
+                        style="
+                            padding: 6px 12px;
+                            border: 1px solid ${staffLeaveFilter === 'all' ? '#4CAF50' : '#ddd'};
+                            background: ${staffLeaveFilter === 'all' ? '#4CAF50' : 'white'};
+                            color: ${staffLeaveFilter === 'all' ? 'white' : '#666'};
+                            border-radius: 20px;
+                            font-size: 12px;
+                            cursor: pointer;
+                            transition: all 0.2s;
+                        ">
+                        All Leave
+                    </button>
+                    <button 
+                        class="claim-filter-btn ${staffLeaveFilter === 'pending' ? 'active' : ''}" 
+                        onclick="filterStaffLeave('pending')"
+                        style="
+                            padding: 6px 12px;
+                            border: 1px solid ${staffLeaveFilter === 'pending' ? '#ff9800' : '#ddd'};
+                            background: ${staffLeaveFilter === 'pending' ? '#ff9800' : 'white'};
+                            color: ${staffLeaveFilter === 'pending' ? 'white' : '#666'};
+                            border-radius: 20px;
+                            font-size: 12px;
+                            cursor: pointer;
+                            transition: all 0.2s;
+                        ">
+                        Pending
+                    </button>
+                    <button 
+                        class="claim-filter-btn ${staffLeaveFilter === 'approved' ? 'active' : ''}" 
+                        onclick="filterStaffLeave('approved')"
+                        style="
+                            padding: 6px 12px;
+                            border: 1px solid ${staffLeaveFilter === 'approved' ? '#28a745' : '#ddd'};
+                            background: ${staffLeaveFilter === 'approved' ? '#28a745' : 'white'};
+                            color: ${staffLeaveFilter === 'approved' ? 'white' : '#666'};
+                            border-radius: 20px;
+                            font-size: 12px;
+                            cursor: pointer;
+                            transition: all 0.2s;
+                        ">
+                        Approved
+                    </button>
+                    <button 
+                        class="claim-filter-btn ${staffLeaveFilter === 'rejected' ? 'active' : ''}" 
+                        onclick="filterStaffLeave('rejected')"
+                        style="
+                            padding: 6px 12px;
+                            border: 1px solid ${staffLeaveFilter === 'rejected' ? '#dc3545' : '#ddd'};
+                            background: ${staffLeaveFilter === 'rejected' ? '#dc3545' : 'white'};
+                            color: ${staffLeaveFilter === 'rejected' ? 'white' : '#666'};
+                            border-radius: 20px;
+                            font-size: 12px;
+                            cursor: pointer;
+                            transition: all 0.2s;
+                        ">
+                        Rejected
+                    </button>
+                </div>`;
+        
         if (leave.data?.length > 0) {
-            html += `
-                <div class="shift-group">
-                    <div class="shift-group-header">
-                        <span>Leave Requests</span>
-                        <span class="shift-count">${leave.data.length}</span>
-                    </div>`;
-            
             leave.data.forEach(req => {
+                let statusColor = '#666';
+                let statusBg = '#f0f0f0';
+                if (req.status === 'approved') {
+                    statusColor = '#28a745';
+                    statusBg = '#d4edda';
+                } else if (req.status === 'pending') {
+                    statusColor = '#ff9800';
+                    statusBg = '#fff3cd';
+                } else if (req.status === 'rejected') {
+                    statusColor = '#dc3545';
+                    statusBg = '#f8d7da';
+                }
+                
                 html += `
-                    <div class="shift-item">
-                        <div class="shift-time">
-                            <span class="shift-date">${new Date(req.start_date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}</span>
-                            <span class="shift-hours">${req.leave_type}</span>
-                        </div>
-                        <div class="shift-details">
-                            <div class="shift-client">${new Date(req.start_date).toLocaleDateString('en-AU')} - ${new Date(req.end_date).toLocaleDateString('en-AU')}</div>
-                            <div class="shift-meta">
-                                <span class="status-badge status-${req.status}">${req.status}</span>
-                                ${req.reason ? `<span class="shift-location">${req.reason}</span>` : ''}
+                    <div class="shift-list-item" style="border-left: 3px solid ${statusColor};">
+                        <div class="shift-info">
+                            <div class="shift-date-time">
+                                ${formatDateShort(req.start_date)} - ${formatDateShort(req.end_date)}
+                                <span style="margin-left: 8px; font-size: 12px; color: var(--text-light);">${req.leave_type || 'Leave'}</span>
+                            </div>
+                            ${req.reason ? `<div class="shift-client">${req.reason}</div>` : ''}
+                            <div class="shift-location">
+                                <span class="status-badge" style="
+                                    background: ${statusBg};
+                                    color: ${statusColor};
+                                    padding: 4px 8px;
+                                    border-radius: 4px;
+                                    font-size: 11px;
+                                    font-weight: 600;
+                                    text-transform: capitalize;
+                                ">${req.status}</span>
                             </div>
                         </div>
                     </div>`;
             });
-            html += '</div>';
+        } else {
+            html += `<div style="text-align: center; padding: 20px; color: #999; font-size: 14px;">
+                ${staffLeaveFilter === 'all' ? 'No leave requests' : 
+                  staffLeaveFilter === 'pending' ? 'No pending leave requests' :
+                  staffLeaveFilter === 'approved' ? 'No approved leave requests' :
+                  'No rejected leave requests'}
+            </div>`;
         }
+        html += '</div>';
         
-        // Transport Claims Section
+        // ==========================================
+        // TRANSPORT CLAIMS SECTION
+        // ==========================================
+        html += `
+            <div class="shift-group">
+                <div class="shift-group-header">
+                    <span>Transport Claims</span>
+                    <span class="shift-count">${transport.data?.length || 0}</span>
+                </div>
+                
+                <div class="claims-filter-container" style="
+                    display: flex;
+                    gap: 8px;
+                    margin: 10px 0;
+                    padding: 10px;
+                    background: #f8f9fa;
+                    border-radius: 8px;
+                    flex-wrap: wrap;
+                    align-items: center;
+                ">
+                    <span style="font-size: 12px; font-weight: 600; color: #666; margin-right: 8px;">View:</span>
+                    <button 
+                        class="claim-filter-btn ${staffClaimFilter === 'all' ? 'active' : ''}" 
+                        onclick="filterStaffClaims('all')"
+                        style="
+                            padding: 6px 12px;
+                            border: 1px solid ${staffClaimFilter === 'all' ? '#4CAF50' : '#ddd'};
+                            background: ${staffClaimFilter === 'all' ? '#4CAF50' : 'white'};
+                            color: ${staffClaimFilter === 'all' ? 'white' : '#666'};
+                            border-radius: 20px;
+                            font-size: 12px;
+                            cursor: pointer;
+                            transition: all 0.2s;
+                        ">
+                        All Claims
+                    </button>
+                    <button 
+                        class="claim-filter-btn ${staffClaimFilter === 'pending' ? 'active' : ''}" 
+                        onclick="filterStaffClaims('pending')"
+                        style="
+                            padding: 6px 12px;
+                            border: 1px solid ${staffClaimFilter === 'pending' ? '#ff9800' : '#ddd'};
+                            background: ${staffClaimFilter === 'pending' ? '#ff9800' : 'white'};
+                            color: ${staffClaimFilter === 'pending' ? 'white' : '#666'};
+                            border-radius: 20px;
+                            font-size: 12px;
+                            cursor: pointer;
+                            transition: all 0.2s;
+                        ">
+                        Pending
+                    </button>
+                    <button 
+                        class="claim-filter-btn ${staffClaimFilter === 'approved' ? 'active' : ''}" 
+                        onclick="filterStaffClaims('approved')"
+                        style="
+                            padding: 6px 12px;
+                            border: 1px solid ${staffClaimFilter === 'approved' ? '#28a745' : '#ddd'};
+                            background: ${staffClaimFilter === 'approved' ? '#28a745' : 'white'};
+                            color: ${staffClaimFilter === 'approved' ? 'white' : '#666'};
+                            border-radius: 20px;
+                            font-size: 12px;
+                            cursor: pointer;
+                            transition: all 0.2s;
+                        ">
+                        Approved
+                    </button>
+                    <button 
+                        class="claim-filter-btn ${staffClaimFilter === 'rejected' ? 'active' : ''}" 
+                        onclick="filterStaffClaims('rejected')"
+                        style="
+                            padding: 6px 12px;
+                            border: 1px solid ${staffClaimFilter === 'rejected' ? '#dc3545' : '#ddd'};
+                            background: ${staffClaimFilter === 'rejected' ? '#dc3545' : 'white'};
+                            color: ${staffClaimFilter === 'rejected' ? 'white' : '#666'};
+                            border-radius: 20px;
+                            font-size: 12px;
+                            cursor: pointer;
+                            transition: all 0.2s;
+                        ">
+                        Rejected
+                    </button>
+                </div>`;
+        
         if (transport.data?.length > 0) {
-            html += `
-                <div class="shift-group">
-                    <div class="shift-group-header">
-                        <span>Transport Claims</span>
-                        <span class="shift-count">${transport.data.length}</span>
-                    </div>`;
+            // Calculate totals
+            const totalAmount = transport.data.reduce((sum, claim) => sum + (claim.total_claim || 0), 0);
+            const totalKm = transport.data.reduce((sum, claim) => sum + (claim.total_km || 0), 0);
             
+            // Summary stats
+            html += `
+                <div style="
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+                    gap: 10px;
+                    margin-bottom: 10px;
+                    padding: 10px;
+                    background: #f0f4f8;
+                    border-radius: 8px;
+                    font-size: 12px;
+                ">
+                    <div style="text-align: center;">
+                        <div style="color: #666; margin-bottom: 4px;">Total Claims</div>
+                        <div style="font-weight: bold; color: #333;">${transport.data.length}</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="color: #666; margin-bottom: 4px;">Total KM</div>
+                        <div style="font-weight: bold; color: #333;">${totalKm.toFixed(0)} km</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="color: #666; margin-bottom: 4px;">Total Amount</div>
+                        <div style="font-weight: bold; color: #4CAF50;">$${totalAmount.toFixed(2)}</div>
+                    </div>
+                </div>`;
+            
+            // Claims list
             transport.data.forEach(claim => {
+                let statusColor = '#666';
+                let statusBg = '#f0f0f0';
+                if (claim.status === 'approved') {
+                    statusColor = '#28a745';
+                    statusBg = '#d4edda';
+                } else if (claim.status === 'pending') {
+                    statusColor = '#ff9800';
+                    statusBg = '#fff3cd';
+                } else if (claim.status === 'rejected') {
+                    statusColor = '#dc3545';
+                    statusBg = '#f8d7da';
+                }
+                
+                const participantName = claim.shift?.participants ? 
+                    `${claim.shift.participants.first_name} ${claim.shift.participants.last_name}` : 
+                    'Not linked to shift';
+                
                 html += `
-                    <div class="shift-item">
-                        <div class="shift-time">
-                            <span class="shift-date">${new Date(claim.date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}</span>
-                            <span class="shift-hours">$${claim.total_claim?.toFixed(2) || '0.00'}</span>
-                        </div>
-                        <div class="shift-details">
-                            <div class="shift-client">${claim.total_km || 0}km total</div>
-                            <div class="shift-meta">
-                                <span class="status-badge status-${claim.status || 'submitted'}">${claim.status || 'submitted'}</span>
+                    <div class="shift-list-item" style="border-left: 3px solid ${statusColor};">
+                        <div class="shift-info">
+                            <div class="shift-date-time">
+                                ${formatDateShort(claim.date)}
+                                <span style="margin-left: 8px; font-size: 14px; color: #4CAF50; font-weight: 600;">$${claim.total_claim?.toFixed(2) || '0.00'}</span>
+                            </div>
+                            <div class="shift-client">
+                                ${claim.total_km || 0}km claimed${claim.shift?.participants ? ` - ${participantName}` : ''}
+                            </div>
+                            <div class="shift-location">
+                                <span class="status-badge" style="
+                                    background: ${statusBg};
+                                    color: ${statusColor};
+                                    padding: 4px 8px;
+                                    border-radius: 4px;
+                                    font-size: 11px;
+                                    font-weight: 600;
+                                    text-transform: capitalize;
+                                ">${claim.status || 'submitted'}</span>
+                                ${claim.evidence_url ? 
+                                    `<span style="margin-left: 8px; font-size: 11px; color: #666;">
+                                        <i class="fas fa-paperclip"></i> Evidence
+                                    </span>` : ''}
                             </div>
                         </div>
                     </div>`;
             });
-            html += '</div>';
+        } else {
+            html += `
+                <div style="
+                    text-align: center;
+                    padding: 20px;
+                    color: #999;
+                    font-size: 14px;
+                ">
+                    ${staffClaimFilter === 'all' ? 'No transport claims found' : 
+                      staffClaimFilter === 'pending' ? 'No pending claims' :
+                      staffClaimFilter === 'approved' ? 'No approved claims' :
+                      'No rejected claims'}
+                </div>`;
         }
+        html += '</div>';
         
-        // School Holidays Section
+        // ==========================================
+        // SHIFT ADJUSTMENT REQUESTS SECTION
+        // ==========================================
+        if (adjustments.data?.length > 0 || staffAdjustmentFilter !== 'all') {
+    html += `
+        <div class="shift-group">
+            <div class="shift-group-header">
+                <span>Shift Adjustment Requests</span>
+                <span class="shift-count">${adjustments.data?.length || 0}</span>
+            </div>
+            
+            <div class="claims-filter-container" style="
+                display: flex;
+                gap: 8px;
+                margin: 10px 0;
+                padding: 10px;
+                background: #f8f9fa;
+                border-radius: 8px;
+                flex-wrap: wrap;
+                align-items: center;
+            ">
+                <span style="font-size: 12px; font-weight: 600; color: #666; margin-right: 8px;">View:</span>
+                <button 
+                    class="claim-filter-btn ${staffAdjustmentFilter === 'all' ? 'active' : ''}" 
+                    onclick="filterStaffAdjustments('all')"
+                    style="
+                        padding: 6px 12px;
+                        border: 1px solid ${staffAdjustmentFilter === 'all' ? '#4CAF50' : '#ddd'};
+                        background: ${staffAdjustmentFilter === 'all' ? '#4CAF50' : 'white'};
+                        color: ${staffAdjustmentFilter === 'all' ? 'white' : '#666'};
+                        border-radius: 20px;
+                        font-size: 12px;
+                        cursor: pointer;
+                        transition: all 0.2s;
+                    ">
+                    All Adjustments
+                </button>
+                <button 
+                    class="claim-filter-btn ${staffAdjustmentFilter === 'pending' ? 'active' : ''}" 
+                    onclick="filterStaffAdjustments('pending')"
+                    style="
+                        padding: 6px 12px;
+                        border: 1px solid ${staffAdjustmentFilter === 'pending' ? '#ff9800' : '#ddd'};
+                        background: ${staffAdjustmentFilter === 'pending' ? '#ff9800' : 'white'};
+                        color: ${staffAdjustmentFilter === 'pending' ? 'white' : '#666'};
+                        border-radius: 20px;
+                        font-size: 12px;
+                        cursor: pointer;
+                        transition: all 0.2s;
+                    ">
+                    Pending
+                </button>
+                <button 
+                    class="claim-filter-btn ${staffAdjustmentFilter === 'approved' ? 'active' : ''}" 
+                    onclick="filterStaffAdjustments('approved')"
+                    style="
+                        padding: 6px 12px;
+                        border: 1px solid ${staffAdjustmentFilter === 'approved' ? '#28a745' : '#ddd'};
+                        background: ${staffAdjustmentFilter === 'approved' ? '#28a745' : 'white'};
+                        color: ${staffAdjustmentFilter === 'approved' ? 'white' : '#666'};
+                        border-radius: 20px;
+                        font-size: 12px;
+                        cursor: pointer;
+                        transition: all 0.2s;
+                    ">
+                    Approved
+                </button>
+                <button 
+                    class="claim-filter-btn ${staffAdjustmentFilter === 'rejected' ? 'active' : ''}" 
+                    onclick="filterStaffAdjustments('rejected')"
+                    style="
+                        padding: 6px 12px;
+                        border: 1px solid ${staffAdjustmentFilter === 'rejected' ? '#dc3545' : '#ddd'};
+                        background: ${staffAdjustmentFilter === 'rejected' ? '#dc3545' : 'white'};
+                        color: ${staffAdjustmentFilter === 'rejected' ? 'white' : '#666'};
+                        border-radius: 20px;
+                        font-size: 12px;
+                        cursor: pointer;
+                        transition: all 0.2s;
+                    ">
+                    Rejected
+                </button>
+            </div>`;
+    
+    if (adjustments.data?.length > 0) {
+        adjustments.data.forEach(adjustment => {
+            let statusColor = '#666';
+            let statusBg = '#f0f0f0';
+            if (adjustment.status === 'approved') {
+                statusColor = '#28a745';
+                statusBg = '#d4edda';
+            } else if (adjustment.status === 'pending') {
+                statusColor = '#ff9800';
+                statusBg = '#fff3cd';
+            } else if (adjustment.status === 'rejected') {
+                statusColor = '#dc3545';
+                statusBg = '#f8d7da';
+            }
+            
+            const shift = adjustment.shift;
+            const dutyType = shift?.duty_types?.name || 'Regular';
+            
+            html += `
+                <div class="shift-list-item" style="border-left: 3px solid ${statusColor};">
+                    <div class="shift-info">
+                        <div class="shift-date-time">
+                            ${shift ? formatDateShort(shift.date) : 'N/A'}
+                            <span style="margin-left: 8px; font-size: 12px; color: var(--text-light);">${adjustment.adjustment_type || 'Time Change'}</span>
+                        </div>
+                        <div class="shift-client">
+                            ${shift?.participants ? 
+                                `${shift.participants.first_name} ${shift.participants.last_name}` : 
+                                'Unknown Client'}
+                            ${dutyType !== 'Regular' ? ` - ${dutyType}` : ''}
+                        </div>
+                        <div class="shift-location" style="font-size: 13px; color: #666; margin-top: 4px;">
+                            <span style="font-weight: 600;">Original:</span> 
+                            ${shift?.start_time ? formatTime12Hour(shift.start_time) : 'N/A'} - 
+                            ${shift?.end_time ? formatTime12Hour(shift.end_time) : 'N/A'}
+                        </div>
+                        <div class="shift-location" style="font-size: 13px; color: #2196F3; font-weight: 600; margin-top: 2px;">
+                            <span>Requested:</span> 
+                            ${adjustment.new_start_time ? formatTime12Hour(adjustment.new_start_time) : 'N/A'} - 
+                            ${adjustment.new_end_time ? formatTime12Hour(adjustment.new_end_time) : 'N/A'}
+                        </div>
+                        ${adjustment.reason ? `
+                            <div class="shift-location" style="font-size: 12px; color: #888; font-style: italic; margin-top: 6px;">
+                                "${adjustment.reason}"
+                            </div>
+                        ` : ''}
+                        <div class="shift-location" style="margin-top: 8px;">
+                            <span class="status-badge" style="
+                                background: ${statusBg};
+                                color: ${statusColor};
+                                padding: 4px 8px;
+                                border-radius: 4px;
+                                font-size: 11px;
+                                font-weight: 600;
+                                text-transform: capitalize;
+                            ">${adjustment.status}</span>
+                        </div>
+                    </div>
+                </div>`;
+        });
+    } else {
+        html += `<div style="text-align: center; padding: 20px; color: #999; font-size: 14px;">
+            ${staffAdjustmentFilter === 'all' ? 'No shift adjustment requests' : 
+              staffAdjustmentFilter === 'pending' ? 'No pending adjustment requests' :
+              staffAdjustmentFilter === 'approved' ? 'No approved adjustment requests' :
+              'No rejected adjustment requests'}
+        </div>`;
+    }
+    html += '</div>';
+}
+        
+        // ==========================================
+        // SCHOOL HOLIDAYS SECTION
+        // ==========================================
         if (holidays.data?.length > 0) {
             html += `
                 <div class="shift-group">
@@ -8256,16 +8802,36 @@ async function loadMyRequests() {
                     </div>`;
             
             holidays.data.forEach(holiday => {
+                let statusColor = '#666';
+                let statusBg = '#f0f0f0';
+                if (holiday.status === 'approved') {
+                    statusColor = '#28a745';
+                    statusBg = '#d4edda';
+                } else if (holiday.status === 'pending') {
+                    statusColor = '#ff9800';
+                    statusBg = '#fff3cd';
+                } else if (holiday.status === 'rejected') {
+                    statusColor = '#dc3545';
+                    statusBg = '#f8d7da';
+                }
+                
                 html += `
-                    <div class="shift-item">
-                        <div class="shift-time">
-                            <span class="shift-date">${new Date(holiday.start_date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}</span>
-                            <span class="shift-hours">Holiday</span>
-                        </div>
-                        <div class="shift-details">
-                            <div class="shift-client">${new Date(holiday.start_date).toLocaleDateString('en-AU')} - ${new Date(holiday.end_date).toLocaleDateString('en-AU')}</div>
-                            <div class="shift-meta">
-                                <span class="status-badge status-${holiday.status}">${holiday.status}</span>
+                    <div class="shift-list-item" style="border-left: 3px solid ${statusColor};">
+                        <div class="shift-info">
+                            <div class="shift-date-time">
+                                ${formatDateShort(holiday.start_date)} - ${formatDateShort(holiday.end_date)}
+                                <span style="margin-left: 8px; font-size: 12px; color: var(--text-light);">School Holiday</span>
+                            </div>
+                            <div class="shift-location">
+                                <span class="status-badge" style="
+                                    background: ${statusBg};
+                                    color: ${statusColor};
+                                    padding: 4px 8px;
+                                    border-radius: 4px;
+                                    font-size: 11px;
+                                    font-weight: 600;
+                                    text-transform: capitalize;
+                                ">${holiday.status}</span>
                             </div>
                         </div>
                     </div>`;
@@ -8282,9 +8848,35 @@ async function loadMyRequests() {
         container.innerHTML = '<p class="error">Failed to load requests</p>';
     }
 }
+// Filter functions
+function filterStaffClaims(status) {
+    staffClaimFilter = status;
+    loadMyRequests();
+}
 
+function filterStaffLeave(status) {
+    staffLeaveFilter = status;
+    loadMyRequests();
+}
 
+function filterStaffShifts(status) {
+    staffShiftFilter = status;
+    loadMyRequests();
+}
 
+function filterStaffAdjustments(status) {
+    staffAdjustmentFilter = status;
+    loadMyRequests();
+}
+
+// Optional: Reset all filters
+function resetAllFilters() {
+    staffClaimFilter = 'all';
+    staffLeaveFilter = 'all';
+    staffShiftFilter = 'pending';
+    staffAdjustmentFilter = 'all';
+    loadMyRequests();
+}
 // Update available shifts similarly
 async function loadAvailableShifts() {
     const container = document.getElementById('availableList');
@@ -8430,8 +9022,6 @@ async function loadTimeAdjustments() {
     }
 }
 
-
-
 async function loadIncomingRequests() {
     const container = document.getElementById('incomingList');
     if (!container) return;
@@ -8442,7 +9032,7 @@ async function loadIncomingRequests() {
             .from('transfer_requests')
             .select(`
                 *,
-                shifts!inner(
+                shift:shift_id(
                     id,
                     date,
                     start_time,
@@ -8451,7 +9041,7 @@ async function loadIncomingRequests() {
                     locations(name),
                     duty_types(name)
                 ),
-                from_staff:staff!transfer_requests_from_staff_id_fkey(
+                from_staff:from_staff_id(
                     id,
                     first_name,
                     last_name
@@ -8475,37 +9065,73 @@ async function loadIncomingRequests() {
             return;
         }
 
-        // Render incoming transfers
+        // Render incoming transfers using shift-list structure
         let html = '<div class="shift-list">';
         
         transfers.forEach(req => {
-            const shift = req.shifts;
+            const shift = req.shift;
+            if (!shift) return; // Skip if shift data is missing
+            
+            const participant = shift.participants;
+            const dutyType = shift.duty_types?.name || 'Regular';
+            const location = shift.locations?.name || 'Client Home';
+            const fromStaff = req.from_staff;
+            
             html += `
-                <div class="shift-item">
-                    <div class="shift-time">
-                        <span class="shift-date">${formatDateShort(shift.date)}</span>
-                        <span class="shift-hours">
-                            ${shift.start_time ? formatTime12Hour(shift.start_time) : 'Sleepover'}
-                            ${shift.end_time ? '- ' + formatTime12Hour(shift.end_time) : ''}
-                        </span>
-                    </div>
-                    <div class="shift-details">
+                <div class="shift-list-item" style="border-left: 3px solid #2196F3;">
+                    <div class="shift-info">
+                        <div class="shift-date-time">
+                            ${formatDateShort(shift.date)} - 
+                            ${shift.start_time ? formatTime12Hour(shift.start_time) : 'Sleepover'} - 
+                            ${shift.end_time ? formatTime12Hour(shift.end_time) : ''}
+                            ${dutyType !== 'Regular' ? `<span style="margin-left: 8px; font-size: 12px; color: var(--text-light);">${dutyType}</span>` : ''}
+                        </div>
                         <div class="shift-client">
-                            ${shift.participants?.first_name || ''} ${shift.participants?.last_name || ''}
+                            ${participant ? `${participant.first_name} ${participant.last_name}` : 'Unassigned'}
                         </div>
                         <div class="shift-location">
-                            <i class="fa-solid fa-location-dot"></i> ${shift.locations?.name || 'Client Home'}
+                            <i class="fa-solid fa-location-dot"></i> ${location}
                         </div>
-                        <div class="transfer-from">
-                            From: ${req.from_staff?.first_name || ''} ${req.from_staff?.last_name || ''}
+                        <div class="shift-location" style="color: #666; font-size: 12px; margin-top: 4px;">
+                            <i class="fa-solid fa-user-arrow-left"></i> From: ${fromStaff ? `${fromStaff.first_name} ${fromStaff.last_name}` : 'Unknown'}
                         </div>
-                        ${req.reason ? `<div class="transfer-reason"><small>${req.reason}</small></div>` : ''}
+                        ${req.reason ? `
+                            <div class="shift-location" style="color: #888; font-size: 11px; font-style: italic; margin-top: 4px;">
+                                "${req.reason}"
+                            </div>
+                        ` : ''}
                     </div>
-                    <div class="shift-actions">
-                        <button class="btn btn-sm btn-success" onclick="acceptTransfer('${req.id}')">
+                    <div class="shift-actions" style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
+                        <button class="btn btn-sm btn-success" onclick="acceptTransfer('${req.id}')" style="
+                            padding: 8px 16px;
+                            background: #28a745;
+                            color: white;
+                            border: none;
+                            border-radius: 4px;
+                            cursor: pointer;
+                            font-size: 13px;
+                            font-weight: 600;
+                            display: flex;
+                            align-items: center;
+                            gap: 6px;
+                            transition: background 0.2s;
+                        " onmouseover="this.style.background='#218838'" onmouseout="this.style.background='#28a745'">
                             <i class="fa-solid fa-check"></i> Accept
                         </button>
-                        <button class="btn btn-sm btn-danger" onclick="declineTransfer('${req.id}')">
+                        <button class="btn btn-sm btn-danger" onclick="declineTransfer('${req.id}')" style="
+                            padding: 8px 16px;
+                            background: #dc3545;
+                            color: white;
+                            border: none;
+                            border-radius: 4px;
+                            cursor: pointer;
+                            font-size: 13px;
+                            font-weight: 600;
+                            display: flex;
+                            align-items: center;
+                            gap: 6px;
+                            transition: background 0.2s;
+                        " onmouseover="this.style.background='#c82333'" onmouseout="this.style.background='#dc3545'">
                             <i class="fa-solid fa-times"></i> Decline
                         </button>
                     </div>
@@ -8530,24 +9156,24 @@ async function loadIncomingRequests() {
     }
 }
 
-// Accept transfer function
 async function acceptTransfer(transferId) {
     try {
         // Get the transfer request details
         const { data: transfer, error: fetchError } = await supabaseClient
             .from('transfer_requests')
-            .select('*, shifts(*)')
+            .select('*, shift:shift_id(*)')
             .eq('id', transferId)
             .single();
 
         if (fetchError) throw fetchError;
 
-        // Update the shift with new staff
+        // Update the shift with new staff + clear transfer fields
         const { error: shiftError } = await supabaseClient
             .from('shifts')
             .update({
-                staff_id: currentStaff.id,
-                transfer_status: 'completed',
+                staff_id: currentStaff.id,  // Assign to accepting staff
+                transfer_status: 'accepted',
+                transfer_approved_by: currentStaff.id,  // Track who approved
                 updated_at: new Date().toISOString()
             })
             .eq('id', transfer.shift_id);
@@ -8559,7 +9185,8 @@ async function acceptTransfer(transferId) {
             .from('transfer_requests')
             .update({
                 status: 'accepted',
-                updated_at: new Date().toISOString()
+                responded_at: new Date().toISOString(),  // Use responded_at
+                responded_by: currentStaff.id  // Track who responded
             })
             .eq('id', transferId);
 
@@ -8567,7 +9194,10 @@ async function acceptTransfer(transferId) {
 
         showToast('Transfer accepted successfully', 'success');
         await loadIncomingRequests();
-        await loadSchedule(); // Refresh schedule if visible
+        await loadTimesheet(); // Refresh timesheet to show new shift
+        if (typeof loadSchedule === 'function') {
+            await loadSchedule();
+        }
 
     } catch (error) {
         console.error('Error accepting transfer:', error);
@@ -8575,18 +9205,39 @@ async function acceptTransfer(transferId) {
     }
 }
 
-// Decline transfer function
 async function declineTransfer(transferId) {
     try {
-        const { error } = await supabaseClient
+        // Get the transfer request details to find the shift
+        const { data: transfer, error: fetchError } = await supabaseClient
+            .from('transfer_requests')
+            .select('shift_id')
+            .eq('id', transferId)
+            .single();
+
+        if (fetchError) throw fetchError;
+
+        // Update the shift status
+        const { error: shiftError } = await supabaseClient
+            .from('shifts')
+            .update({
+                transfer_status: 'rejected',
+                transfer_approved_by: currentStaff.id  // Track who rejected
+            })
+            .eq('id', transfer.shift_id);
+
+        if (shiftError) throw shiftError;
+
+        // Update transfer request status
+        const { error: transferError } = await supabaseClient
             .from('transfer_requests')
             .update({
-                status: 'declined',
-                updated_at: new Date().toISOString()
+                status: 'rejected',  // Changed from 'declined' to match your schema
+                responded_at: new Date().toISOString(),
+                responded_by: currentStaff.id
             })
             .eq('id', transferId);
 
-        if (error) throw error;
+        if (transferError) throw transferError;
 
         showToast('Transfer declined', 'info');
         await loadIncomingRequests();
@@ -8596,7 +9247,6 @@ async function declineTransfer(transferId) {
         showToast('Failed to decline transfer', 'error');
     }
 }
-
 
 
 async function loadAvailableShifts() {
@@ -9094,7 +9744,7 @@ async function loadAdjustmentShifts() {
                 timeRange = ', Sleepover';
             }
             
-            const dutyTypeLabel = shift.duty_type?.name || 'Standard';
+            const dutyTypeLabel = shift.duty_type?.name || 'Active Shift';
             option.textContent = `${dayName} ${day} ${month} - ${participantName}${timeRange} (${dutyTypeLabel})`;
             
             option.dataset.startTime = shift.start_time || '';
@@ -9347,14 +9997,15 @@ async function submitAdjustment() {
         const formattedStartTime = newStartTime ? `${newStartTime}:00` : null;
         const formattedEndTime = newEndTime ? `${newEndTime}:00` : null;
         
-        // Create adjustment request in adjustment_requests table
+        // Create adjustment request
         const { data, error } = await supabaseClient
-            .from('adjustment_requests')
+            .from('shift_adjustment_requests')
             .insert({
                 shift_id: parseInt(shiftId),
                 staff_id: currentStaff.id,
-                requested_start_time: formattedStartTime,
-                requested_end_time: formattedEndTime,
+                new_start_time: formattedStartTime,  // ✅ FIXED
+                new_end_time: formattedEndTime,      // ✅ FIXED
+                adjustment_type: 'time_change',      // ✅ ADDED (required field)
                 reason: reason,
                 status: 'pending',
                 created_at: new Date().toISOString()
@@ -9376,9 +10027,12 @@ async function submitAdjustment() {
             closeModal('adjustmentModal');
             document.getElementById('adjustmentForm').reset();
             
-            // Refresh the schedule if it's visible
+            // Refresh the schedule and requests
             if (document.getElementById('schedule').classList.contains('active')) {
                 loadSchedule();
+            }
+            if (typeof loadMyRequests === 'function') {
+                await loadMyRequests();
             }
         }
     } catch (error) {
@@ -9386,6 +10040,7 @@ async function submitAdjustment() {
         showToast('Failed to submit adjustment request', 'error');
     }
 }
+
 async function loadDutyTypes() {
     try {
         const { data, error } = await supabaseClient
@@ -11141,8 +11796,8 @@ function renderWeeklySchedule(weekStart, weekEnd, shifts) {
                             ${participant?.ndis_number ? `<span class="ndis-number">(${participant.ndis_participant_number})</span>` : ''}
                         </div>
                         <div class="shift-location">
-                            📍 ${shift.locations?.name || 'Client Home'}
-                        </div>
+    <i class="fa-solid fa-location-dot"></i> ${shift.locations?.name || 'Client Home'}
+</div>
                         ${shift.duty_types ? `<div class="shift-duty-type">${shift.duty_types.name}</div>` : ''}
                     </div>
                 `;
@@ -11228,7 +11883,9 @@ window.showParticipantShifts = async function(participantId, participantName) {
                                                 ${shift.end_time ? formatTime12Hour(shift.end_time) : ''}
                                             </div>
                                             <div>Staff: ${staffMap[shift.staff_id] || 'Unassigned'}</div>
-                                            <div>📍 ${shift.locations?.name || 'Client Home'}</div>
+                                            <div class="shift-location">
+    <i class="fa-solid fa-location-dot"></i> ${shift.locations?.name || 'Client Home'}
+</div>
                                             ${shift.duty_types ? `<div>Type: ${shift.duty_types.name}</div>` : ''}
                                             <div style="display: inline-block; margin-top: 5px; padding: 2px 8px; background: ${shift.status === 'confirmed' ? '#28a745' : '#ffc107'}; color: white; border-radius: 4px; font-size: 12px;">
                                                 ${shift.status || 'confirmed'}
@@ -11276,7 +11933,6 @@ const TIME_CONFIG = {
     }
 };
 
-// 2. Main Shift Hours Calculator (Simplified)
 function calculateShiftHours(shift) {
     const result = {
         total: 0,
@@ -11288,56 +11944,64 @@ function calculateShiftHours(shift) {
         publicHoliday: 0,
         sleepover: 0
     };
-    
-    // Handle sleepover shifts
-    if (isSleepoverShift(shift)) {
-        result.sleepover = TIME_CONFIG.sleepover.count;
-        result.total = TIME_CONFIG.sleepover.hours;
-        return result;
+
+    // Check if this shift falls on a public holiday
+    const shiftDateKey = shift.date.split('T')[0];
+    const isPublicHoliday = publicHolidays.has(shiftDateKey);
+    const holidayInfo = isPublicHoliday ? publicHolidays.get(shiftDateKey) : null;
+
+    // Set the flag on the shift object for rendering
+    shift.is_public_holiday = isPublicHoliday;
+    if (isPublicHoliday) {
+        shift.public_holiday_name = publicHolidays.get(shiftDateKey).name;
     }
-    
-    // Validate shift has required times
-    if (!shift.start_time || !shift.end_time) {
-        return result;
+
+    // Sleepover check
+    const isSleepover = shift.duty_type?.name?.toLowerCase().includes('sleepover') || 
+                       (!shift.start_time && !shift.end_time);
+
+    if (shift.start_time && shift.end_time) {
+        // Calculate active hours
+        const startTime = new Date(`${shift.date}T${shift.start_time}`);
+        let endTime = new Date(`${shift.date}T${shift.end_time}`);
+        
+        if (endTime <= startTime) {
+            endTime.setDate(endTime.getDate() + 1);
+        }
+        
+        const totalHours = (endTime - startTime) / (1000 * 60 * 60);
+        result.total = totalHours;
+        
+        // Apply penalty logic - PUBLIC HOLIDAY TAKES PRECEDENCE
+        if (isPublicHoliday) {
+            result.publicHoliday = totalHours;
+        } else {
+            const shiftDate = new Date(shift.date);
+            const dayOfWeek = shiftDate.getDay();
+            
+            if (dayOfWeek === 6) {
+                result.saturday = totalHours;
+            } else if (dayOfWeek === 0) {
+                result.sunday = totalHours;
+            } else {
+                // For weekdays, you might need to add time-of-day splitting logic here
+                result.weekdayDay = totalHours;
+            }
+        }
+        
+        // Add sleepover hours if applicable
+        if (isSleepover) {
+            result.sleepover = 2;
+            result.total += 2;
+        }
+    } else if (isSleepover) {
+        // Just a sleepover
+        result.sleepover = 2;
+        result.total = 2;
     }
-    
-    // Parse shift times
-    const { startTime, endTime } = parseShiftTimes(shift);
-    if (!startTime || !endTime) return result;
-    
-    // Calculate total hours
-    result.total = (endTime - startTime) / (1000 * 60 * 60);
-    
-    // Categorize hours by day type
-    const shiftDate = new Date(shift.date + 'T12:00:00');
-    const dayOfWeek = shiftDate.getDay();
-    
-    // Public holiday takes precedence
-    if (shift.is_public_holiday === true) {
-        result.publicHoliday = result.total;
-        return result;
-    }
-    
-    // Weekend shifts
-    if (dayOfWeek === 0) {
-        result.sunday = result.total;
-        return result;
-    }
-    
-    if (dayOfWeek === 6) {
-        result.saturday = result.total;
-        return result;
-    }
-    
-    // Weekday shifts - break down by time period
-    const breakdown = calculateWeekdayBreakdown(startTime, endTime);
-    result.weekdayDay = breakdown.day;
-    result.weekdayEvening = breakdown.evening;
-    result.weekdayNight = breakdown.night;
     
     return result;
 }
-
 // 3. Helper Functions
 function isSleepoverShift(shift) {
     const dutyType = shift.duty_types?.name || '';
@@ -11484,10 +12148,15 @@ function setGreeting() {
     
     const dateEl = document.getElementById('currentDate');
     if (dateEl) {
-        dateEl.textContent = formatDateLong(testDate.toISOString().split('T')[0]);
+        // Get local date string in YYYY-MM-DD format WITHOUT timezone conversion
+        const year = testDate.getFullYear();
+        const month = String(testDate.getMonth() + 1).padStart(2, '0');
+        const day = String(testDate.getDate()).padStart(2, '0');
+        const localDateString = `${year}-${month}-${day}`;
+        
+        dateEl.textContent = formatDateLong(localDateString);
     }
 }
-
 
 function changeMonth(direction) {
     if (!window.currentMonthOffset) {
@@ -11932,8 +12601,8 @@ function renderShiftRow(shift) {
                     ${participant ? `${participant.first_name} ${participant.last_name}` : 'Unassigned'}
                 </div>
                 <div class="shift-location">
-                    📍 ${location?.name || 'Client Home'}
-                </div>
+    <i class="fa-solid fa-location-dot"></i> ${shift.locations?.name || 'Client Home'}
+</div>
             </div>
             <div class="shift-hours">
                 ${hours.total.toFixed(1)}h
@@ -12549,11 +13218,83 @@ window.updatePeriodDisplay = updatePeriodDisplay;
 window.resetToCurrentPeriod = resetToCurrentPeriod;
 window.getPayPeriodForDate = getPayPeriodForDate;
 
-
+function calculateTimesheetHours(shifts) {
+    const breakdown = {
+        total: 0,
+        weekdayDay: 0,
+        weekdayEvening: 0,
+        weekdayNight: 0,
+        saturday: 0,
+        sunday: 0,
+        publicHoliday: 0,
+        sleepover: 0,
+        sleepoverCount: 0
+    };
+    
+    shifts.forEach(shift => {
+        const hours = calculateShiftHours(shift);
+        
+        breakdown.total += hours.total || 0;
+        breakdown.weekdayDay += hours.weekdayDay || 0;
+        breakdown.weekdayEvening += hours.weekdayEvening || 0;
+        breakdown.weekdayNight += hours.weekdayNight || 0;
+        breakdown.saturday += hours.saturday || 0;
+        breakdown.sunday += hours.sunday || 0;
+        breakdown.publicHoliday += hours.publicHoliday || 0;
+        breakdown.sleepover += hours.sleepover || 0;
+        
+        // Count sleepovers (not hours)
+        if (hours.sleepover > 0) {
+            breakdown.sleepoverCount++;
+        }
+    });
+    
+    // Update the hours grid display
+    const hoursGrid = document.getElementById('hoursGrid');
+    if (hoursGrid) {
+        hoursGrid.innerHTML = `
+            <div class="hours-item">
+                <span class="hours-label">Weekday Day</span>
+                <span class="hours-value">${breakdown.weekdayDay.toFixed(1)}h</span>
+            </div>
+            <div class="hours-item">
+                <span class="hours-label">Evening</span>
+                <span class="hours-value">${breakdown.weekdayEvening.toFixed(1)}h</span>
+            </div>
+            <div class="hours-item">
+                <span class="hours-label">Night</span>
+                <span class="hours-value">${breakdown.weekdayNight.toFixed(1)}h</span>
+            </div>
+            <div class="hours-item">
+                <span class="hours-label">Saturday</span>
+                <span class="hours-value">${breakdown.saturday.toFixed(1)}h</span>
+            </div>
+            <div class="hours-item">
+                <span class="hours-label">Sunday</span>
+                <span class="hours-value">${breakdown.sunday.toFixed(1)}h</span>
+            </div>
+            <div class="hours-item">
+                <span class="hours-label">Public Holiday</span>
+                <span class="hours-value">${breakdown.publicHoliday.toFixed(1)}h</span>
+            </div>
+            <div class="hours-item">
+                <span class="hours-label">Sleepovers</span>
+                <span class="hours-value">${breakdown.sleepoverCount}</span>
+            </div>
+        `;
+    }
+    
+    // Update total
+    const totalElement = document.getElementById('totalHours');
+    if (totalElement) {
+        totalElement.textContent = `${breakdown.total.toFixed(1)}h`;
+    }
+    
+    return breakdown;
+}
 // Ensure loadTimesheet renders the shifts
 async function loadTimesheet() {
     try {
-        // Ensure period is set
         if (!window.currentPeriodStart || !window.currentPeriodEnd) {
             setCurrentPayPeriod();
         }
@@ -12585,30 +13326,22 @@ async function loadTimesheet() {
         // Update period display
         updatePeriodDisplay();
         
-        // ALWAYS render - even if empty
-        if (typeof renderTimesheetShifts === 'function') {
-            console.log(`Rendering ${shifts?.length || 0} shifts`);
-            renderTimesheetShifts();
-        }
+        // Render shifts ONCE
+        console.log(`Rendering ${shifts?.length || 0} shifts`);
+        renderTimesheetShifts();
         
         // Update hours display
         if (shifts && shifts.length > 0) {
-            if (typeof calculateTimesheetHours === 'function') {
-                calculateTimesheetHours(shifts);
-            }
+            calculateTimesheetHours(shifts);
         } else {
             // Clear hours display when no shifts
             const totalHoursElement = document.getElementById('totalHours');
-            if (totalHoursElement) {
-                totalHoursElement.textContent = '0.0h';
-            }
+            if (totalHoursElement) totalHoursElement.textContent = '0.0h';
+            
             const hoursGrid = document.getElementById('hoursGrid');
-            if (hoursGrid) {
-                hoursGrid.innerHTML = '<div class="no-data">No hours this period</div>';
-            }
+            if (hoursGrid) hoursGrid.innerHTML = '<div class="no-data">No hours this period</div>';
         }
         
-        // Check if navigation should be disabled
         await checkNavigationBoundaries();
         
     } catch (error) {
@@ -12616,9 +13349,6 @@ async function loadTimesheet() {
         showToast('Failed to load timesheet', 'error');
     }
 }
-
-
-
 
 function calculateHoursBreakdown() {
     const breakdown = {
@@ -12771,212 +13501,51 @@ if (!document.getElementById('timesheetStyles')) {
     document.head.appendChild(styleElement);
 }
 
-// ==========================================
-// EXACT TIMESHEET CALCULATIONS FROM MC-MANAGER
-// ==========================================
+let publicHolidays = new Map();
 
-// 1. Global variable for public holidays (add at top)
-let publicHolidays = new Set();
-
-// 2. The EXACT calculateShiftHours function from mc-manager
-function calculateShiftHours(shift) {
-    const result = {
-        total: 0,
-        weekdayDay: 0,
-        weekdayEvening: 0,
-        weekdayNight: 0,
-        saturday: 0,
-        sunday: 0,
-        publicHoliday: 0,
-        sleepover: 0
-    };
-
-    const dutyType = shift.duty_type || shift.duty_types;
-    const isSleepover = dutyType && dutyType.name && 
-        dutyType.name.toLowerCase().includes('sleepover');
-
-    // If it has times AND is a sleepover, calculate both
-    if (isSleepover && shift.start_time && shift.end_time) {
-        // This is BOTH active hours AND a sleepover
+// Fetch public holidays from Supabase
+async function loadPublicHolidays() {
+    try {
+        const { data: holidays, error } = await supabaseClient
+            .from('public_holidays')
+            .select('*')
+            .order('date');
         
-        // First calculate active hours
-        const startTime = new Date(`${shift.date}T${shift.start_time}`);
-        let endTime = new Date(`${shift.date}T${shift.end_time}`);
+        if (error) throw error;
         
-        if (endTime <= startTime) {
-            endTime.setDate(endTime.getDate() + 1);
-        }
+        // Clear and repopulate the Map
+        publicHolidays.clear();
+        holidays.forEach(holiday => {
+            // Store date in YYYY-MM-DD format as key
+            const dateKey = holiday.date.split('T')[0];
+            publicHolidays.set(dateKey, {
+                id: holiday.id,
+                name: holiday.name,
+                date: holiday.date
+            });
+        });
         
-        const activeHours = (endTime - startTime) / (1000 * 60 * 60);
+        console.log(`Loaded ${publicHolidays.size} public holidays for team portal`);
+        return publicHolidays;
         
-        // Apply penalty logic for active hours
-        const shiftDate = new Date(shift.date);
-        const dayOfWeek = shiftDate.getDay();
-        const isPublicHoliday = publicHolidays.has(shift.date);
-        
-        if (isPublicHoliday) {
-            result.publicHoliday = activeHours;
-        } else if (dayOfWeek === 6) {
-            result.saturday = activeHours;
-        } else if (dayOfWeek === 0) {
-            result.sunday = activeHours;
-        } else {
-            const weekdayBreakdown = splitWeekdayHours(startTime, endTime);
-            Object.assign(result, weekdayBreakdown);
-        }
-        
-        // ADD the sleepover hours on top
-        result.sleepover = 2; // Always 2 hours for sleepover
-        result.total = activeHours + 2; // Total is active + sleepover
-        
-    } else if (isSleepover) {
-        // Just a sleepover, no active hours
-        result.sleepover = 2;
-        result.total = 2;
-        
-    } else if (shift.start_time && shift.end_time) {
-        // Just active hours, no sleepover
-        const startTime = new Date(`${shift.date}T${shift.start_time}`);
-        let endTime = new Date(`${shift.date}T${shift.end_time}`);
-        
-        if (endTime <= startTime) {
-            endTime.setDate(endTime.getDate() + 1);
-        }
-        
-        const totalHours = (endTime - startTime) / (1000 * 60 * 60);
-        result.total = totalHours;
-        
-        // Apply penalty logic
-        const shiftDate = new Date(shift.date);
-        const dayOfWeek = shiftDate.getDay();
-        const isPublicHoliday = publicHolidays.has(shift.date);
-        
-        if (isPublicHoliday) {
-            result.publicHoliday = totalHours;
-        } else if (dayOfWeek === 6) {
-            result.saturday = totalHours;
-        } else if (dayOfWeek === 0) {
-            result.sunday = totalHours;
-        } else {
-            const weekdayBreakdown = splitWeekdayHours(startTime, endTime);
-            Object.assign(result, weekdayBreakdown);
-        }
+    } catch (error) {
+        console.error('Error loading public holidays:', error);
+        // Don't show notification during init, just log
+        return publicHolidays;
     }
-    
-    return result;
 }
 
-// 3. The EXACT splitWeekdayHours function
-function splitWeekdayHours(startTime, endTime) {
-    const result = {
-        total: 0,
-        weekdayDay: 0,      // 6am-8pm
-        weekdayEvening: 0,  // 8pm-12am  
-        weekdayNight: 0     // 12am-6am
-    };
-
-    const current = new Date(startTime);
-    
-    while (current < endTime) {
-        // Calculate end of current period
-        const nextPeriod = new Date(current);
-        nextPeriod.setMinutes(current.getMinutes() + 30); // Calculate in 30-min increments
-        
-        const periodEnd = nextPeriod > endTime ? endTime : nextPeriod;
-        const periodHours = (periodEnd - current) / (1000 * 60 * 60);
-        
-        const hour = current.getHours();
-        
-        // Time period classification
-        if (hour >= 6 && hour < 20) {
-            result.weekdayDay += periodHours;
-        } else if (hour >= 20 && hour < 24) {
-            result.weekdayEvening += periodHours;
-        } else {
-            result.weekdayNight += periodHours;
-        }
-        
-        current.setTime(periodEnd.getTime());
-    }
-
-    result.total = result.weekdayDay + result.weekdayEvening + result.weekdayNight;
-    return result;
+// Check if a date is a public holiday
+function isPublicHoliday(dateStr) {
+    const dateKey = dateStr.split('T')[0];
+    return publicHolidays.has(dateKey);
 }
 
-// 4. The EXACT calculateTimesheetHours for the timesheet display
-function calculateTimesheetHours(shifts) {
-    const breakdown = {
-        total: 0,
-        weekdayDay: 0,
-        weekdayEvening: 0,
-        weekdayNight: 0,
-        saturday: 0,
-        sunday: 0,
-        publicHoliday: 0,
-        sleepover: 0,
-        sleepoverCount: 0
-    };
-    
-    shifts.forEach(shift => {
-        const hours = calculateShiftHours(shift);
-        
-        breakdown.total += hours.total || 0;
-        breakdown.weekdayDay += hours.weekdayDay || 0;
-        breakdown.weekdayEvening += hours.weekdayEvening || 0;
-        breakdown.weekdayNight += hours.weekdayNight || 0;
-        breakdown.saturday += hours.saturday || 0;
-        breakdown.sunday += hours.sunday || 0;
-        breakdown.publicHoliday += hours.publicHoliday || 0;
-        breakdown.sleepover += hours.sleepover || 0;
-        
-        // Count sleepovers (not hours)
-        if (hours.sleepover > 0) {
-            breakdown.sleepoverCount++;
-        }
-    });
-    
-    // Update the hours grid display
-    const hoursGrid = document.getElementById('hoursGrid');
-    if (hoursGrid) {
-        hoursGrid.innerHTML = `
-            <div class="hours-item">
-                <span class="hours-label">Weekday Day</span>
-                <span class="hours-value">${breakdown.weekdayDay.toFixed(1)}h</span>
-            </div>
-            <div class="hours-item">
-                <span class="hours-label">Evening</span>
-                <span class="hours-value">${breakdown.weekdayEvening.toFixed(1)}h</span>
-            </div>
-            <div class="hours-item">
-                <span class="hours-label">Night</span>
-                <span class="hours-value">${breakdown.weekdayNight.toFixed(1)}h</span>
-            </div>
-            <div class="hours-item">
-                <span class="hours-label">Saturday</span>
-                <span class="hours-value">${breakdown.saturday.toFixed(1)}h</span>
-            </div>
-            <div class="hours-item">
-                <span class="hours-label">Sunday</span>
-                <span class="hours-value">${breakdown.sunday.toFixed(1)}h</span>
-            </div>
-            <div class="hours-item">
-                <span class="hours-label">Public Holiday</span>
-                <span class="hours-value">${breakdown.publicHoliday.toFixed(1)}h</span>
-            </div>
-            <div class="hours-item">
-                <span class="hours-label">Sleepovers</span>
-                <span class="hours-value">${breakdown.sleepoverCount}</span>
-            </div>
-        `;
-    }
-    
-    // Update total
-    const totalElement = document.getElementById('totalHours');
-    if (totalElement) {
-        totalElement.textContent = `${breakdown.total.toFixed(1)}h`;
-    }
-    
-    return breakdown;
+// Get public holiday name
+function getPublicHolidayName(dateStr) {
+    const dateKey = dateStr.split('T')[0];
+    const holiday = publicHolidays.get(dateKey);
+    return holiday ? holiday.name : null;
 }
 
 
@@ -13296,10 +13865,20 @@ function renderTimesheetShifts() {
         Object.keys(grouped).sort().forEach(date => {
             const dayShifts = grouped[date];
             
+            // Check if this date is a public holiday
+            const dateKey = date.split('T')[0];
+            const isHoliday = publicHolidays.has(dateKey);
+            const holidayName = isHoliday ? publicHolidays.get(dateKey).name : null;
+            
             html += `
                 <div class="shift-group">
-                    <div class="shift-group-header">
+                    <div class="shift-group-header" style="${isHoliday ? 'background: linear-gradient(135deg, #1976d2, #42a5f5);' : ''}">
                         <span>${formatDateLong(date)}</span>
+                        ${isHoliday ? `
+                            <span style="background: white; color: #1976d2; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600;">
+                                ${holidayName}
+                            </span>
+                        ` : ''}
                     </div>
             `;
             
@@ -13324,17 +13903,22 @@ function renderTimesheetShifts() {
                         <div class="shift-info">
                             <div class="shift-date-time">
                                 ${timeDisplay}
+                                ${shift.is_public_holiday ? 
+                                    '<span style="margin-left: 8px; background: #1976d2; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600;">PH</span>' 
+                                    : ''}
                             </div>
                             <div class="shift-client">
                                 ${participant ? `${participant.first_name} ${participant.last_name}` : 'Unassigned'}
                             </div>
                             <div class="shift-location">
-                                📍 ${shift.locations?.name || 'Client Home'}
-                            </div>
+    <i class="fa-solid fa-location-dot"></i> ${shift.locations?.name || 'Client Home'}
+</div>
                         </div>
                         <div class="shift-hours">
                             <div class="shift-hours-value">${hours.total.toFixed(1)}h</div>
-                            ${hours.sleepover > 0 ? '<div class="shift-pay">Sleepover</div>' : ''}
+                            ${hours.publicHoliday > 0 ? 
+                                `<div class="shift-pay" style="color: #1976d2; font-weight: 600;">PH Rate</div>` : 
+                                hours.sleepover > 0 ? '<div class="shift-pay">Sleepover</div>' : ''}
                         </div>
                     </div>
                 `;
@@ -13344,7 +13928,7 @@ function renderTimesheetShifts() {
         });
         
     } else {
-        // Group by participant
+        // Group by participant view remains similar but with holiday indicators
         const grouped = {};
         shifts.forEach(shift => {
             const key = shift.participant_id || 'unassigned';
@@ -13395,6 +13979,9 @@ function renderTimesheetShifts() {
                         <div class="shift-info">
                             <div class="shift-date-time">
                                 ${formatDateShort(shift.date)} - ${timeDisplay}
+                                ${shift.is_public_holiday ? 
+                                    '<span style="margin-left: 8px; background: #1976d2; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600;">PH</span>' 
+                                    : ''}
                             </div>
                             <div class="shift-location">
                                 📍 ${shift.locations?.name || 'Client Home'}
@@ -13402,6 +13989,8 @@ function renderTimesheetShifts() {
                         </div>
                         <div class="shift-hours">
                             <div class="shift-hours-value">${hours.total.toFixed(1)}h</div>
+                            ${hours.publicHoliday > 0 ? 
+                                `<div class="shift-pay" style="color: #1976d2; font-weight: 600;">PH Rate</div>` : ''}
                         </div>
                     </div>
                 `;
@@ -13413,6 +14002,7 @@ function renderTimesheetShifts() {
     
     container.innerHTML = html;
 }
+
 async function ensureStaffLoaded() {
     console.log('Ensuring staff data is loaded...');
     
