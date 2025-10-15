@@ -2629,6 +2629,21 @@ body.loading {
     }
 }
 
+/* Modal improvements */
+.modal[aria-hidden="true"] {
+    display: none;
+}
+
+.modal[aria-hidden="false"] {
+    display: flex;
+}
+
+.modal-close:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+
         /* Form Elements */
         .form-group {
             margin-bottom: 16px;
@@ -2960,6 +2975,58 @@ body.loading {
     flex-shrink: 0 !important;
 }
 
+/* Force button styles to apply even with inline styles */
+.modal-footer .modal-btn {
+    flex: 1 !important;
+    padding: 12px 20px !important;
+    border: none !important;
+    border-radius: 6px !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
+    min-height: 44px !important;
+    transition: all 0.2s !important;
+}
+
+.modal-footer .modal-btn.primary {
+    background: #007bff !important;
+    color: white !important;
+}
+
+.modal-footer .modal-btn.primary:hover {
+    background: #0056b3 !important;
+}
+
+.modal-footer .modal-btn.secondary {
+    background: #6c757d !important;
+    color: white !important;
+}
+
+.modal-footer .modal-btn.secondary:hover {
+    background: #545b62 !important;
+}
+
+/* Force close button styles */
+.modal-header .modal-close {
+    background: transparent !important;
+    border: none !important;
+    font-size: 32px !important;
+    line-height: 1 !important;
+    cursor: pointer !important;
+    color: #666 !important;
+    padding: 0 !important;
+    width: 44px !important;
+    height: 44px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.modal-header .modal-close:hover {
+    color: #000 !important;
+    background: rgba(0,0,0,0.1) !important;
+    border-radius: 4px !important;
+}
 /* Ensure scrollbar is always visible when needed */
 .modal-body::-webkit-scrollbar {
     width: 8px;
@@ -3056,19 +3123,6 @@ body.loading {
     color: var(--primary-color);
 }
 
-/* Modal improvements */
-.modal[aria-hidden="true"] {
-    display: none;
-}
-
-.modal[aria-hidden="false"] {
-    display: flex;
-}
-
-.modal-close:focus {
-    outline: 2px solid var(--primary-color);
-    outline-offset: 2px;
-}
 
 /* Header improvements */
 .header {
@@ -3473,7 +3527,7 @@ body.loading {
         <!-- Documents -->
         <div class="profile-section">
             <h3>Documents</h3>
-            <button class="edit-btn" onclick="openUploadDocumentModal()">
+            <button class="edit-btn" onclick="showDocumentUploadModal()">
                 <i class="fa-solid fa-file-arrow-up"></i>
                 Upload Document
             </button>
@@ -6428,21 +6482,6 @@ function formatTime12Hour(time) {
     return `${displayHour}:${minutes} ${ampm}`;
 }
 
-// Open school holiday modal
-function showSchoolHolidayModal() {
-    const modal = document.getElementById('schoolHolidayModal');
-    if (modal) {
-        // REMOVED: Don't set minimum date - allow backdating
-        // Staff can submit school holidays for past dates
-        
-        // Optional: Set a reasonable past limit (e.g., start of current year)
-        // const yearStart = new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
-        // document.getElementById('schoolStartDate').min = yearStart;
-        // document.getElementById('schoolEndDate').min = yearStart;
-        
-        modal.style.display = 'flex';
-    }
-}
 
 async function submitSchoolHoliday() {
     const submitBtn = document.querySelector('[onclick="submitSchoolHoliday()"]');
@@ -8620,23 +8659,6 @@ function toggleTimeFields() {
     }
 }
 
-function showTransportModal() {
-    loadTransportModal();
-    ModalManager.show('transport');
-}
-
-
-
-function showDocumentUploadModal() {
-    // Open the document upload modal
-    const modal = document.getElementById('documentUploadModal');
-    if (modal) {
-        modal.classList.add('active');
-    } else {
-        // If modal doesn't exist, show simple file input
-        document.getElementById('documentFile')?.click();
-    }
-}
 
 async function fetchNotes(participantId) {  // Changed parameter
     try {
@@ -9177,18 +9199,7 @@ function populateLocationDropdown() {
     }
 }
 
-function showAddShiftModal() {
-    populateShiftModalDropdowns();
-    ModalManager.show('addShift');
-}
 
-
-
-
-function showTransferModal() {
-    loadTransferableShifts();
-    ModalManager.show('transfer');
-}
 
 async function loadTransferableShifts() {
     try {
@@ -9494,14 +9505,7 @@ async function submitTransfer() {
         showToast('Failed to submit transfer request', 'error');
     }
 }
-function showAdjustmentModal() {
-    loadAdjustmentShifts();
-    ModalManager.show('adjustment');
-}
 
-function showLeaveModal() {
-    ModalManager.show('leave');
-}
 
 // ==========================================
 // REQUESTS SECTION - COMPLETE REPLACEMENT
@@ -17923,30 +17927,6 @@ async function ensureStaffLoaded() {
     }
 }
 
-function showToast(message, type = 'info') {
-    // Simple toast notification
-    const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
-    toast.textContent = message;
-    toast.style.cssText = `
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        padding: 12px 20px;
-        background: ${type === 'error' ? '#dc3545' : type === 'success' ? '#28a745' : '#17a2b8'};
-        color: white;
-        border-radius: 4px;
-        z-index: 10000;
-        animation: slideIn 0.3s ease;
-    `;
-    
-    document.body.appendChild(toast);
-    
-    setTimeout(() => {
-        toast.style.animation = 'slideOut 0.3s ease';
-        setTimeout(() => toast.remove(), 300);
-    }, 3000);
-}
 
 function showNotification(message, type = 'info') {
     // Remove any existing notifications
@@ -18320,137 +18300,238 @@ function setupTransportInputFormatters() {
     });
 }
 
+// ============================================
+// UNIFIED MODAL SYSTEM - COMPLETE REPLACEMENT
+// ============================================
+
 (function() {
-    console.log('🚨 MOBILE-OPTIMIZED MODAL FIX LOADING...');
+    'use strict';
     
-    // Store scroll position for mobile
+    console.log('🚨 UNIFIED MODAL SYSTEM LOADING...');
+    
     let scrollPosition = 0;
     
-    window.openModal = function(modalId) {
-    console.log('Opening modal:', modalId);
+    // ============================================
+    // CORE MODAL FUNCTIONS
+    // ============================================
     
-    // Close all
+    window.openModal = function(modalId) {
+    console.log('📱 Opening modal:', modalId);
+    
+    // Store scroll position
+    scrollPosition = window.pageYOffset;
+    
+    // Close all modals first
     document.querySelectorAll('.modal').forEach(m => {
         m.classList.remove('active', 'show');
+        m.setAttribute('aria-hidden', 'true');
         m.style.display = 'none';
     });
     
+    // Get the modal
     const modal = document.getElementById(modalId);
-    if (!modal) return;
+    if (!modal) {
+        console.error('❌ Modal not found:', modalId);
+        return;
+    }
     
-    // Lock scroll
-    const scrollPos = window.pageYOffset;
+    // Lock body scroll
     document.body.style.position = 'fixed';
-    document.body.style.top = `-${scrollPos}px`;
+    document.body.style.top = `-${scrollPosition}px`;
     document.body.style.width = '100%';
     document.body.classList.add('modal-open');
     
-    // Open modal - NO TRANSFORMS
-    modal.style.cssText = `
-        display: block !important;
-        position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        width: 100% !important;
-        height: 100% !important;
-        z-index: 999999 !important;
-        background: rgba(0, 0, 0, 0.85) !important;
-        overflow-y: auto !important;
-        -webkit-overflow-scrolling: touch !important;
-        padding: 20px 0 !important;
-    `;
+    // Force modal visible - REDUCED inline styles
+    modal.style.display = 'flex';
+    modal.style.position = 'fixed';
+    modal.style.top = '0';
+    modal.style.left = '0';
+    modal.style.width = '100vw';
+    modal.style.height = '100vh';
+    modal.style.zIndex = '999999';
+    modal.style.background = 'rgba(0, 0, 0, 0.85)';
+    modal.style.alignItems = 'center';
+    modal.style.justifyContent = 'center';
+    modal.style.overflowY = 'auto';
+    modal.style.padding = '20px';
     
-    modal.classList.add('active');
+    modal.classList.add('active', 'show');
+    modal.setAttribute('aria-hidden', 'false');
     
-    // Force content visibility - NO TRANSFORMS
+    // Force content visible - MINIMAL inline styles to preserve CSS
     const content = modal.querySelector('.modal-content');
     if (content) {
-        content.style.cssText = `
-            position: relative !important;
-            display: flex !important;
-            flex-direction: column !important;
-            margin: 50px auto !important;
-            background: white !important;
-            border-radius: 12px !important;
-            width: 90% !important;
-            max-width: 600px !important;
-            overflow: visible !important;
-            box-shadow: 0 10px 50px rgba(0,0,0,0.5) !important;
-        `;
+        content.style.position = 'relative';
+        content.style.display = 'flex';
+        content.style.flexDirection = 'column';
+        content.style.margin = 'auto';
+        content.style.background = 'white';
+        content.style.borderRadius = '12px';
+        content.style.width = '90%';
+        content.style.maxWidth = '600px';
+        content.style.overflow = 'visible';
+        content.style.boxShadow = '0 10px 50px rgba(0,0,0,0.5)';
+        // Don't use cssText - it wipes out class styles!
     }
     
-    console.log('✅ Modal opened');
+    console.log('✅ Modal opened:', modalId);
 };
     window.closeModal = function(modalId) {
-        console.log('🔒 CLOSING (MOBILE):', modalId || 'all');
+        console.log('🔒 Closing modal:', modalId || 'all');
         
         if (modalId) {
             const modal = document.getElementById(modalId);
             if (modal) {
                 modal.classList.remove('active', 'show');
-                modal.style.display = 'none';
                 modal.setAttribute('aria-hidden', 'true');
+                modal.style.display = 'none';
             }
         } else {
+            // Close all modals
             document.querySelectorAll('.modal').forEach(m => {
                 m.classList.remove('active', 'show');
-                m.style.display = 'none';
                 m.setAttribute('aria-hidden', 'true');
+                m.style.display = 'none';
             });
         }
         
-        // Restore scroll position (mobile fix)
-        document.body.style.overflow = '';
+        // Restore scroll
         document.body.style.position = '';
         document.body.style.top = '';
         document.body.style.width = '';
         document.body.classList.remove('modal-open');
-        
         window.scrollTo(0, scrollPosition);
         
-        console.log('✅ CLOSED (MOBILE)');
+        console.log('✅ Modal closed');
     };
     
-    // Quick action functions
-    window.showAddShiftModal = () => openModal('addShiftModal');
-    window.showTransferModal = () => openModal('transferShiftModal');
-    window.showAdjustmentModal = () => openModal('adjustmentModal');
-    window.showLeaveModal = () => openModal('leaveModal');
-    window.showTransportModal = () => openModal('transportModal');
-    window.showSchoolHolidayModal = () => openModal('schoolHolidayModal');
+    // ============================================
+    // QUICK ACTION FUNCTIONS WITH PREP
+    // ============================================
     
-    // Event delegation with TOUCH support for mobile
-    document.addEventListener('click', function(e) {
-        handleModalInteraction(e);
-    });
+    window.showAddShiftModal = function() {
+        console.log('showAddShiftModal called');
+        // Run prep function if it exists
+        if (typeof populateShiftModalDropdowns === 'function') {
+            try {
+                populateShiftModalDropdowns();
+            } catch (error) {
+                console.error('Error in populateShiftModalDropdowns:', error);
+            }
+        }
+        openModal('addShiftModal');
+    };
     
-    // Add touch support
-    document.addEventListener('touchend', function(e) {
-        handleModalInteraction(e);
-    });
+    window.showTransferModal = function() {
+        console.log('showTransferModal called');
+        // Run prep function if it exists
+        if (typeof loadTransferableShifts === 'function') {
+            try {
+                loadTransferableShifts();
+            } catch (error) {
+                console.error('Error in loadTransferableShifts:', error);
+            }
+        }
+        openModal('transferShiftModal');
+    };
+    
+    window.showAdjustmentModal = function() {
+        console.log('showAdjustmentModal called');
+        // Run prep function if it exists
+        if (typeof loadAdjustmentShifts === 'function') {
+            try {
+                loadAdjustmentShifts();
+            } catch (error) {
+                console.error('Error in loadAdjustmentShifts:', error);
+            }
+        }
+        openModal('adjustmentModal');
+    };
+    
+    window.showLeaveModal = function() {
+        console.log('showLeaveModal called');
+        // Run prep function if it exists
+        if (typeof loadLeaveRequestModal === 'function') {
+            try {
+                loadLeaveRequestModal();
+            } catch (error) {
+                console.error('Error in loadLeaveRequestModal:', error);
+            }
+        }
+        openModal('leaveModal');
+    };
+    
+    window.showTransportModal = function() {
+        console.log('showTransportModal called');
+        // Run prep function if it exists
+        if (typeof loadTransportModal === 'function') {
+            try {
+                loadTransportModal();
+            } catch (error) {
+                console.error('Error in loadTransportModal:', error);
+            }
+        }
+        openModal('transportModal');
+    };
+    
+    window.showSchoolHolidayModal = function() {
+        console.log('showSchoolHolidayModal called');
+        openModal('schoolHolidayModal');
+    };
+    
+    window.showDocumentUploadModal = function() {
+        console.log('showDocumentUploadModal called');
+        const modal = document.getElementById('documentUploadModal');
+        if (modal) {
+            openModal('documentUploadModal');
+        } else {
+            // Fallback to file input
+            const fileInput = document.getElementById('documentFile');
+            if (fileInput) fileInput.click();
+        }
+    };
+    
+    // ============================================
+    // EVENT HANDLERS
+    // ============================================
     
     function handleModalInteraction(e) {
-        // Close button clicked
-        if (e.target.matches('[data-modal-close]') || e.target.closest('[data-modal-close]')) {
-            e.preventDefault();
-            e.stopPropagation();
-            const btn = e.target.matches('[data-modal-close]') ? e.target : e.target.closest('[data-modal-close]');
-            const modalId = btn.getAttribute('data-modal-close');
-            closeModal(modalId);
-            return;
+    // Close button with data-modal-close attribute
+    const closeBtn = e.target.closest('[data-modal-close]');
+    if (closeBtn || e.target.matches('[data-modal-close]')) {
+        e.preventDefault();
+        e.stopPropagation();
+        const btn = closeBtn || e.target;
+        const modalId = btn.getAttribute('data-modal-close');
+        console.log('Close button clicked (data-modal-close):', modalId);
+        closeModal(modalId);
+        return;
+    }
+    
+    // Close button with .modal-close class (your × buttons)
+    const modalCloseBtn = e.target.closest('.modal-close');
+    if (modalCloseBtn || e.target.matches('.modal-close')) {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Modal close button clicked (.modal-close)');
+        const modal = e.target.closest('.modal');
+        if (modal) {
+            closeModal(modal.id);
+        } else {
+            closeModal();
         }
-        
-        // Backdrop clicked (be careful on mobile)
-        if (e.target.classList.contains('modal') && e.target.classList.contains('active')) {
-            // Only close if directly clicking backdrop, not modal content
-            const rect = e.target.getBoundingClientRect();
-            const modalContent = e.target.querySelector('.modal-content');
-            if (modalContent) {
-                const contentRect = modalContent.getBoundingClientRect();
-                const clickX = e.clientX || (e.touches && e.touches[0].clientX);
-                const clickY = e.clientY || (e.touches && e.touches[0].clientY);
-                
-                // Only close if click is outside modal content
+        return;
+    }
+    
+    // Backdrop clicked
+    if (e.target.classList.contains('modal') && e.target.classList.contains('active')) {
+        const modalContent = e.target.querySelector('.modal-content');
+        if (modalContent) {
+            const contentRect = modalContent.getBoundingClientRect();
+            const clickX = e.clientX || (e.touches && e.touches[0] && e.touches[0].clientX);
+            const clickY = e.clientY || (e.touches && e.touches[0] && e.touches[0].clientY);
+            
+            if (clickX && clickY) {
                 if (clickX < contentRect.left || clickX > contentRect.right ||
                     clickY < contentRect.top || clickY > contentRect.bottom) {
                     closeModal();
@@ -18458,41 +18539,56 @@ function setupTransportInputFormatters() {
             }
         }
     }
+}
+
+    // ============================================
+    // DEBUG HELPER
+    // ============================================
     
-    // ESC key (still works on mobile keyboards)
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' || e.keyCode === 27) {
-            closeModal();
-        }
-    });
-    
-    // Debug function
     window.debugModals = function() {
-        console.log('=== MOBILE MODAL DEBUG ===');
-        console.log('Screen size:', window.innerWidth, 'x', window.innerHeight);
-        console.log('User agent:', navigator.userAgent);
+        console.log('=== MODAL DEBUG ===');
+        console.log('Screen:', window.innerWidth, 'x', window.innerHeight);
+        console.log('Device:', /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? 'MOBILE' : 'DESKTOP');
+        console.log('User Agent:', navigator.userAgent);
+        
         const modals = document.querySelectorAll('.modal');
-        console.log('Total modals:', modals.length);
+        console.log('Total modals found:', modals.length);
+        
         modals.forEach(m => {
             const styles = window.getComputedStyle(m);
-            console.log('Modal:', m.id, {
+            console.log(`Modal: ${m.id}`, {
                 display: styles.display,
                 position: styles.position,
                 zIndex: styles.zIndex,
-                top: styles.top,
-                left: styles.left,
-                width: styles.width,
-                height: styles.height,
                 visibility: styles.visibility,
-                opacity: styles.opacity
+                opacity: styles.opacity,
+                hasActive: m.classList.contains('active')
             });
+        });
+        
+        console.log('Functions:', {
+            openModal: typeof window.openModal,
+            closeModal: typeof window.closeModal,
+            showAddShiftModal: typeof window.showAddShiftModal,
+            showTransferModal: typeof window.showTransferModal
         });
     };
     
-    console.log('✅ MOBILE-OPTIMIZED MODAL FIX LOADED');
-    console.log('Device:', /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? 'Mobile' : 'Desktop');
+    console.log('✅ UNIFIED MODAL SYSTEM LOADED');
+    console.log('Device detected:', /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? 'MOBILE' : 'DESKTOP');
+    
 })();
 
+// ============================================
+// COMPATIBILITY CHECK
+// ============================================
+
+// Check if ModalManager exists and warn
+if (typeof ModalManager !== 'undefined') {
+    console.warn('⚠️ ModalManager detected but not used. Using unified openModal system instead.');
+}
+
+console.log('✅ Modal system ready');
         </script>
         </body>
         </html>
