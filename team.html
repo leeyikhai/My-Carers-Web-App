@@ -18509,133 +18509,177 @@ function setupTransportInputFormatters() {
     });
 }
 
- (function() {
-            console.log('🚨 NUCLEAR MODAL FIX LOADING...');
-            
-            // Force global modal functions
-            window.openModal = function(modalId) {
-                console.log('🚀 FORCE OPEN:', modalId);
+(function() {
+    console.log('🚨 MOBILE-OPTIMIZED MODAL FIX LOADING...');
+    
+    // Store scroll position for mobile
+    let scrollPosition = 0;
+    
+    // Force global modal functions
+    window.openModal = function(modalId) {
+        console.log('🚀 FORCE OPEN (MOBILE):', modalId);
+        
+        // Store scroll position and lock body (mobile fix)
+        scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+        
+        // Close everything first
+        const allModals = document.querySelectorAll('.modal');
+        allModals.forEach(m => {
+            m.classList.remove('active', 'show');
+            m.style.display = 'none';
+            m.setAttribute('aria-hidden', 'true');
+        });
+        
+        // Find and open target modal
+        const modal = document.getElementById(modalId);
+        if (!modal) {
+            console.error('❌ MODAL NOT FOUND:', modalId);
+            alert('Error: Modal "' + modalId + '" not found!');
+            return;
+        }
+        
+        // BRUTALLY FORCE IT OPEN WITH MOBILE OPTIMIZATIONS
+        modal.style.display = 'flex';
+        modal.style.position = 'fixed';
+        modal.style.top = '0';
+        modal.style.left = '0';
+        modal.style.right = '0';
+        modal.style.bottom = '0';
+        modal.style.width = '100%';
+        modal.style.height = '100%';
+        modal.style.zIndex = '2147483647';
+        modal.style.background = 'rgba(0, 0, 0, 0.7)';
+        modal.style.alignItems = 'center';
+        modal.style.justifyContent = 'center';
+        modal.style.overflow = 'auto';
+        modal.style.webkitOverflowScrolling = 'touch'; // iOS smooth scrolling
+        
+        modal.classList.add('active', 'show');
+        modal.setAttribute('aria-hidden', 'false');
+        
+        // Lock body scroll (mobile fix)
+        document.body.style.overflow = 'hidden';
+        document.body.style.position = 'fixed';
+        document.body.style.top = `-${scrollPosition}px`;
+        document.body.style.width = '100%';
+        document.body.classList.add('modal-open');
+        
+        console.log('✅ MODAL OPENED (MOBILE):', modalId);
+        
+        return true;
+    };
+    
+    window.closeModal = function(modalId) {
+        console.log('🔒 CLOSING (MOBILE):', modalId || 'all');
+        
+        if (modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.classList.remove('active', 'show');
+                modal.style.display = 'none';
+                modal.setAttribute('aria-hidden', 'true');
+            }
+        } else {
+            document.querySelectorAll('.modal').forEach(m => {
+                m.classList.remove('active', 'show');
+                m.style.display = 'none';
+                m.setAttribute('aria-hidden', 'true');
+            });
+        }
+        
+        // Restore scroll position (mobile fix)
+        document.body.style.overflow = '';
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.width = '';
+        document.body.classList.remove('modal-open');
+        
+        window.scrollTo(0, scrollPosition);
+        
+        console.log('✅ CLOSED (MOBILE)');
+    };
+    
+    // Quick action functions
+    window.showAddShiftModal = () => openModal('addShiftModal');
+    window.showTransferModal = () => openModal('transferShiftModal');
+    window.showAdjustmentModal = () => openModal('adjustmentModal');
+    window.showLeaveModal = () => openModal('leaveModal');
+    window.showTransportModal = () => openModal('transportModal');
+    window.showSchoolHolidayModal = () => openModal('schoolHolidayModal');
+    
+    // Event delegation with TOUCH support for mobile
+    document.addEventListener('click', function(e) {
+        handleModalInteraction(e);
+    });
+    
+    // Add touch support
+    document.addEventListener('touchend', function(e) {
+        handleModalInteraction(e);
+    });
+    
+    function handleModalInteraction(e) {
+        // Close button clicked
+        if (e.target.matches('[data-modal-close]') || e.target.closest('[data-modal-close]')) {
+            e.preventDefault();
+            e.stopPropagation();
+            const btn = e.target.matches('[data-modal-close]') ? e.target : e.target.closest('[data-modal-close]');
+            const modalId = btn.getAttribute('data-modal-close');
+            closeModal(modalId);
+            return;
+        }
+        
+        // Backdrop clicked (be careful on mobile)
+        if (e.target.classList.contains('modal') && e.target.classList.contains('active')) {
+            // Only close if directly clicking backdrop, not modal content
+            const rect = e.target.getBoundingClientRect();
+            const modalContent = e.target.querySelector('.modal-content');
+            if (modalContent) {
+                const contentRect = modalContent.getBoundingClientRect();
+                const clickX = e.clientX || (e.touches && e.touches[0].clientX);
+                const clickY = e.clientY || (e.touches && e.touches[0].clientY);
                 
-                // Close everything first
-                const allModals = document.querySelectorAll('.modal');
-                allModals.forEach(m => {
-                    m.classList.remove('active', 'show');
-                    m.style.display = 'none';
-                    m.setAttribute('aria-hidden', 'true');
-                });
-                
-                // Find and open target modal
-                const modal = document.getElementById(modalId);
-                if (!modal) {
-                    console.error('❌ MODAL NOT FOUND:', modalId);
-                    alert('Error: Modal "' + modalId + '" not found!');
-                    return;
-                }
-                
-                // BRUTALLY FORCE IT OPEN
-                modal.style.display = 'flex';
-                modal.style.position = 'fixed';
-                modal.style.top = '0';
-                modal.style.left = '0';
-                modal.style.width = '100%';
-                modal.style.height = '100%';
-                modal.style.zIndex = '2147483647';
-                modal.style.background = 'rgba(0, 0, 0, 0.7)';
-                modal.style.alignItems = 'center';
-                modal.style.justifyContent = 'center';
-                modal.classList.add('active', 'show');
-                modal.setAttribute('aria-hidden', 'false');
-                
-                document.body.style.overflow = 'hidden';
-                document.body.classList.add('modal-open');
-                
-                console.log('✅ MODAL OPENED:', modalId);
-                console.log('   Display:', modal.style.display);
-                console.log('   Z-index:', modal.style.zIndex);
-                
-                return true;
-            };
-            
-            window.closeModal = function(modalId) {
-                console.log('🔒 CLOSING:', modalId || 'all');
-                
-                if (modalId) {
-                    const modal = document.getElementById(modalId);
-                    if (modal) {
-                        modal.classList.remove('active', 'show');
-                        modal.style.display = 'none';
-                        modal.setAttribute('aria-hidden', 'true');
-                    }
-                } else {
-                    document.querySelectorAll('.modal').forEach(m => {
-                        m.classList.remove('active', 'show');
-                        m.style.display = 'none';
-                        m.setAttribute('aria-hidden', 'true');
-                    });
-                }
-                
-                document.body.style.overflow = '';
-                document.body.classList.remove('modal-open');
-                console.log('✅ CLOSED');
-            };
-            
-            // Quick action functions
-            window.showAddShiftModal = () => openModal('addShiftModal');
-            window.showTransferModal = () => openModal('transferShiftModal');
-            window.showAdjustmentModal = () => openModal('adjustmentModal');
-            window.showLeaveModal = () => openModal('leaveModal');
-            window.showTransportModal = () => openModal('transportModal');
-            window.showSchoolHolidayModal = () => openModal('schoolHolidayModal');
-            
-            // Event delegation for close buttons
-            document.addEventListener('click', function(e) {
-                // Close button clicked
-                if (e.target.matches('[data-modal-close]') || e.target.closest('[data-modal-close]')) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const btn = e.target.matches('[data-modal-close]') ? e.target : e.target.closest('[data-modal-close]');
-                    const modalId = btn.getAttribute('data-modal-close');
-                    closeModal(modalId);
-                    return;
-                }
-                
-                // Backdrop clicked
-                if (e.target.classList.contains('modal')) {
+                // Only close if click is outside modal content
+                if (clickX < contentRect.left || clickX > contentRect.right ||
+                    clickY < contentRect.top || clickY > contentRect.bottom) {
                     closeModal();
-                    return;
                 }
+            }
+        }
+    }
+    
+    // ESC key (still works on mobile keyboards)
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' || e.keyCode === 27) {
+            closeModal();
+        }
+    });
+    
+    // Debug function
+    window.debugModals = function() {
+        console.log('=== MOBILE MODAL DEBUG ===');
+        console.log('Screen size:', window.innerWidth, 'x', window.innerHeight);
+        console.log('User agent:', navigator.userAgent);
+        const modals = document.querySelectorAll('.modal');
+        console.log('Total modals:', modals.length);
+        modals.forEach(m => {
+            const styles = window.getComputedStyle(m);
+            console.log('Modal:', m.id, {
+                display: styles.display,
+                position: styles.position,
+                zIndex: styles.zIndex,
+                top: styles.top,
+                left: styles.left,
+                width: styles.width,
+                height: styles.height,
+                visibility: styles.visibility,
+                opacity: styles.opacity
             });
-            
-            // ESC key
-            document.addEventListener('keydown', function(e) {
-                if (e.key === 'Escape' || e.keyCode === 27) {
-                    closeModal();
-                }
-            });
-            
-            // Expose for debugging
-            window.debugModals = function() {
-                console.log('=== MODAL DEBUG ===');
-                const modals = document.querySelectorAll('.modal');
-                console.log('Total modals found:', modals.length);
-                modals.forEach(m => {
-                    console.log('Modal:', m.id, {
-                        display: window.getComputedStyle(m).display,
-                        zIndex: window.getComputedStyle(m).zIndex,
-                        hasActive: m.classList.contains('active')
-                    });
-                });
-            };
-            
-            console.log('✅ NUCLEAR MODAL FIX LOADED');
-            console.log('Available functions:', {
-                openModal: typeof openModal,
-                closeModal: typeof closeModal,
-                showAddShiftModal: typeof showAddShiftModal,
-                showTransferModal: typeof showTransferModal,
-                debugModals: typeof debugModals
-            });
-        })();
+        });
+    };
+    
+    console.log('✅ MOBILE-OPTIMIZED MODAL FIX LOADED');
+    console.log('Device:', /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? 'Mobile' : 'Desktop');
+})();
 
         </script>
         </body>
