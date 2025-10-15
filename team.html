@@ -4,7 +4,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        if (process.env.NODE_ENV === 'production') {
+          for (let m of ['log', 'warn', 'error', 'info', 'debug']) {
+            console[m] = function () {};
+          }
+        }
+        </script>
+        <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         // Google Maps Configuration
         const GOOGLE_MAPS_API_KEY = 'AIzaSyDo5V32Ix0Xi40HdORZ5XGtxYxMBGbUJfw'; 
@@ -4502,15 +4509,12 @@ id="nav-profile">
         </div>
     </div>
 
-
+    
+        
 
     <script>
 
-if (process.env.NODE_ENV === 'production') {
-  for (let m of ['log', 'warn', 'error', 'info', 'debug']) {
-    console[m] = function () {};
-  }
-}
+      
 
         // Supabase Configuration
         const SUPABASE_URL = 'https://gqchhsayqxttewthcsah.supabase.co';
@@ -10046,7 +10050,7 @@ async function loadMyRequests() {
                                 <span style="margin-left: 8px; font-size: 14px; color: #4CAF50; font-weight: 600;">$${claim.total_claim?.toFixed(2) || '0.00'}</span>
                             </div>
                             <div class="shift-client">
-                                ${claim.total_km || 0}km claimed${claim.shift?.participants ? ` - ${participantName}` : ''}
+                                ${claim.kilometres || 0}km claimed${claim.shift?.participants ? ` - ${participantName}` : ''}
                             </div>
                             <div class="shift-location">
                                 <span class="status-badge" style="
