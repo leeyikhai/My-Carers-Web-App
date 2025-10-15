@@ -1140,16 +1140,9 @@ body.loading {
     height: 100vh;
     background: var(--bg-color, #ffffff); /* Solid background */
     box-shadow: -4px 0 20px rgba(0,0,0,0.2);
+    transition: right 0.3s ease;
     z-index: 1000;
     overflow-y: auto;
-}
-
-.slide-panel {
-    transform: translateX(100%);
-    transition: transform 0.3s ease;
-}
-.slide-panel.active {
-    transform: translateX(0);
 }
 
 /* Roster grid similar to schedule */
@@ -1691,9 +1684,6 @@ body.loading {
             to { opacity: 1; transform: translateY(0); }
         }
 
-        .content-section {
-    transform: none !important; /* Prevent transform inheritance */
-}
         /* Dashboard Cards */
         .dashboard-header {
             margin-bottom: 20px;
@@ -2627,7 +2617,74 @@ body.loading {
             border-color: var(--primary-color);
         }
 
-        
+        .modal {
+    display: none;  /* Keep ONLY this display property */
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0,0,0,0.5);
+    z-index: 2000;
+    transform: none !important;
+    -webkit-transform: none !important;
+    backface-visibility: visible !important;
+    perspective: none !important;
+    overflow: visible;
+    padding: 20px;
+}
+
+/* The .active class handles the display: flex */
+.modal.active {
+    display: flex !important;  /* This already exists in your code, keep it */
+    align-items: center;
+    justify-content: center;
+}
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: var(--radius-lg);
+            max-width: 500px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--text-light);
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
         
         .modal-btn {
             flex: 1;
@@ -2648,270 +2705,6 @@ body.loading {
             background: var(--bg-light);
             color: var(--text-dark);
         }
-
-        /* 1. MODAL OVERLAY */
-.modal {
-    display: none; /* Hidden by default */
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    width: 100vw;
-    height: 100vh;
-    background: rgba(0,0,0,0.5);
-    z-index: 2000;
-    padding: 20px;
-    
-    /* CRITICAL: Prevent transform/overflow issues */
-    transform: none !important;
-    -webkit-transform: none !important;
-    backface-visibility: visible !important;
-    perspective: none !important;
-    overflow: visible;
-    
-    /* Flexbox for centering */
-    align-items: center;
-    justify-content: center;
-}
-
-/* 2. MODAL ACTIVE STATE */
-.modal.active {
-    display: flex !important; /* Override display: none */
-}
-
-/* Accessibility */
-.modal[aria-hidden="true"] {
-    display: none;
-}
-
-.modal[aria-hidden="false"] {
-    display: flex;
-}
-
-/* 3. MODAL DIALOG WRAPPER - MUST BE OUTSIDE MEDIA QUERY */
-.modal-dialog {
-    position: relative; /* NOT fixed */
-    max-width: 500px;
-    width: 100%;
-    max-height: 90vh;
-    margin: auto;
-    transform: none !important;
-    -webkit-transform: none !important;
-    z-index: 1;
-}
-
-/* 4. MODAL CONTENT */
-.modal-content {
-    background: white;
-    border-radius: var(--radius-lg);
-    width: 100%;
-    max-height: 90vh;
-    overflow: hidden; /* Container doesn't scroll */
-    display: flex;
-    flex-direction: column;
-    position: relative;
-    transform: none !important;
-    -webkit-transform: none !important;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-}
-
-/* 5. MODAL HEADER */
-.modal-header {
-    flex: 0 0 auto; /* Fixed size */
-    padding: 20px;
-    border-bottom: 1px solid var(--border-color);
-    background: white;
-    position: relative;
-    z-index: 1;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.modal-title {
-    font-size: 18px;
-    font-weight: 600;
-    margin: 0;
-}
-
-.modal-close {
-    background: none;
-    border: none;
-    font-size: 24px;
-    cursor: pointer;
-    color: var(--text-light);
-    padding: 0;
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: color 0.2s;
-}
-
-.modal-close:hover {
-    color: var(--text-dark);
-}
-
-.modal-close:focus {
-    outline: 2px solid var(--primary-color);
-    outline-offset: 2px;
-}
-
-/* 6. MODAL BODY - THIS IS WHERE SCROLLING HAPPENS */
-.modal-body {
-    flex: 1 1 auto; /* Grows to fill space */
-    overflow-x: hidden;
-    overflow-y: auto; /* Scrolling ONLY here */
-    -webkit-overflow-scrolling: touch;
-    padding: 20px;
-    position: relative;
-    max-height: calc(90vh - 140px);
-}
-
-/* 7. MODAL FOOTER */
-.modal-footer {
-    flex: 0 0 auto; /* Fixed size */
-    padding: 20px;
-    border-top: 1px solid var(--border-color);
-    background: white;
-    display: flex;
-    gap: 12px;
-    position: relative;
-    z-index: 1;
-}
-
-.modal-btn {
-    flex: 1;
-    padding: 12px;
-    border: none;
-    border-radius: var(--radius-md);
-    font-weight: 500;
-    cursor: pointer;
-    font-size: 14px;
-}
-
-.modal-btn.primary {
-    background: var(--primary-color);
-    color: white;
-}
-
-.modal-btn.secondary {
-    background: var(--bg-light);
-    color: var(--text-dark);
-}
-
-/* 8. FORM CONTROLS IN MODAL */
-.modal .form-control,
-.modal select,
-.modal input[type="date"],
-.modal input[type="time"],
-.modal input[type="text"],
-.modal textarea {
-    width: 100%;
-    max-width: 100%;
-    box-sizing: border-box;
-}
-
-.modal select.form-control {
-    width: 100%;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.modal input[type="date"],
-.modal input[type="time"] {
-    width: 100%;
-    min-width: 0;
-    padding-right: 2px;
-}
-
-.modal .form-group {
-    width: 100%;
-    max-width: 100%;
-    overflow: visible; /* Changed from hidden */
-    margin-bottom: 16px;
-}
-
-/* 9. BODY LOCK WHEN MODAL OPEN */
-body.modal-open {
-    overflow: hidden;
-    position: fixed;
-    width: 100%;
-    height: 100%;
-}
-
-/* 10. SCROLLBAR STYLING */
-.modal-body::-webkit-scrollbar {
-    width: 8px;
-}
-
-.modal-body::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 4px;
-}
-
-.modal-body::-webkit-scrollbar-thumb {
-    background: #888;
-    border-radius: 4px;
-}
-
-.modal-body::-webkit-scrollbar-thumb:hover {
-    background: #555;
-}
-
-/* 11. MOBILE SPECIFIC ADJUSTMENTS */
-@media (max-width: 576px) {
-    .modal {
-        padding: 0; /* Full screen on mobile */
-    }
-    
-    .modal-dialog {
-        max-width: 100%;
-        max-height: 100vh;
-        margin: 0;
-    }
-    
-    .modal-content {
-        max-height: 100vh;
-        border-radius: 0;
-    }
-    
-    .modal-body {
-        max-height: calc(100vh - 140px);
-    }
-}
-
-/* 12. ANIMATIONS */
-.modal.active {
-    animation: modalFadeIn 0.3s ease;
-}
-
-@keyframes modalFadeIn {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
-}
-
-.modal-content {
-    animation: modalSlideIn 0.3s ease;
-}
-
-@keyframes modalSlideIn {
-    from {
-        transform: translateY(-50px);
-        opacity: 0;
-    }
-    to {
-        transform: translateY(0);
-        opacity: 1;
-    }
-}
 
         /* Form Elements */
         .form-group {
@@ -3161,7 +2954,118 @@ body.modal-open {
         .p-2 { padding: 16px; }
         .hidden { display: none; }
 
-        
+        .modal .form-control,
+.modal select,
+.modal input[type="date"],
+.modal input[type="time"],
+.modal input[type="text"],
+.modal textarea {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box; /* This is key - includes padding/border in width */
+}
+
+/* Fix for select dropdowns specifically */
+.modal select.form-control {
+    width: 100%;
+    min-width: 0; /* Prevents minimum width issues */
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Fix for date/time inputs that tend to be wider */
+.modal input[type="date"],
+.modal input[type="time"] {
+    width: 100%;
+    min-width: 0;
+    padding-right: 2px; /* Reduce padding if needed */
+}
+
+/* Ensure form groups don't overflow */
+.modal .form-group {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden; /* Hide any overflow */
+}
+
+/* FIX FOR MODAL SCROLLING - THIS IS THE KEY ADDITION */
+.modal-dialog {
+    position: relative;
+    max-width: 500px;
+    width: 100%;
+    max-height: 90vh;
+    margin: auto;
+    transform: none !important;
+    -webkit-transform: none !important;
+    z-index: 1;
+}
+
+
+.modal-content {
+    max-width: 100%;
+    max-height: 90vh; /* Limit modal content height */
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Modal body scrolling fix - CRITICAL FOR TALL CONTENT */
+.modal-body {
+    flex: 1 1 auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 20px;
+    position: relative;
+    max-height: calc(90vh - 140px);
+}
+
+
+.modal-header {
+    flex: 0 0 auto; /* Fixed height header */
+    padding: 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.modal-footer {
+    flex: 0 0 auto; /* Fixed height footer */
+    padding: 20px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    gap: 12px;
+}
+
+/* Ensure scrollbar is always visible when needed */
+.modal-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.modal-body::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* For very tall modals on mobile */
+@media (max-width: 576px) {
+    .modal-dialog {
+        max-width: 100%;
+        max-height: 100vh;
+        margin: 0;
+    }
+    
+    .modal-body {
+        max-height: calc(100vh - 140px);
+    }
+}
 
 .sr-only {
     position: absolute;
@@ -3228,8 +3132,19 @@ body.modal-open {
     color: var(--primary-color);
 }
 
+/* Modal improvements */
+.modal[aria-hidden="true"] {
+    display: none;
+}
 
+.modal[aria-hidden="false"] {
+    display: flex;
+}
 
+.modal-close:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
 
 /* Header improvements */
 .header {
