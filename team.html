@@ -3804,12 +3804,6 @@ id="nav-profile">
                         <i class="fas fa-arrow-left"></i> Back
                     </button>
                     
-                    <button class="btn-transport btn-next" 
-                            id="btnNext" 
-                            onclick="nextTransportStep()">
-                        Continue <i class="fas fa-arrow-right"></i>
-                    </button>
-                    
                     <button class="btn-transport btn-submit" 
                             id="btnSubmit" 
                             onclick="submitTransportClaim()" 
@@ -4512,7 +4506,12 @@ id="nav-profile">
 
     <script>
 
-        
+if (process.env.NODE_ENV === 'production') {
+  for (let m of ['log', 'warn', 'error', 'info', 'debug']) {
+    console[m] = function () {};
+  }
+}
+
         // Supabase Configuration
         const SUPABASE_URL = 'https://gqchhsayqxttewthcsah.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdxY2hoc2F5cXh0dGV3dGhjc2FoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2OTA0ODksImV4cCI6MjA3MjI2NjQ4OX0.iAGhrDZaHkpLwjJY07o-73l2OiePB2x1ZnnTEfUBd_M';
@@ -11946,126 +11945,159 @@ let transportState = {
 
         // Load quick routes for the participant
         async function loadQuickRoutes(participantId) {
-            const container = document.getElementById('quickRoutesGrid');
+    const container = document.getElementById('quickRoutesGrid');
+    container.innerHTML = `
+        <div class="route-loading">
+            <div class="spinner"></div>
+            <p>Loading saved routes...</p>
+        </div>
+    `;
+    
+    try {
+        const { data: routes, error } = await supabaseClient
+            .from('saved_routes')
+            .select('*')
+            .eq('staff_id', currentStaff.id)      // ✅ Only current user's routes
+            .eq('participant_id', participantId)  // ✅ Only for this participant
+            .order('use_count', { ascending: false })
+            .order('created_at', { ascending: false })
+            .limit(5);
+        
+        if (error) throw error;
+        
+        if (!routes || routes.length === 0) {
             container.innerHTML = `
-                <div class="route-loading">
-                    <div class="spinner"></div>
-                    <p>Loading saved routes...</p>
+                <div style="text-align: center; padding: 40px; color: #999;">
+                    <i class="fas fa-route" style="font-size: 2rem; margin-bottom: 10px;"></i>
+                    <p>No saved routes yet. Create your first route below!</p>
                 </div>
             `;
-            
-            try {
-                const { data: routes, error } = await supabaseClient
-                    .rpc('get_participant_quick_routes', {
-                        p_participant_id: participantId,
-                        p_staff_id: currentStaff.id,
-                        p_limit: 5
-                    });
-                
-                if (error) throw error;
-                
-                if (!routes || routes.length === 0) {
-                    container.innerHTML = `
-                        <div style="text-align: center; padding: 40px; color: #999;">
-                            <i class="fas fa-route" style="font-size: 2rem; margin-bottom: 10px;"></i>
-                            <p>No saved routes yet. Create your first route below!</p>
+            return;
+        }
+        
+        let html = '<h4 style="margin-top: 0; margin-bottom: 15px; color: #333;">Quick Routes</h4>';
+        
+        routes.forEach((route, index) => {
+            html += `
+                <div class="route-card" onclick="selectQuickRoute('${route.id}', ${JSON.stringify(route).replace(/"/g, '&quot;')})">
+                    <div class="route-card-header">
+                        <div class="route-name">${route.route_name || `Route ${index + 1}`}</div>
+                        <div class="route-actions">
+                            ${route.is_favorite ? '<i class="fas fa-star route-favorite"></i>' : ''}
+                            <button class="route-delete" onclick="event.stopPropagation(); deleteTransportRoute('${route.id}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
                         </div>
-                    `;
-                    return;
-                }
-                
-                let html = '<h4 style="margin-top: 0; margin-bottom: 15px; color: #333;">Quick Routes</h4>';
-                
-                routes.forEach((route, index) => {
-                    html += `
-                        <div class="route-card" onclick="selectQuickRoute('${route.id}', ${JSON.stringify(route).replace(/"/g, '&quot;')})">
-                            <div class="route-card-header">
-                                <div class="route-name">${route.route_name || `Route ${index + 1}`}</div>
-                                <div class="route-actions">
-                                    ${route.is_favorite ? '<i class="fas fa-star route-favorite"></i>' : ''}
-                                    <button class="route-delete" onclick="event.stopPropagation(); deleteTransportRoute('${route.id}')">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            
-                            <div class="route-info">
-                                <div class="route-stat">
-                                    <i class="fas fa-road"></i>
-                                    <span>${parseFloat(route.distance_km).toFixed(1)} km</span>
-                                </div>
-                                <div class="route-stat">
-                                    <i class="fas fa-clock"></i>
-                                    <span>${route.duration_minutes || '~'} mins</span>
-                                </div>
-                                <div class="route-stat highlight">
-                                    <i class="fas fa-dollar-sign"></i>
-                                    <span>$${parseFloat(route.distance_km).toFixed(2)}</span>
-                                </div>
-                            </div>
-                            
-                            <div class="route-addresses">
-                                <div class="route-address-line"><strong>From:</strong> ${route.origin_address}</div>
-                                <div class="route-address-line"><strong>To:</strong> ${route.destination_address}</div>
-                                ${route.route_via ? `<div class="route-address-line"><strong>Via:</strong> ${route.route_via}</div>` : ''}
-                            </div>
-                            
-                            ${route.use_count > 0 ? `
-                                <div style="margin-top: 8px; color: #999; font-size: 0.8rem;">
-                                    Used ${route.use_count} time${route.use_count > 1 ? 's' : ''}
-                                </div>
-                            ` : ''}
-                        </div>
-                    `;
-                });
-                
-                container.innerHTML = html;
-                
-            } catch (error) {
-                console.error('Error loading quick routes:', error);
-                container.innerHTML = `
-                    <div style="text-align: center; padding: 20px; color: #dc3545;">
-                        <i class="fas fa-exclamation-triangle"></i> Failed to load saved routes
                     </div>
-                `;
-            }
+                    
+                    <div class="route-info">
+                        <div class="route-stat">
+                            <i class="fas fa-road"></i>
+                            <span>${parseFloat(route.distance_km).toFixed(1)} km</span>
+                        </div>
+                        <div class="route-stat">
+                            <i class="fas fa-clock"></i>
+                            <span>${route.duration_minutes || '~'} mins</span>
+                        </div>
+                        <div class="route-stat highlight">
+                            <i class="fas fa-dollar-sign"></i>
+                            <span>$${parseFloat(route.distance_km).toFixed(2)}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="route-addresses">
+                        <div class="route-address-line"><strong>From:</strong> ${route.origin_address}</div>
+                        <div class="route-address-line"><strong>To:</strong> ${route.destination_address}</div>
+                        ${route.route_via ? `<div class="route-address-line"><strong>Via:</strong> ${route.route_via}</div>` : ''}
+                    </div>
+                    
+                    ${route.use_count > 0 ? `
+                        <div style="margin-top: 8px; color: #999; font-size: 0.8rem;">
+                            Used ${route.use_count} time${route.use_count > 1 ? 's' : ''}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+        
+    } catch (error) {
+        console.error('Error loading quick routes:', error);
+        container.innerHTML = `
+            <div style="text-align: center; padding: 20px; color: #dc3545;">
+                <i class="fas fa-exclamation-triangle"></i> Failed to load saved routes
+            </div>
+        `;
+    }
+}
+function selectQuickRoute(routeId, routeData) {
+    // ✅ Log what's happening for debugging
+    console.log('🚗 Quick Route Selected:', {
+        claimWillBeFor: {
+            staff: currentStaff.id,
+            staffName: `${currentStaff.first_name} ${currentStaff.last_name}`,
+            participant: transportState.participantId,
+            participantName: transportState.participant ? 
+                `${transportState.participant.first_name} ${transportState.participant.last_name}` : 
+                'Unknown'
+        },
+        routeDetails: {
+            from: routeData.origin_address,
+            to: routeData.destination_address,
+            distance: routeData.distance_km
         }
-
-        // Select a quick route
-        function selectQuickRoute(routeId, routeData) {
-            transportState.selectedQuickRoute = routeData;
-            
-            // Mark as selected
-            document.querySelectorAll('.route-card').forEach(card => {
-                card.classList.remove('selected');
-            });
-            event.currentTarget.classList.add('selected');
-            
-            // Set route data
-            window.selectedOrigin = {
-                address: routeData.origin_address,
-                placeId: routeData.origin_place_id
-            };
-            
-            window.selectedDestination = {
-                address: routeData.destination_address,
-                placeId: routeData.destination_place_id
-            };
-            
-            window.selectedRouteData = {
-                distance: routeData.distance_km,
-                duration: routeData.duration_minutes,
-                via: routeData.route_via,
-                polyline: routeData.route_polyline
-            };
-            
-            // Update use count
-            supabaseClient.rpc('use_saved_route', { p_route_id: routeId });
-            
-            // Skip to confirmation
-            updateTransportStep(3);
-        }
-
+    });
+    
+    transportState.selectedQuickRoute = routeData;
+    
+    // Mark as selected
+    document.querySelectorAll('.route-card').forEach(card => {
+        card.classList.remove('selected');
+    });
+    event.currentTarget.classList.add('selected');
+    
+    // Set route data
+    window.selectedOrigin = {
+        address: routeData.origin_address,
+        placeId: routeData.origin_place_id
+    };
+    
+    window.selectedDestination = {
+        address: routeData.destination_address,
+        placeId: routeData.destination_place_id
+    };
+    
+    window.selectedRouteData = {
+        distance: routeData.distance_km,
+        duration: routeData.duration_minutes,
+        via: routeData.route_via,
+        polyline: routeData.route_polyline,
+        hasTolls: false,
+        warnings: []
+    };
+    
+    window.selectedRouteIndex = 0;
+    
+    // Update use count
+    supabaseClient.rpc('use_saved_route', { p_route_id: routeId });
+    
+    // Skip to confirmation step
+    updateTransportStep(3);
+    
+    // Auto-populate form fields
+    const dateInput = document.getElementById('transportDate');
+    if (dateInput && !dateInput.value) {
+        dateInput.valueAsDate = new Date();
+    }
+    
+    // Auto-populate reason with route name or default
+    const reasonInput = document.getElementById('transportReason');
+    if (reasonInput && !reasonInput.value) {
+        const routeName = routeData.route_name || `${routeData.origin_address.split(',')[0]} to ${routeData.destination_address.split(',')[0]}`;
+        reasonInput.value = `Client support visit - ${routeName}`;
+    }
+}
         // Use client's home address
         function useClientHome() {
             if (!transportState.participant) return;
@@ -12121,45 +12153,58 @@ let transportState = {
 
         // Update step display
         function updateTransportStep(step) {
-            transportState.currentStep = step;
-            
-            // Update step indicators
-            ['step1Dot', 'step2Dot', 'step3Dot'].forEach((id, index) => {
-                const dot = document.getElementById(id);
-                if (index + 1 < step) {
-                    dot.classList.add('completed');
-                    dot.classList.remove('active');
-                } else if (index + 1 === step) {
-                    dot.classList.add('active');
-                    dot.classList.remove('completed');
-                } else {
-                    dot.classList.remove('active', 'completed');
-                }
-            });
-            
-            // Update step title
-            const titles = [
-                'Step 1: Select or Create Route',
-                'Step 2: Choose Your Path',
-                'Step 3: Confirm Details'
-            ];
-            document.getElementById('stepTitle').textContent = titles[step - 1];
-            
-            // Update content sections
-            ['step1Content', 'step2Content', 'step3Content'].forEach((id, index) => {
-                document.getElementById(id).classList.toggle('active', index + 1 === step);
-            });
-            
-            // Update buttons
-            document.getElementById('btnBack').style.display = step > 1 ? 'block' : 'none';
-            document.getElementById('btnNext').style.display = step < 3 ? 'block' : 'none';
-            document.getElementById('btnSubmit').style.display = step === 3 ? 'block' : 'none';
-            
-            // Update summary if on step 3
-            if (step === 3) {
-                updateTripSummary();
+    transportState.currentStep = step;
+    
+    // Update step indicators
+    ['step1Dot', 'step2Dot', 'step3Dot'].forEach((id, index) => {
+        const dot = document.getElementById(id);
+        if (dot) {
+            if (index + 1 < step) {
+                dot.classList.add('completed');
+                dot.classList.remove('active');
+            } else if (index + 1 === step) {
+                dot.classList.add('active');
+                dot.classList.remove('completed');
+            } else {
+                dot.classList.remove('active', 'completed');
             }
         }
+    });
+    
+    // Update step title
+    const titles = [
+        'Step 1: Select or Create Route',
+        'Step 2: Choose Your Path',
+        'Step 3: Confirm Details'
+    ];
+    const stepTitle = document.getElementById('stepTitle');
+    if (stepTitle) {
+        stepTitle.textContent = titles[step - 1];
+    }
+    
+    // Update content sections
+    ['step1Content', 'step2Content', 'step3Content'].forEach((id, index) => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.classList.toggle('active', index + 1 === step);
+        }
+    });
+    
+    // Update buttons
+    const btnBack = document.getElementById('btnBack');
+    const btnNext = document.getElementById('btnNext');
+    const btnSubmit = document.getElementById('btnSubmit');
+    
+    if (btnBack) btnBack.style.display = step > 1 ? 'block' : 'none';
+    if (btnNext) btnNext.style.display = step < 3 ? 'block' : 'none';
+    if (btnSubmit) btnSubmit.style.display = step === 3 ? 'block' : 'none';
+    
+    // Update summary if on step 3
+    if (step === 3) {
+        console.log('Updating trip summary with data:', window.selectedRouteData);
+        updateTripSummary();
+    }
+}
 
         // Navigate steps
         function nextTransportStep() {
@@ -12239,45 +12284,63 @@ let transportState = {
             `;
         }
 
-        // Submit transport claim
         async function submitTransportClaim() {
-            const btn = document.getElementById('btnSubmit');
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
-            
-            try {
-                await submitTransportClaimWithRoute(transportState.participantId);
-                
-                // Reset and close
-                transportState.currentStep = 1;
-                transportState.selectedQuickRoute = null;
-                window.selectedOrigin = null;
-                window.selectedDestination = null;
-                window.selectedRouteData = null;
-                
-                // Clear form
-                document.getElementById('routeOrigin').value = '';
-                document.getElementById('routeDestination').value = '';
-                document.getElementById('transportReason').value = '';
-                document.getElementById('saveRouteCheck').checked = false;
-                
-                // Reload quick routes
-                await loadQuickRoutes(transportState.participantId);
-                
-                showToast('Transport claim submitted successfully!', 'success');
-                
-                // Optionally navigate back to participant menu
-                // closeParticipantPanel();
-                
-            } catch (error) {
-                console.error('Error submitting claim:', error);
-                showToast('Failed to submit transport claim', 'error');
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-check"></i> Submit Claim';
-            }
+    const btn = document.getElementById('btnSubmit');
+    
+    // Prevent double submission
+    if (btn.disabled) return;
+    
+    // Validate we have all required data FIRST
+    if (!window.selectedRouteData) {
+        showToast('Please select a route first', 'warning');
+        return;
+    }
+    
+    if (!window.selectedOrigin || !window.selectedDestination) {
+        showToast('Route information is incomplete', 'error');
+        return;
+    }
+    
+    // Validate form fields
+    const date = document.getElementById('transportDate')?.value;
+    const reason = document.getElementById('transportReason')?.value;
+    
+    if (!date) {
+        showToast('Please select a date', 'warning');
+        return;
+    }
+    
+    if (!reason || reason.trim() === '') {
+        showToast('Please enter a reason for travel', 'warning');
+        return;
+    }
+    
+    // Show loading state
+    btn.disabled = true;
+    const originalBtnText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+    
+    try {
+        // Submit the claim - this will return the data or undefined if cancelled
+        const result = await submitTransportClaimWithRoute(transportState.participantId);
+        
+        // Only show success if claim was actually submitted
+        if (result) {
+            showToast('Transport claim submitted successfully!', 'success');
+        } else {
+            // User cancelled or submission was stopped
+            console.log('Submission cancelled by user');
         }
-
+        
+    } catch (error) {
+        console.error('Error submitting claim:', error);
+        showToast('Failed to submit transport claim: ' + (error.message || 'Unknown error'), 'error');
+    } finally {
+        // Reset button state
+        btn.disabled = false;
+        btn.innerHTML = originalBtnText;
+    }
+}
         // Delete a saved route
         async function deleteTransportRoute(routeId) {
             if (confirm('Delete this saved route?')) {
@@ -13213,8 +13276,6 @@ function selectRoute(index) {
     updateTransportClaimTotal();
 }
 
-
-// Save a route for future use
 async function saveRoute(participantId, routeName = null) {
     if (!window.selectedOrigin || !window.selectedDestination || !window.selectedRouteData) {
         showToast('Please select a complete route first', 'warning');
@@ -13222,6 +13283,23 @@ async function saveRoute(participantId, routeName = null) {
     }
     
     try {
+        // ✅ Check if this exact route already exists for this staff member
+        const { data: existingRoutes, error: checkError } = await supabaseClient
+            .from('saved_routes')
+            .select('id, route_name')
+            .eq('staff_id', currentStaff.id)
+            .eq('participant_id', participantId)
+            .eq('origin_place_id', window.selectedOrigin.placeId)
+            .eq('destination_place_id', window.selectedDestination.placeId);
+        
+        if (checkError) throw checkError;
+        
+        if (existingRoutes && existingRoutes.length > 0) {
+            showToast(`This route is already saved as "${existingRoutes[0].route_name}"`, 'info');
+            return existingRoutes[0]; // Return existing route
+        }
+        
+        // Route doesn't exist, create it
         const routeData = {
             participant_id: participantId,
             staff_id: currentStaff.id,
@@ -13251,7 +13329,6 @@ async function saveRoute(participantId, routeName = null) {
         showToast('Failed to save route', 'error');
     }
 }
-
 // Delete a saved route
 async function deleteSavedRoute(routeId) {
     try {
@@ -13307,7 +13384,6 @@ async function useSavedRoute(routeId, routeData) {
     showTransportClaimStep('confirm');
 }
 
-// Check for duplicate claims
 async function checkDuplicateClaim(participantId, date) {
     if (!window.selectedOrigin || !window.selectedDestination) return null;
     
@@ -13323,39 +13399,56 @@ async function checkDuplicateClaim(participantId, date) {
         
         if (error) throw error;
         
-        return data[0]; // Returns { has_duplicate, existing_claim_id, existing_total }
+        return data && data.length > 0 ? data[0] : null;
     } catch (error) {
         console.error('Error checking duplicate:', error);
-        return null;
+        return null; // Don't block submission if check fails
     }
 }
-
-// Submit transport claim with route data
 async function submitTransportClaimWithRoute(participantId) {
+    console.log('=== SUBMIT TRANSPORT CLAIM ===');
+    console.log('Participant ID:', participantId);
+    
     if (!window.selectedOrigin || !window.selectedDestination || !window.selectedRouteData) {
+        console.error('Missing required data!');
         showToast('Please complete route selection first', 'error');
-        return;
+        return null; // ✅ Return null instead of undefined
     }
     
     try {
-        const date = document.getElementById('transportClaimDate').value;
-        const reason = document.getElementById('transportReason').value;
+        // Get form values
+        const date = document.getElementById('transportDate')?.value;
+        const reason = document.getElementById('transportReason')?.value;
         const saveRouteCheck = document.getElementById('saveRouteCheck');
+        
+        // Validation
+        if (!date) {
+            showToast('Please select a date', 'warning');
+            return null; // ✅ Return null
+        }
+        
+        if (!reason) {
+            showToast('Please enter a reason for travel', 'warning');
+            return null; // ✅ Return null
+        }
         
         // Check for duplicates
         const duplicate = await checkDuplicateClaim(participantId, date);
         if (duplicate && duplicate.has_duplicate) {
-            const confirm = window.confirm(
-                `A similar trip was already claimed on this date for $${duplicate.existing_total}.\n\n` +
+            const confirmSubmit = window.confirm(
+                `A similar trip was already claimed on this date for $${duplicate.existing_total.toFixed(2)}.\n\n` +
                 `Continue with submission?`
             );
-            if (!confirm) return;
+            if (!confirmSubmit) {
+                console.log('User cancelled duplicate submission');
+                return null; // ✅ Return null when user cancels
+            }
         }
         
-        // Calculate total (simplified: $1 per km)
+        // Calculate total ($1 per km)
         const total = window.selectedRouteData.distance;
         
-        // Submit claim
+        // Prepare claim data
         const claimData = {
             staff_id: currentStaff.id,
             participant_id: participantId,
@@ -13372,10 +13465,13 @@ async function submitTransportClaimWithRoute(participantId) {
             selected_route_index: window.selectedRouteIndex || 0,
             reason: reason,
             total_claim: total,
-            status: 'pending',
-            created_at: new Date().toISOString()
+            has_tolls: window.selectedRouteData.hasTolls || false,
+            status: 'pending'
         };
         
+        console.log('Submitting claim data:', claimData);
+        
+        // Submit to database
         const { data, error } = await supabaseClient
             .from('transport_claims')
             .insert(claimData)
@@ -13389,27 +13485,42 @@ async function submitTransportClaimWithRoute(participantId) {
             await saveRoute(participantId);
         }
         
-        showToast(
-            `Transport claim submitted!\nReimbursement: $${total.toFixed(2)} (${window.selectedRouteData.distance.toFixed(1)}km @ $1/km)`,
-            'success'
-        );
-        
-        // Reset form
-        resetTransportClaimForm();
-        closeTransportClaimModal();
-        
-        // Refresh claims list if function exists
-        if (typeof loadTransportClaims === 'function') {
-            loadTransportClaims();
+        // Success message with toll warning if applicable
+        let successMsg = `Transport claim submitted!\nReimbursement: $${total.toFixed(2)} (${window.selectedRouteData.distance.toFixed(1)}km @ $1/km)`;
+        if (window.selectedRouteData.hasTolls) {
+            successMsg += '\n⚠️ Note: This route has tolls';
         }
         
-        return data;
+        showToast(successMsg, 'success');
+        
+        // Reset state
+        transportState.currentStep = 1;
+        transportState.selectedQuickRoute = null;
+        window.selectedOrigin = null;
+        window.selectedDestination = null;
+        window.selectedRouteData = null;
+        window.selectedRouteIndex = null;
+        
+        // Clear form
+        document.getElementById('routeOrigin').value = '';
+        document.getElementById('routeDestination').value = '';
+        document.getElementById('transportReason').value = '';
+        if (saveRouteCheck) saveRouteCheck.checked = false;
+        
+        // Reload quick routes
+        await loadQuickRoutes(participantId);
+        
+        // Update transport step back to 1
+        updateTransportStep(1);
+        
+        return data; // ✅ Return the submitted data
+        
     } catch (error) {
         console.error('Error submitting transport claim:', error);
-        showToast('Failed to submit transport claim', 'error');
+        showToast('Failed to submit transport claim: ' + error.message, 'error');
+        return null; // ✅ Return null on error
     }
 }
-
 // Get participant home address
 function getParticipantHomeAddress(participant) {
     if (!participant) return null;
