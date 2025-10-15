@@ -26,6 +26,36 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
     <style>
 
+.panel-footer {
+    position: sticky;
+    bottom: 0;
+    background: white;
+    padding: 15px 20px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    gap: 10px;
+    z-index: 101;
+    margin: 0 -20px -20px -20px; /* Extend to panel edges */
+}
+
+.panel-footer .btn {
+    flex: 1;
+}
+
+.info-box {
+    background: #e3f2fd;
+    padding: 15px;
+    border-radius: 8px;
+    margin: 20px 0;
+    display: flex;
+    align-items: start;
+    gap: 10px;
+}
+
+.info-box i {
+    color: #1976d2;
+    margin-top: 2px;
+}
 #step2Content {
     display: none;
 }
@@ -52,7 +82,7 @@
     .transport-claim-wrapper {
             background: white;
             border-radius: 12px;
-            
+            overflow: hidden;
             height: calc(100vh - 200px);
             display: flex;
             flex-direction: column;
@@ -211,7 +241,7 @@
         .route-address-line {
             margin: 3px 0;
             white-space: nowrap;
-            
+            overflow: hidden;
             text-overflow: ellipsis;
         }
         
@@ -276,7 +306,7 @@
             width: 100%;
             height: 350px;
             border-radius: 10px;
-            
+            overflow: hidden;
             margin: 20px 0;
             border: 1px solid #ddd;
             background: #f0f0f0;
@@ -654,7 +684,7 @@
     height: 6px;
     background: #f0f0f0;
     border-radius: 3px;
-    
+    overflow: hidden;
 }
 
 .loading-progress-bar {
@@ -998,7 +1028,7 @@ body.loading {
 .attachment-item {
     position: relative;
     border-radius: 8px;
-    
+    overflow: hidden;
     cursor: pointer;
     aspect-ratio: 1;
 }
@@ -1705,7 +1735,7 @@ body.loading {
             color: white;
             border-radius: var(--radius-lg);
             margin-bottom: 16px;
-            
+            overflow: hidden;
             box-shadow: var(--shadow-md);
             cursor: pointer;
             transition: transform 0.3s;
@@ -1760,7 +1790,7 @@ body.loading {
 
         .shift-details {
             max-height: 0;
-            
+            overflow: hidden;
             transition: max-height 0.3s ease-out;
             background: rgba(255,255,255,0.95);
             color: var(--text-dark);
@@ -1973,7 +2003,7 @@ body.loading {
         .shift-list {
             background: white;
             border-radius: var(--radius-lg);
-            
+            overflow: hidden;
             box-shadow: var(--shadow-sm);
         }
 
@@ -2125,7 +2155,7 @@ body.loading {
         .schedule-grid {
             background: white;
             border-radius: var(--radius-lg);
-            
+            overflow: hidden;
             box-shadow: var(--shadow-sm);
         }
 
@@ -2287,7 +2317,7 @@ body.loading {
         .transfer-tabs {
             background: white;
             border-radius: var(--radius-lg);
-            
+            overflow: hidden;
             margin-bottom: 16px;
             display: flex;
             box-shadow: var(--shadow-sm);
@@ -2401,7 +2431,7 @@ body.loading {
             background: white;
             border-radius: var(--radius-lg);
             margin-bottom: 16px;
-            
+            overflow: hidden;
             box-shadow: var(--shadow-sm);
         }
 
@@ -2773,7 +2803,7 @@ body.loading {
         .notification-list {
             background: white;
             border-radius: var(--radius-lg);
-            
+            overflow: hidden;
             box-shadow: var(--shadow-sm);
         }
 
@@ -2963,7 +2993,7 @@ body.loading {
 .modal select.form-control {
     width: 100%;
     min-width: 0; /* Prevents minimum width issues */
-    
+    overflow: hidden;
     text-overflow: ellipsis;
 }
 
@@ -2979,7 +3009,7 @@ body.loading {
 .modal .form-group {
     width: 100%;
     max-width: 100%;
-     /* Hide any overflow */
+    overflow: hidden; /* Hide any overflow */
 }
 
 /* FIX FOR MODAL SCROLLING - THIS IS THE KEY ADDITION */
@@ -3066,7 +3096,7 @@ body.loading {
     height: 1px;
     padding: 0;
     margin: -1px;
-    ;
+    overflow: hidden;
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border: 0;
@@ -3235,7 +3265,7 @@ body.loading {
 .weekly-schedule {
     background: white;
     border-radius: var(--radius-lg);
-    ;
+    overflow: hidden;
 }
 
 .day-section {
@@ -3644,6 +3674,334 @@ id="nav-profile">
         </button>
     </div>
 </div>
+
+<!-- Unified Slide-over Panel for Forms -->
+<div id="formPanel" class="slide-panel">
+    <div class="panel-header">
+        <button class="back-btn" onclick="closeFormPanel()">
+            <i class="fa-solid fa-arrow-left"></i> Back
+        </button>
+        <h2 id="formPanelTitle">Form</h2>
+    </div>
+    
+    <div class="panel-content">
+        <!-- Add Shift View -->
+        <div id="addShiftView" class="panel-view" style="display: none;">
+            <form id="addShiftForm" novalidate>
+                <div class="form-group">
+                    <label for="shiftDate">Date *</label>
+                    <input type="date" id="shiftDate" name="shiftDate" class="form-control" required>
+                    <small class="form-text text-muted">You can only submit shifts for past dates up to tomorrow</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="shiftParticipant">Participant *</label>
+                    <select id="shiftParticipant" name="shiftParticipant" class="form-control" required>
+                        <option value="">Select participant</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="shiftDutyType">Duty Type *</label>
+                    <select id="shiftDutyType" name="shiftDutyType" class="form-control" required onchange="toggleTimeFields()">
+                        <option value="">Select duty type</option>
+                    </select>
+                </div>
+                
+                <div id="timeFields">
+                    <div class="form-group">
+                        <label for="shiftStartTime">Start Time</label>
+                        <select id="shiftStartTime" name="shiftStartTime" class="form-control">
+                            <option value="">Select start time</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="shiftEndTime">End Time</label>
+                        <select id="shiftEndTime" name="shiftEndTime" class="form-control">
+                            <option value="">Select end time</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="shiftNotes">Notes</label>
+                    <textarea id="shiftNotes" name="shiftNotes" class="form-control" rows="3"></textarea>
+                </div>
+            </form>
+            
+            <div class="panel-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeFormPanel()">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitShift()">Submit for Approval</button>
+            </div>
+        </div>
+
+        <!-- Upload Document View -->
+<div id="uploadDocumentView" class="panel-view" style="display: none;">
+    <form id="uploadDocumentForm" enctype="multipart/form-data" novalidate>
+        <div class="form-group">
+            <label for="documentType">Document Type *</label>
+            <select class="form-control" id="documentType" name="documentType" 
+                    required onchange="checkExpiryRequired()">
+                <option value="">Select type</option>
+                <option value="id">Photo ID</option>
+                <option value="resume">Resume/CV</option>
+                <option value="visa">Visa/Work Permit</option>
+                <option value="firstaid">First Aid/CPR Certificate</option>
+                <option value="wwcc">Working with Children Check</option>
+                <option value="police">Police Check</option>
+                <option value="ndis">NDIS Worker Check</option>
+                <option value="other">Other</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="documentTitle">Document Title *</label>
+            <input type="text" class="form-control" id="documentTitle" name="documentTitle" 
+                   required placeholder="e.g., Driver's License">
+        </div>
+        
+        <div class="form-group" id="expiryGroup">
+            <label for="documentExpiry">Expiry Date</label>
+            <input type="date" class="form-control" id="documentExpiry" name="documentExpiry">
+            <small class="form-help">Required for certain document types</small>
+        </div>
+        
+        <div class="form-group">
+            <label for="documentFile">Select File *</label>
+            <input type="file" class="form-control" id="documentFile" name="documentFile" 
+                   required accept=".pdf,.jpg,.jpeg,.png">
+            <small class="form-help">Max 10MB. PDF, JPG, PNG accepted.</small>
+        </div>
+        
+        <div class="form-group">
+            <label for="documentNotes">Notes</label>
+            <textarea class="form-control" id="documentNotes" name="documentNotes" 
+                      placeholder="Optional notes..." rows="3"></textarea>
+            <small class="form-help">Additional information about the document</small>
+        </div>
+    </form>
+    
+    <div class="panel-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeFormPanel()">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="uploadDocument()">Upload</button>
+    </div>
+</div>
+        
+        <!-- Transfer Shift View -->
+        <div id="transferShiftView" class="panel-view" style="display: none;">
+            <form id="transferForm" novalidate>
+                <div class="form-group">
+                    <label for="transferShiftSelect">Select Shift to Transfer *</label>
+                    <select class="form-control" id="transferShiftSelect" name="transferShiftSelect" required>
+                        <option value="">Select a shift</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="transferToStaff">Transfer To *</label>
+                    <select class="form-control" id="transferToStaff" name="transferToStaff" required>
+                        <option value="">Select a shift first</option>
+                    </select>
+                    <small class="form-help">Only staff assigned to this participant are shown</small>
+                </div>
+                
+                <div id="transferConflictWarning" style="display: none; margin-top: 10px;"></div>
+                
+                <div class="form-group">
+                    <label for="transferReason">Reason *</label>
+                    <textarea class="form-control" id="transferReason" name="transferReason" required 
+                              placeholder="Please provide a reason for the transfer..." rows="3"></textarea>
+                    <small class="form-help">Explain why you need to transfer this shift</small>
+                </div>
+            </form>
+            
+            <div class="panel-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeFormPanel()">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitTransfer()">Send Transfer Request</button>
+            </div>
+        </div>
+        
+        <!-- Time Adjustment View -->
+        <div id="adjustmentView" class="panel-view" style="display: none;">
+            <form id="adjustmentForm" novalidate>
+                <div class="form-group">
+                    <label for="adjustmentShift">Select Shift *</label>
+                    <select class="form-control" id="adjustmentShift" name="adjustmentShift" 
+                            required onchange="loadShiftTimes()">
+                        <option value="">Select a shift</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="adjustmentStartTime">New Start Time</label>
+                    <input type="time" class="form-control" id="adjustmentStartTime" name="adjustmentStartTime">
+                    <small class="form-help">Current time will be shown when shift is selected</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="adjustmentEndTime">New End Time</label>
+                    <input type="time" class="form-control" id="adjustmentEndTime" name="adjustmentEndTime">
+                    <small class="form-help">Current time will be shown when shift is selected</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="adjustmentReason">Reason for Adjustment *</label>
+                    <textarea class="form-control" id="adjustmentReason" name="adjustmentReason" 
+                              required placeholder="Please explain the time adjustment..." rows="3"></textarea>
+                    <small class="form-help">Explain why the times need to be adjusted</small>
+                </div>
+            </form>
+            
+            <div class="panel-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeFormPanel()">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitAdjustment()">Submit Request</button>
+            </div>
+        </div>
+        
+        <!-- School Holiday View -->
+        <div id="schoolHolidayView" class="panel-view" style="display: none;">
+            <form id="schoolHolidayForm">
+                <div class="form-group">
+                    <label>Start Date *</label>
+                    <input type="date" id="schoolStartDate" class="form-control" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>End Date *</label>
+                    <input type="date" id="schoolEndDate" class="form-control" required>
+                </div>
+                
+                <div class="info-box" style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                    <i class="fa-solid fa-info-circle"></i>
+                    Submit your school holiday periods for roster planning and limit management
+                </div>
+            </form>
+            
+            <div class="panel-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeFormPanel()">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitSchoolHoliday()">Submit</button>
+            </div>
+        </div>
+        
+        <!-- Leave Request View -->
+        <div id="leaveView" class="panel-view" style="display: none;">
+            <form id="leaveForm" novalidate>
+                <div class="form-group">
+                    <label for="leaveType">Leave Type *</label>
+                    <select class="form-control" id="leaveType" name="leaveType" required>
+                        <option value="">Select type</option>
+                        <option value="annual">Annual Leave</option>
+                        <option value="sick">Sick Leave</option>
+                        <option value="personal">Personal Leave</option>
+                        <option value="unpaid">Unpaid Leave</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="leaveStartDate">Start Date *</label>
+                    <input type="date" class="form-control" id="leaveStartDate" name="leaveStartDate" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="leaveEndDate">End Date *</label>
+                    <input type="date" class="form-control" id="leaveEndDate" name="leaveEndDate" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="leaveReason">Reason</label>
+                    <textarea class="form-control" id="leaveReason" name="leaveReason" 
+                              placeholder="Optional: Provide additional details..." rows="3"></textarea>
+                    <small class="form-help">Additional details about your leave request</small>
+                </div>
+            </form>
+            
+            <div class="panel-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeFormPanel()">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitLeave()">Submit Request</button>
+            </div>
+        </div>
+        
+        <!-- Document Upload View -->
+        <div id="documentUploadView" class="panel-view" style="display: none;">
+            <form id="documentUploadForm" enctype="multipart/form-data" novalidate>
+                <div class="form-group">
+                    <label for="documentType">Document Type *</label>
+                    <select class="form-control" id="documentType" name="documentType" 
+                            required onchange="checkExpiryRequired()">
+                        <option value="">Select type</option>
+                        <option value="id">Photo ID</option>
+                        <option value="resume">Resume/CV</option>
+                        <option value="visa">Visa/Work Permit</option>
+                        <option value="firstaid">First Aid/CPR Certificate</option>
+                        <option value="wwcc">Working with Children Check</option>
+                        <option value="police">Police Check</option>
+                        <option value="ndis">NDIS Worker Check</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="documentTitle">Document Title *</label>
+                    <input type="text" class="form-control" id="documentTitle" name="documentTitle" 
+                           required placeholder="e.g., Driver's License">
+                </div>
+                
+                <div class="form-group" id="expiryGroup">
+                    <label for="documentExpiry">Expiry Date</label>
+                    <input type="date" class="form-control" id="documentExpiry" name="documentExpiry">
+                    <small class="form-help">Required for certain document types</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="documentFile">Select File *</label>
+                    <input type="file" class="form-control" id="documentFile" name="documentFile" 
+                           required accept=".pdf,.jpg,.jpeg,.png">
+                    <small class="form-help">Max 10MB. PDF, JPG, PNG accepted.</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="documentNotes">Notes</label>
+                    <textarea class="form-control" id="documentNotes" name="documentNotes" 
+                              placeholder="Optional notes..." rows="3"></textarea>
+                    <small class="form-help">Additional information about the document</small>
+                </div>
+            </form>
+            
+            <div class="panel-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeFormPanel()">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="uploadDocument()">Upload</button>
+            </div>
+        </div>
+        
+        <!-- Photo Editor View -->
+        <div id="photoEditorView" class="panel-view" style="display: none;">
+            <div id="cropperContainer" style="max-height: 400px; margin-bottom: 20px;">
+                <img id="imageToCrop" style="max-width: 100%;">
+            </div>
+            
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;">
+                <button onclick="rotateCropper(-90)" class="btn btn-secondary">
+                    <i class="fas fa-rotate-left"></i> Rotate Left
+                </button>
+                <button onclick="rotateCropper(90)" class="btn btn-secondary">
+                    <i class="fas fa-rotate-right"></i> Rotate Right
+                </button>
+                <button onclick="resetCropper()" class="btn btn-secondary">
+                    <i class="fas fa-undo"></i> Reset
+                </button>
+            </div>
+            
+            <div class="panel-footer">
+                <button class="btn btn-secondary" onclick="closeFormPanel()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveCroppedImage()">Save Banner</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Shared overlay for both panels -->
+<div class="panel-overlay" id="panelOverlay"></div>
 
 <!-- Slide-over Panel for Participant Views -->
 <div id="participantPanel" class="slide-panel">
@@ -4750,128 +5108,9 @@ function getTestDate() {
     return now;
 }
 
-const ModalManager = {
-    // Modal configurations
-    modals: {
-        addShift: {
-            id: 'addShiftModal',
-            onOpen: () => populateShiftModalDropdowns(),
-            onClose: () => document.getElementById('addShiftForm')?.reset()
-        },
-        transfer: {
-            id: 'transferShiftModal',
-            onOpen: () => {
-                loadTransferableShifts();
-            },
-            onClose: () => {
-                document.getElementById('transferForm')?.reset();
-                const warning = document.getElementById('transferConflictWarning');
-                if (warning) warning.style.display = 'none';
-            }
-        },
-        adjustment: {
-            id: 'adjustmentModal',
-            onOpen: () => loadAdjustmentShifts(),
-            onClose: () => document.getElementById('adjustmentForm')?.reset()
-        },
-        leave: {
-            id: 'leaveModal',
-            onOpen: () => loadLeaveRequestModal(),
-            onClose: () => {
-                document.getElementById('leaveForm')?.reset();
-                isSubmittingLeave = false;
-            }
-        },
-        transport: {
-            id: 'transportModal',
-            onOpen: () => loadTransportModal(),
-            onClose: () => document.getElementById('transportForm')?.reset()
-        }
-    },
-    
-    // Current open modal
-    currentModal: null,
-    
-    // Open modal by name
-    show(modalName, data = null) {
-        const config = this.modals[modalName];
-        if (!config) {
-            console.error(`Modal '${modalName}' not found`);
-            return;
-        }
-        
-        // Close any open modal first
-        if (this.currentModal) {
-            this.close();
-        }
-        
-        const modalElement = document.getElementById(config.id);
-        if (!modalElement) {
-            console.error(`Modal element '${config.id}' not found`);
-            return;
-        }
-        
-        // Store current modal
-        this.currentModal = {
-            name: modalName,
-            element: modalElement,
-            config: config
-        };
-        
-        // Show modal
-        modalElement.classList.add('active');
-        
-        // Run onOpen callback if exists
-        if (config.onOpen) {
-            config.onOpen(data);
-        }
-        
-        // Add escape key listener
-        this.escapeHandler = (e) => {
-            if (e.key === 'Escape') {
-                this.close();
-            }
-        };
-        document.addEventListener('keydown', this.escapeHandler);
-    },
-    
-    // Close current modal
-    close() {
-        if (!this.currentModal) return;
-        
-        const { element, config } = this.currentModal;
-        
-        // Hide modal
-        element.classList.remove('active');
-        
-        // Run onClose callback if exists
-        if (config.onClose) {
-            config.onClose();
-        }
-        
-        // Remove escape handler
-        if (this.escapeHandler) {
-            document.removeEventListener('keydown', this.escapeHandler);
-        }
-        
-        // Clear current modal
-        this.currentModal = null;
-    },
-    
-    // Check if a modal is open
-    isOpen(modalName = null) {
-        if (!modalName) {
-            return this.currentModal !== null;
-        }
-        return this.currentModal?.name === modalName;
-    },
-    
-    // Get current modal data
-    getCurrent() {
-        return this.currentModal;
-    }
-};
 
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', setupFormPanelListeners);
 // ==========================================
 // ENHANCED: Initialize App with Staff Check
 // ==========================================
@@ -6492,21 +6731,6 @@ function formatTime12Hour(time) {
     return `${displayHour}:${minutes} ${ampm}`;
 }
 
-// Open school holiday modal
-function showSchoolHolidayModal() {
-    const modal = document.getElementById('schoolHolidayModal');
-    if (modal) {
-        // REMOVED: Don't set minimum date - allow backdating
-        // Staff can submit school holidays for past dates
-        
-        // Optional: Set a reasonable past limit (e.g., start of current year)
-        // const yearStart = new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
-        // document.getElementById('schoolStartDate').min = yearStart;
-        // document.getElementById('schoolEndDate').min = yearStart;
-        
-        modal.style.display = 'flex';
-    }
-}
 
 async function submitSchoolHoliday() {
     const submitBtn = document.querySelector('[onclick="submitSchoolHoliday()"]');
@@ -8519,7 +8743,7 @@ function addClockStyles() {
 
             .shift-details {
                 max-height: 0;
-                ;
+                overflow: hidden;
                 transition: max-height 0.3s ease;
             }
 
@@ -9241,19 +9465,6 @@ function populateLocationDropdown() {
     }
 }
 
-function showAddShiftModal() {
-    populateShiftModalDropdowns();
-    ModalManager.show('addShift');
-}
-
-
-
-
-function showTransferModal() {
-    loadTransferableShifts();
-    ModalManager.show('transfer');
-}
-
 async function loadTransferableShifts() {
     try {
         const today = getTestDate();
@@ -9558,14 +9769,7 @@ async function submitTransfer() {
         showToast('Failed to submit transfer request', 'error');
     }
 }
-function showAdjustmentModal() {
-    loadAdjustmentShifts();
-    ModalManager.show('adjustment');
-}
 
-function showLeaveModal() {
-    ModalManager.show('leave');
-}
 
 // ==========================================
 // REQUESTS SECTION - COMPLETE REPLACEMENT
@@ -11690,13 +11894,10 @@ async function uploadDocument() {
 
 // Add this function to open the document upload modal
 function openUploadDocumentModal() {
-    const modal = document.getElementById('uploadDocumentModal');
-    if (modal) {
-        // Load document types for dropdown
-        loadDocumentTypes();
-        modal.style.display = 'flex';
-    }
+    FormPanelManager.open('uploadDocument', 'Upload Document');
 }
+
+
 
 // Load document types for the dropdown
 async function loadDocumentTypes() {
@@ -18111,6 +18312,229 @@ function addNotificationStyles() {
     }
 }
 
+// Unified Form Panel Manager (replaces ModalManager)
+const FormPanelManager = {
+    currentPanel: null,
+    
+    // Open a form panel view
+    open(viewName, title, onOpenCallback = null) {
+        const panel = document.getElementById('formPanel');
+        const overlay = document.getElementById('panelOverlay');
+        const titleElement = document.getElementById('formPanelTitle');
+        
+        if (!panel) {
+            console.error('Form panel not found');
+            return;
+        }
+        
+        // Close any open panel first
+        if (this.currentPanel) {
+            this.close();
+        }
+        
+        // Hide all views
+        document.querySelectorAll('#formPanel .panel-view').forEach(view => {
+            view.style.display = 'none';
+        });
+        
+        // Show selected view
+        const viewElement = document.getElementById(`${viewName}View`);
+        if (!viewElement) {
+            console.error(`View '${viewName}View' not found`);
+            return;
+        }
+        
+        viewElement.style.display = 'block';
+        
+        // Set title
+        titleElement.textContent = title;
+        
+        // Show panel and overlay
+        overlay.classList.add('active');
+        panel.classList.add('active');
+        
+        // Store current panel
+        this.currentPanel = {
+            viewName: viewName,
+            panel: panel,
+            overlay: overlay
+        };
+        
+        // Run view-specific load functions
+        if (onOpenCallback) {
+            onOpenCallback();
+        } else {
+            // Default callbacks based on view name
+            switch(viewName) {
+                case 'addShift':
+                    populateShiftModalDropdowns();
+                    break;
+                case 'transferShift':
+                    loadTransferableShifts();
+                    break;
+                case 'adjustment':
+                    loadAdjustmentShifts();
+                    break;
+                case 'leave':
+                    loadLeaveRequestModal();
+                    break;
+                    case 'uploadDocument':  // ← ADD THIS
+        loadDocumentTypes();  // If you have a function to load document types
+        break;
+}
+        }
+        
+        // Add escape key listener
+        this.escapeHandler = (e) => {
+            if (e.key === 'Escape') {
+                this.close();
+            }
+        };
+        document.addEventListener('keydown', this.escapeHandler);
+    },
+    
+    // Close current panel
+    close() {
+        if (!this.currentPanel) return;
+        
+        const { panel, overlay, viewName } = this.currentPanel;
+        
+        // Hide panel and overlay
+        panel.classList.remove('active');
+        overlay.classList.remove('active');
+        
+        // Reset forms in current view
+        const viewElement = document.getElementById(`${viewName}View`);
+        if (viewElement) {
+            const form = viewElement.querySelector('form');
+            if (form) {
+                form.reset();
+            }
+        }
+        
+        // View-specific cleanup
+        if (viewName === 'transferShift') {
+            const warning = document.getElementById('transferConflictWarning');
+            if (warning) warning.style.display = 'none';
+        } else if (viewName === 'leave') {
+            isSubmittingLeave = false;
+        }
+        
+        // Remove escape handler
+        if (this.escapeHandler) {
+            document.removeEventListener('keydown', this.escapeHandler);
+        }
+        
+        // Clear current panel
+        this.currentPanel = null;
+    },
+    
+    // Check if panel is open
+    isOpen() {
+        return this.currentPanel !== null;
+    }
+};
+
+// Convenience functions (backward compatibility)
+function openFormPanel(viewName, title, callback = null) {
+    FormPanelManager.open(viewName, title, callback);
+}
+
+function closeFormPanel() {
+    FormPanelManager.close();
+}
+
+// Replace old modal functions
+function openModal(modalId) {
+    // Only keep transport modal as actual modal
+    if (modalId === 'transportModal') {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.add('active');
+            modal.style.display = 'flex';
+            if (typeof loadTransportModal === 'function') {
+                loadTransportModal();
+            }
+        }
+        return;
+    }
+    
+    // Map old modal IDs to new panel views
+    const modalMap = {
+        'addShiftModal': { view: 'addShift', title: 'Add New Shift' },
+        'transferShiftModal': { view: 'transferShift', title: 'Transfer Shift' },
+        'adjustmentModal': { view: 'adjustment', title: 'Request Time Adjustment' },
+        'leaveModal': { view: 'leave', title: 'Request Leave' },
+        'schoolHolidayModal': { view: 'schoolHoliday', title: 'Submit School Holiday Period' },
+        'documentUploadModal': { view: 'documentUpload', title: 'Upload Document' },
+        'photoEditorModal': { view: 'photoEditor', title: 'Adjust Profile Banner' }
+    };
+    
+    const mapping = modalMap[modalId];
+    if (mapping) {
+        FormPanelManager.open(mapping.view, mapping.title);
+    } else {
+        console.warn(`Modal '${modalId}' not found in mapping`);
+    }
+}
+
+function closeModal(modalId) {
+    // Transport modal stays as modal
+    if (modalId === 'transportModal') {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.remove('active');
+            modal.style.display = 'none';
+        }
+        return;
+    }
+    
+    // Everything else uses form panel
+    FormPanelManager.close();
+}
+
+// Setup event listeners
+function setupFormPanelListeners() {
+    // Close button clicks
+    document.querySelectorAll('[data-modal-close]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const modalId = this.dataset.modalClose;
+            closeModal(modalId);
+        });
+    });
+    
+    // Overlay click
+    const overlay = document.getElementById('panelOverlay');
+    if (overlay) {
+        overlay.addEventListener('click', function() {
+            FormPanelManager.close();
+            closeParticipantPanel();
+        });
+    }
+    
+    // Quick action buttons
+    document.addEventListener('click', function(e) {
+        const actionBtn = e.target.closest('[data-action]');
+        if (!actionBtn) return;
+        
+        const action = actionBtn.dataset.action;
+        
+        const actionMap = {
+            'showAddShiftModal': () => FormPanelManager.open('addShift', 'Add New Shift'),
+            'showTransferModal': () => FormPanelManager.open('transferShift', 'Transfer Shift'),
+            'showAdjustmentModal': () => FormPanelManager.open('adjustment', 'Request Time Adjustment'),
+            'showLeaveModal': () => FormPanelManager.open('leave', 'Request Leave'),
+            'showSchoolHolidayModal': () => FormPanelManager.open('schoolHoliday', 'Submit School Holiday Period')
+        };
+        
+        if (actionMap[action]) {
+            actionMap[action]();
+        }
+    });
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', setupFormPanelListeners);
 
 // Update your switchSection function to handle participants
 function switchSection(section) {
@@ -18183,27 +18607,6 @@ function switchSection(section) {
     } catch (error) {
         console.error('Error switching section:', error);
         showToast('Failed to switch section', 'error');
-    }
-}
-function closeModal(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) {
-        modal.style.display = 'none';
-        modal.classList.remove('active');
-        
-        // Clear form if exists
-        const form = modal.querySelector('form');
-        if (form) {
-            form.reset();
-        }
-    }
-}
-
-function openModal(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) {
-        modal.style.display = 'flex';
-        modal.classList.add('active');
     }
 }
 
