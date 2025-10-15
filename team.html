@@ -2997,10 +2997,14 @@ body.loading {
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    z-index: 10001 !important;
+    position: relative !important;
+
 }
 
 /* Modal body scrolling fix - CRITICAL FOR TALL CONTENT */
 .modal-body {
+    overflow: hidden !important;
     overflow-x: hidden;
     overflow-y: auto; /* Enable vertical scrolling */
     max-height: calc(90vh - 180px); /* Account for header and footer */
@@ -3013,6 +3017,11 @@ body.loading {
     flex: 0 0 auto; /* Fixed height header */
     padding: 20px;
     border-bottom: 1px solid var(--border-color);
+}
+
+.modal-backdrop {
+    z-index: 9999 !important;
+    position: fixed !important;
 }
 
 .modal-footer {
