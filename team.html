@@ -1363,21 +1363,19 @@ body.loading {
     z-index: 100;
 }
 
-/* Compose input that expands upward */
-.compose-input {
-    flex: 1;
-    min-height: 40px;
-    max-height: 120px;
-    overflow-y: auto;
-    padding: 10px 15px;
-    border: 1px solid #e0e0e0;
-    border-radius: 20px;
-    outline: none;
-    color: #000000;
-    background: white;
-    font-size: 16px; /* Prevents zoom on iOS */
-    resize: none;
-    line-height: 1.4;
+.compose-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: flex-end;
+  padding: 8px 12px;
+  background: #fff;
+  border-top: 1px solid #ddd;
+  z-index: 1000;
+  /* account for iPhone safe area notch */
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .compose-input:focus {
@@ -6377,6 +6375,17 @@ function clearFilters() {
 function loadMoreNotes(participantId, page) {
     loadParticipantNotes(participantId, page, window.currentNotesFilters || {});
 }
+
+const composeBar = document.querySelector('.compose-bar');
+
+window.visualViewport?.addEventListener('resize', () => {
+  const viewport = window.visualViewport;
+  if (!viewport) return;
+
+  // push the bar up when keyboard visible
+  const keyboardHeight = window.innerHeight - viewport.height - viewport.offsetTop;
+  composeBar.style.bottom = keyboardHeight > 0 ? `${keyboardHeight}px` : '0px';
+});
 
 
 async function submitQuickNote(participantId) {
