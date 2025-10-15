@@ -26,18 +26,28 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
     <style>
 
+#step2Content {
+    display: none;
+}
+
+#step2Content.active {
+    display: block;
+}
+
 #transportMap {
     width: 100%;
     height: 400px;
     border-radius: 8px;
     margin-bottom: 20px;
-    background: #e5e3df; /* Google Maps gray background */
+    background: #e5e3df;
+    position: relative; /* Important for Google Maps */
 }
 
-/* Ensure the map container has proper sizing */
-.step-content {
-    min-height: 500px;
+/* Ensure Google Maps renders properly */
+#transportMap > div {
+    border-radius: 8px;
 }
+
     /* Transport Claim Specific Styles */
     .transport-claim-wrapper {
             background: white;
@@ -3720,30 +3730,35 @@ id="nav-profile">
                             </div>
                             
                             <button class="btn-transport btn-next" 
-                                    onclick="proceedToRouteOptions()" 
-                                    style="width: 100%;">
-                                Calculate Route
-                            </button>
+        onclick="nextTransportStep()" 
+        style="width: 100%;">
+    Continue <i class="fas fa-arrow-right"></i>
+</button>
+
                         </div>
                     </div>
                     
                     <!-- Step 2: Route Options -->
-                    <div id="step2Content" class="transport-section">
-                        <h4 style="margin-top: 0; color: #333;">Select Your Route</h4>
-                        
-                        <div class="map-container">
-                            <div id="transportMap"></div>
-                            <div class="map-loading" id="mapLoading" style="display: none;">
-                                <div class="spinner"></div>
-                                <p>Loading map...</p>
-                            </div>
-                        </div>
-                        
-                        <div class="route-options-list" id="routeOptionsList">
-                            <!-- Route options will be loaded here -->
-                        </div>
-                    </div>
-                    
+<div id="step2Content" class="transport-section">
+    <h4 style="margin-top: 0; color: #333;">Select Your Route</h4>
+    
+    <!-- Loading indicator -->
+    <div id="routeLoadingIndicator" style="display: none; text-align: center; padding: 20px; color: #666;">
+        <i class="fas fa-spinner fa-spin"></i> Calculating routes...
+    </div>
+    
+    <div class="map-container">
+        <div id="transportMap"></div>
+        <div class="map-loading" id="mapLoading" style="display: none;">
+            <div class="spinner"></div>
+            <p>Loading map...</p>
+        </div>
+    </div>
+    
+    <div class="route-options-list" id="routeOptionsContainer">
+        <!-- Route options will be loaded here -->
+    </div>
+</div>
                     <!-- Step 3: Confirmation -->
                     <div id="step3Content" class="transport-section">
                         <div class="confirmation-form">
@@ -12074,26 +12089,34 @@ let transportState = {
     const origin = document.getElementById('routeOrigin').value;
     const destination = document.getElementById('routeDestination').value;
     
+    console.log('Proceeding to route options:', { origin, destination });
+    
     if (!origin || !destination) {
         showToast('Please enter both pickup and destination addresses', 'warning');
         return;
     }
     
+    if (!window.selectedOrigin || !window.selectedDestination) {
+        showToast('Please select addresses from the dropdown suggestions', 'warning');
+        return;
+    }
+    
+    // Move to step 2
     updateTransportStep(2);
     
-    // Wait a moment for the step transition to complete
-    await new Promise(resolve => setTimeout(resolve, 100));
+    // Wait for DOM update
+    await new Promise(resolve => setTimeout(resolve, 200));
     
     // Initialize map if needed
     const mapElement = document.getElementById('transportMap');
     if (mapElement && !map) {
+        console.log('Initializing map...');
         initializeMapServices(mapElement);
+        await new Promise(resolve => setTimeout(resolve, 300));
     }
     
-    // Calculate routes
-    if (window.selectedOrigin && window.selectedDestination) {
-        calculateRoutes();
-    }
+    // Calculate and display routes
+    calculateRoutes();
 }
 
         // Update step display
@@ -12140,26 +12163,39 @@ let transportState = {
 
         // Navigate steps
         function nextTransportStep() {
-            if (transportState.currentStep === 1) {
-                // Check if a route is selected or new route is ready
-                if (!transportState.selectedQuickRoute && !window.selectedRouteData) {
-                    const origin = document.getElementById('routeOrigin').value;
-                    const destination = document.getElementById('routeDestination').value;
-                    
-                    if (origin && destination) {
-                        proceedToRouteOptions();
-                    } else {
-                        showToast('Please select a route or enter addresses', 'warning');
-                    }
-                }
-            } else if (transportState.currentStep === 2) {
-                if (!window.selectedRouteData) {
-                    showToast('Please select a route option', 'warning');
-                    return;
-                }
-                updateTransportStep(3);
-            }
+    if (transportState.currentStep === 1) {
+        // Validate that addresses are selected
+        const origin = document.getElementById('routeOrigin').value;
+        const destination = document.getElementById('routeDestination').value;
+        
+        if (!origin || !destination) {
+            showToast('Please enter both pickup and destination addresses', 'warning');
+            return;
         }
+        
+        if (!window.selectedOrigin || !window.selectedDestination) {
+            showToast('Please select addresses from the dropdown suggestions', 'warning');
+            return;
+        }
+        
+        // If quick route is selected, skip to step 3
+        if (transportState.selectedQuickRoute) {
+            updateTransportStep(3);
+        } else {
+            // Otherwise go to route selection (step 2)
+            proceedToRouteOptions();
+        }
+        
+    } else if (transportState.currentStep === 2) {
+        // Validate route is selected
+        if (!window.selectedRouteData) {
+            showToast('Please select a route option', 'warning');
+            return;
+        }
+        updateTransportStep(3);
+    }
+}
+
 
         function previousTransportStep() {
             if (transportState.currentStep > 1) {
@@ -12281,37 +12317,92 @@ let transportState = {
 
 // Initialize Google Maps Services
 function initializeMapServices(mapElement) {
-    if (!mapElement) return;
+    if (!mapElement) {
+        console.error('Map element not found');
+        return;
+    }
     
-    // Initialize map
-    map = new google.maps.Map(mapElement, {
-        zoom: 10,
-        center: { lat: -33.8688, lng: 151.2093 }, // Sydney default
-        mapTypeControl: false,
-        fullscreenControl: false,
-        streetViewControl: false
-    });
+    if (!window.google || !window.google.maps) {
+        console.error('Google Maps not loaded yet');
+        return;
+    }
     
-    directionsService = new google.maps.DirectionsService();
-    directionsRenderer = new google.maps.DirectionsRenderer({
-        map: map,
-        suppressMarkers: false,
-        preserveViewport: false
-    });
+    try {
+        // Clear any existing map
+        if (map) {
+            map = null;
+        }
+        
+        // Initialize map
+        map = new google.maps.Map(mapElement, {
+            zoom: 11,
+            center: { lat: -33.8688, lng: 151.2093 },
+            mapTypeControl: true,
+            fullscreenControl: true,
+            streetViewControl: false,
+            mapTypeControlOptions: {
+                position: google.maps.ControlPosition.TOP_RIGHT
+            }
+        });
+        
+        directionsService = new google.maps.DirectionsService();
+        
+        // Important: Create NEW renderer
+        if (directionsRenderer) {
+            directionsRenderer.setMap(null); // Clear old renderer
+        }
+        
+        directionsRenderer = new google.maps.DirectionsRenderer({
+            map: map,
+            suppressMarkers: false,
+            preserveViewport: false,
+            draggable: false,
+            polylineOptions: {
+                strokeColor: '#4285F4',
+                strokeWeight: 5,
+                strokeOpacity: 0.7
+            }
+        });
+        
+        console.log('Map initialized successfully', {
+            map: map,
+            center: map.getCenter().toString(),
+            zoom: map.getZoom()
+        });
+        
+        // Force a resize after initialization
+        setTimeout(() => {
+            google.maps.event.trigger(map, 'resize');
+        }, 100);
+        
+    } catch (error) {
+        console.error('Error initializing map:', error);
+        showToast('Failed to initialize map', 'error');
+    }
 }
 
 function setupAddressAutocomplete(inputElement, isOrigin = true) {
-    if (!inputElement || !google) return;
+    if (!inputElement || !google) {
+        console.error('Cannot setup autocomplete:', { inputElement, hasGoogle: !!google });
+        return;
+    }
+    
+    console.log('Setting up autocomplete for:', inputElement.id, 'isOrigin:', isOrigin);
     
     const autocomplete = new google.maps.places.Autocomplete(inputElement, {
         componentRestrictions: { country: 'au' },
         fields: ['place_id', 'formatted_address', 'geometry']
     });
     
-    // Fix 1: Force blur on place selection
     autocomplete.addListener('place_changed', () => {
         const place = autocomplete.getPlace();
-        if (!place.geometry) return;
+        
+        console.log('Place selected:', place);
+        
+        if (!place.geometry) {
+            console.warn('Place has no geometry');
+            return;
+        }
         
         // Store the selected place data
         if (isOrigin) {
@@ -12321,6 +12412,7 @@ function setupAddressAutocomplete(inputElement, isOrigin = true) {
                 lat: place.geometry.location.lat(),
                 lng: place.geometry.location.lng()
             };
+            console.log('Origin set:', window.selectedOrigin);
         } else {
             window.selectedDestination = {
                 address: place.formatted_address,
@@ -12328,18 +12420,21 @@ function setupAddressAutocomplete(inputElement, isOrigin = true) {
                 lat: place.geometry.location.lat(),
                 lng: place.geometry.location.lng()
             };
+            console.log('Destination set:', window.selectedDestination);
         }
         
-        // FIX: Force close the dropdown
+        // Force close the dropdown
         inputElement.blur();
         setTimeout(() => {
             inputElement.focus();
             inputElement.blur();
         }, 100);
         
-        // If both locations selected, calculate routes
+        // If both locations selected, enable the next button or auto-calculate
         if (window.selectedOrigin && window.selectedDestination) {
-            calculateRoutes();
+            console.log('Both locations selected, ready to calculate routes');
+            // You might want to enable a "Calculate Routes" button here
+            // or call calculateRoutes() directly if in step 2
         }
     });
     
@@ -12565,8 +12660,11 @@ async function initTransportAutocomplete() {
     }, 500);
 }
 
-// Calculate routes between origin and destination
 async function calculateRoutes() {
+    console.log('=== CALCULATE ROUTES START ===');
+    console.log('Selected Origin:', window.selectedOrigin);
+    console.log('Selected Destination:', window.selectedDestination);
+    
     if (!window.selectedOrigin || !window.selectedDestination) {
         showToast('Please select both origin and destination', 'warning');
         return;
@@ -12574,16 +12672,23 @@ async function calculateRoutes() {
     
     // Ensure map services are initialized
     if (!directionsService || !directionsRenderer) {
+        console.log('Map services not initialized, initializing now...');
         const mapElement = document.getElementById('transportMap');
         if (mapElement) {
             initializeMapServices(mapElement);
-            // Wait for initialization
             await new Promise(resolve => setTimeout(resolve, 500));
         } else {
+            console.error('Map element not found!');
             showToast('Map not available', 'error');
             return;
         }
     }
+    
+    console.log('Map services ready:', {
+        hasDirectionsService: !!directionsService,
+        hasDirectionsRenderer: !!directionsRenderer,
+        hasMap: !!map
+    });
     
     const loadingEl = document.getElementById('routeLoadingIndicator');
     const routesContainer = document.getElementById('routeOptionsContainer');
@@ -12600,95 +12705,494 @@ async function calculateRoutes() {
         region: 'AU'
     };
     
+    console.log('Directions request:', request);
+    
     directionsService.route(request, (response, status) => {
+        console.log('Directions response status:', status);
+        console.log('Directions response:', response);
+        
         if (loadingEl) loadingEl.style.display = 'none';
         
         if (status === 'OK') {
+            console.log('Routes found:', response.routes.length);
+            response.routes.forEach((route, i) => {
+                console.log(`Route ${i}:`, {
+                    summary: route.summary,
+                    distance: route.legs[0].distance,
+                    duration: route.legs[0].duration
+                });
+            });
+            
             window.availableRoutes = response.routes;
             displayRouteOptions(response.routes);
+            
+            // Display first route on map
+            console.log('Setting directions on map...');
             directionsRenderer.setDirections(response);
             directionsRenderer.setRouteIndex(0);
+            console.log('Directions set successfully');
         } else {
-            console.error('Directions request failed:', status);
+            console.error('Directions request failed:', status, response);
             showToast('Could not calculate route: ' + status, 'error');
         }
     });
 }
-
 
 // Display route options for user to choose
 function displayRouteOptions(routes) {
     const container = document.getElementById('routeOptionsContainer');
     if (!container) return;
     
-    let html = '<div class="route-options">';
+    let html = '<div class="routes-display-container">';
+    
+    // Left side: Route cards
+    html += '<div class="route-cards-list">';
     
     routes.forEach((route, index) => {
-        const leg = route.legs[0]; // We only have one leg (origin to destination)
-        const distance = leg.distance.value / 1000; // Convert to km
-        const duration = Math.ceil(leg.duration.value / 60); // Convert to minutes
+        const leg = route.legs[0];
+        const distance = leg.distance.value / 1000; // km
+        const duration = Math.ceil(leg.duration.value / 60); // minutes
         const viaRoute = route.summary;
         
-        // Calculate reimbursement
-        const reimbursement = (distance * 1).toFixed(2); // $1 per km
+        // Check for tolls and warnings
+        const hasTolls = route.warnings?.some(w => 
+            w.toLowerCase().includes('toll') || 
+            w.toLowerCase().includes('toll road')
+        ) || false;
+        
+        const hasWarnings = route.warnings && route.warnings.length > 0;
         
         html += `
-            <div class="route-option ${index === 0 ? 'selected' : ''}" 
-                 onclick="selectRoute(${index})" 
-                 data-route-index="${index}">
+            <div class="route-card-interactive ${index === 0 ? 'selected' : ''}" 
+                 data-route-index="${index}"
+                 onclick="selectRouteInteractive(${index})"
+                 onmouseenter="highlightRouteOnMap(${index})"
+                 onmouseleave="unhighlightRoute()">
                 
-                <div class="route-option-header">
-                    <input type="radio" name="routeSelection" 
-                           value="${index}" 
-                           ${index === 0 ? 'checked' : ''}
-                           onchange="selectRoute(${index})">
-                    <span class="route-label">Route ${index + 1}</span>
-                    ${index === 0 ? '<span class="badge badge-primary">Recommended</span>' : ''}
+                <div class="route-card-header">
+                    <div class="route-title-section">
+                        <input type="radio" 
+                               name="routeSelection" 
+                               id="route_${index}"
+                               value="${index}" 
+                               ${index === 0 ? 'checked' : ''}
+                               onchange="selectRouteInteractive(${index})">
+                        <label for="route_${index}" class="route-label">
+                            <strong>Route ${index + 1}</strong>
+                            ${index === 0 ? '<span class="badge-recommended">Fastest</span>' : ''}
+                        </label>
+                    </div>
+                    
+                    <div class="route-badges">
+                        ${hasTolls ? '<span class="badge-toll"><i class="fas fa-coins"></i> Toll</span>' : ''}
+                    </div>
                 </div>
                 
-                <div class="route-details">
-                    <div class="route-via">
-                        <i class="fas fa-route"></i> via ${viaRoute}
-                    </div>
-                    
-                    <div class="route-stats">
-                        <div class="stat">
-                            <i class="fas fa-road"></i>
-                            <span>${distance.toFixed(1)} km</span>
-                        </div>
-                        <div class="stat">
-                            <i class="fas fa-clock"></i>
-                            <span>${duration} mins</span>
-                        </div>
-                        <div class="stat highlight">
-                            <i class="fas fa-dollar-sign"></i>
-                            <span>$${reimbursement}</span>
+                <div class="route-via-text">
+                    <i class="fas fa-route"></i> via ${viaRoute}
+                </div>
+                
+                <div class="route-stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-icon"><i class="fas fa-road"></i></div>
+                        <div class="stat-details">
+                            <div class="stat-value">${distance.toFixed(1)} km</div>
+                            <div class="stat-label">Distance</div>
                         </div>
                     </div>
                     
-                    <div class="route-waypoints">
-                        ${route.warnings ? `<div class="warning">${route.warnings.join(', ')}</div>` : ''}
+                    <div class="stat-item">
+                        <div class="stat-icon"><i class="fas fa-clock"></i></div>
+                        <div class="stat-details">
+                            <div class="stat-value">${duration} min</div>
+                            <div class="stat-label">Duration</div>
+                        </div>
                     </div>
+                
+                </div>
+                
+                ${hasWarnings ? `
+                    <div class="route-warnings">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        ${route.warnings.join(', ')}
+                    </div>
+                ` : ''}
+                
+                <div class="route-steps-summary">
+                    <button class="btn-view-steps" onclick="event.stopPropagation(); toggleRouteSteps(${index})">
+                        <i class="fas fa-list"></i> View Turn-by-Turn
+                    </button>
+                </div>
+                
+                <div class="route-steps-detail" id="routeSteps_${index}" style="display: none;">
+                    ${generateTurnByTurn(leg.steps)}
                 </div>
             </div>
         `;
         
-        // Store route data for submission
+        // Store route data
         route._calculatedData = {
             distance: distance,
             duration: duration,
             via: viaRoute,
-            polyline: route.overview_polyline.points
+            polyline: route.overview_polyline,
+            hasTolls: hasTolls,
+            warnings: route.warnings || []
         };
     });
     
-    html += '</div>';
+    html += '</div>'; // End route-cards-list
+    html += '</div>'; // End routes-display-container
+    
     container.innerHTML = html;
     
-    // Store selected route data
+    // Store routes globally
+    window.availableRoutes = routes;
+    
+    // Set first route as default
     if (routes.length > 0) {
         window.selectedRouteData = routes[0]._calculatedData;
+        window.selectedRouteIndex = 0;
     }
+}
+
+function generateTurnByTurn(steps) {
+    let html = '<ol class="turn-by-turn-list">';
+    
+    steps.forEach((step, index) => {
+        const distance = (step.distance.value / 1000).toFixed(1);
+        const instruction = step.instructions.replace(/<[^>]*>/g, ''); // Strip HTML
+        
+        html += `
+            <li class="turn-item">
+                <div class="turn-instruction">${instruction}</div>
+                <div class="turn-distance">${distance} km</div>
+            </li>
+        `;
+    });
+    
+    html += '</ol>';
+    return html;
+}
+
+// Toggle turn-by-turn view
+function toggleRouteSteps(index) {
+    const stepsEl = document.getElementById(`routeSteps_${index}`);
+    const isVisible = stepsEl.style.display !== 'none';
+    
+    // Hide all other route steps
+    document.querySelectorAll('.route-steps-detail').forEach(el => {
+        el.style.display = 'none';
+    });
+    
+    // Toggle current
+    stepsEl.style.display = isVisible ? 'none' : 'block';
+    
+    // Update button text
+    const btn = event.currentTarget;
+    btn.innerHTML = isVisible 
+        ? '<i class="fas fa-list"></i> View Turn-by-Turn'
+        : '<i class="fas fa-times"></i> Hide Details';
+}
+
+// Interactive route selection
+function selectRouteInteractive(index) {
+    // Update UI selection
+    document.querySelectorAll('.route-card-interactive').forEach((card, i) => {
+        card.classList.toggle('selected', i === index);
+    });
+    
+    // Update radio button
+    document.getElementById(`route_${index}`).checked = true;
+    
+    // Update map display
+    if (directionsRenderer && window.availableRoutes) {
+        directionsRenderer.setRouteIndex(index);
+    }
+    
+    // Store selected route data
+    if (window.availableRoutes && window.availableRoutes[index]) {
+        window.selectedRouteData = window.availableRoutes[index]._calculatedData;
+        window.selectedRouteIndex = index;
+    }
+    
+    // Update total display if it exists
+    if (typeof updateTransportClaimTotal === 'function') {
+        updateTransportClaimTotal();
+    }
+}
+
+// Highlight route on hover
+function highlightRouteOnMap(index) {
+    if (directionsRenderer && window.availableRoutes) {
+        directionsRenderer.setRouteIndex(index);
+    }
+}
+
+// Remove highlight when mouse leaves
+function unhighlightRoute() {
+    // Return to selected route
+    if (directionsRenderer && window.selectedRouteIndex !== undefined) {
+        directionsRenderer.setRouteIndex(window.selectedRouteIndex);
+    }
+}
+
+// Add custom styling for the routes display
+function addRouteDisplayStyles() {
+    const styleId = 'route-display-styles';
+    if (document.getElementById(styleId)) return;
+    
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = `
+        .routes-display-container {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .route-cards-list {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .route-card-interactive {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .route-card-interactive:hover {
+            border-color: #4285F4;
+            box-shadow: 0 4px 12px rgba(66, 133, 244, 0.15);
+            transform: translateY(-2px);
+        }
+        
+        .route-card-interactive.selected {
+            border-color: #4285F4;
+            background: #f8fbff;
+            box-shadow: 0 4px 16px rgba(66, 133, 244, 0.2);
+        }
+        
+        .route-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+        
+        .route-title-section {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .route-title-section input[type="radio"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+        
+        .route-label {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 16px;
+        }
+        
+        .badge-recommended {
+            background: #4CAF50;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .route-badges {
+            display: flex;
+            gap: 6px;
+        }
+        
+        .badge-toll {
+            background: #ff9800;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .route-via-text {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .route-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px;
+            background: #f5f5f5;
+            border-radius: 8px;
+        }
+        
+        .stat-item.highlight-stat {
+            background: #e8f5e9;
+        }
+        
+        .stat-icon {
+            font-size: 20px;
+            color: #666;
+            width: 30px;
+            text-align: center;
+        }
+        
+        .highlight-stat .stat-icon {
+            color: #4CAF50;
+        }
+        
+        .stat-details {
+            flex: 1;
+        }
+        
+        .stat-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: #333;
+            line-height: 1.2;
+        }
+        
+        .stat-label {
+            font-size: 11px;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .route-warnings {
+            background: #fff3cd;
+            border-left: 3px solid #ffc107;
+            padding: 10px 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #856404;
+            margin-top: 10px;
+        }
+        
+        .route-warnings i {
+            margin-right: 6px;
+        }
+        
+        .route-steps-summary {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        .btn-view-steps {
+            background: transparent;
+            border: 1px solid #4285F4;
+            color: #4285F4;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s;
+            width: 100%;
+        }
+        
+        .btn-view-steps:hover {
+            background: #4285F4;
+            color: white;
+        }
+        
+        .route-steps-detail {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .turn-by-turn-list {
+            list-style: none;
+            counter-reset: step-counter;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .turn-item {
+            counter-increment: step-counter;
+            position: relative;
+            padding: 12px 12px 12px 40px;
+            border-left: 2px solid #e0e0e0;
+            margin-bottom: 10px;
+        }
+        
+        .turn-item:last-child {
+            border-left: none;
+        }
+        
+        .turn-item::before {
+            content: counter(step-counter);
+            position: absolute;
+            left: -12px;
+            top: 12px;
+            width: 24px;
+            height: 24px;
+            background: #4285F4;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .turn-instruction {
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 4px;
+        }
+        
+        .turn-distance {
+            font-size: 12px;
+            color: #999;
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+// Initialize styles when document loads
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', addRouteDisplayStyles);
+} else {
+    addRouteDisplayStyles();
 }
 
 // Select a specific route
