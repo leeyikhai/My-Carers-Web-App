@@ -2630,20 +2630,14 @@ body.loading {
     z-index: 2000;
     transform: none !important;
     -webkit-transform: none !important;
+    -webkit-overflow-scrolling: touch;
     backface-visibility: visible !important;
     perspective: none !important;
     overflow: visible;
     padding: 20px;
 }
 
-/* The .active class handles the display: flex */
 .modal.active {
-    display: flex !important;  /* This already exists in your code, keep it */
-    align-items: center;
-    justify-content: center;
-}
-
-        .modal.active {
             display: flex;
             align-items: center;
             justify-content: center;
@@ -4827,7 +4821,6 @@ const ModalManager = {
         
         // Show modal
         modalElement.classList.add('active');
-        modalElement.style.display = 'flex';
         
         // Run onOpen callback if exists
         if (config.onOpen) {
@@ -4851,7 +4844,6 @@ const ModalManager = {
         
         // Hide modal
         element.classList.remove('active');
-        element.style.display = 'none';
         
         // Run onClose callback if exists
         if (config.onClose) {
