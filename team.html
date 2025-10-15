@@ -1378,8 +1378,6 @@ body.loading {
     font-size: 16px; /* Prevents zoom on iOS */
     resize: none;
     line-height: 1.4;
-      padding-bottom: env(safe-area-inset-bottom);
-
 }
 
 .compose-input:focus {
@@ -6384,13 +6382,12 @@ const composeBar = document.querySelector('.compose-container');
 
 window.visualViewport?.addEventListener('resize', () => {
   const viewport = window.visualViewport;
-  if (!viewport) return;
-
-  // push the bar up when keyboard visible
   const keyboardHeight = window.innerHeight - viewport.height - viewport.offsetTop;
-  composeBar.style.bottom = keyboardHeight > 0 ? `${keyboardHeight}px` : '0px';
+  const extra = keyboardHeight > 0 ? SAFETY_OFFSET : 0;
+  composeBar.style.bottom = keyboardHeight > 0
+    ? `${keyboardHeight + extra}px`
+    : '0px';
 });
-
 
 async function submitQuickNote(participantId) {
     const compose = document.getElementById('noteCompose');
