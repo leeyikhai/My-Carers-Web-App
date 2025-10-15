@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
+
         <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         // Google Maps Configuration
@@ -18517,57 +18517,55 @@ function setupTransportInputFormatters() {
     
     // Force global modal functions
     window.openModal = function(modalId) {
-        console.log('🚀 FORCE OPEN (MOBILE):', modalId);
-        
-        // Store scroll position and lock body (mobile fix)
-        scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
-        
-        // Close everything first
-        const allModals = document.querySelectorAll('.modal');
-        allModals.forEach(m => {
-            m.classList.remove('active', 'show');
-            m.style.display = 'none';
-            m.setAttribute('aria-hidden', 'true');
-        });
-        
-        // Find and open target modal
-        const modal = document.getElementById(modalId);
-        if (!modal) {
-            console.error('❌ MODAL NOT FOUND:', modalId);
-            alert('Error: Modal "' + modalId + '" not found!');
-            return;
-        }
-        
-        // BRUTALLY FORCE IT OPEN WITH MOBILE OPTIMIZATIONS
-        modal.style.display = 'flex';
-        modal.style.position = 'fixed';
-        modal.style.top = '0';
-        modal.style.left = '0';
-        modal.style.right = '0';
-        modal.style.bottom = '0';
-        modal.style.width = '100%';
-        modal.style.height = '100%';
-        modal.style.zIndex = '2147483647';
-        modal.style.background = 'rgba(0, 0, 0, 0.7)';
-        modal.style.alignItems = 'center';
-        modal.style.justifyContent = 'center';
-        modal.style.overflow = 'auto';
-        modal.style.webkitOverflowScrolling = 'touch'; // iOS smooth scrolling
-        
-        modal.classList.add('active', 'show');
-        modal.setAttribute('aria-hidden', 'false');
-        
-        // Lock body scroll (mobile fix)
-        document.body.style.overflow = 'hidden';
-        document.body.style.position = 'fixed';
-        document.body.style.top = `-${scrollPosition}px`;
-        document.body.style.width = '100%';
-        document.body.classList.add('modal-open');
-        
-        console.log('✅ MODAL OPENED (MOBILE):', modalId);
-        
-        return true;
-    };
+    console.log('Opening:', modalId);
+    
+    const modal = document.getElementById(modalId);
+    if (!modal) return;
+    
+    // Close others
+    document.querySelectorAll('.modal').forEach(m => {
+        m.classList.remove('active', 'show');
+    });
+    
+    // Open this one
+    modal.classList.add('active');
+    document.body.classList.add('modal-open');
+    
+    // FORCE VISIBILITY WITH INLINE STYLES
+    modal.style.cssText = `
+        display: block !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        z-index: 999999 !important;
+        background: rgba(0, 0, 0, 0.8) !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+        overflow: auto !important;
+    `;
+    
+    // Force content visibility
+    const content = modal.querySelector('.modal-content');
+    if (content) {
+        content.style.cssText = `
+            position: relative !important;
+            margin: 50px auto !important;
+            background: white !important;
+            border-radius: 8px !important;
+            width: 90% !important;
+            max-width: 600px !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+            display: block !important;
+            box-shadow: 0 10px 50px rgba(0,0,0,0.5) !important;
+        `;
+    }
+    
+    console.log('✅ Opened with forced styles');
+};
+
     
     window.closeModal = function(modalId) {
         console.log('🔒 CLOSING (MOBILE):', modalId || 'all');
