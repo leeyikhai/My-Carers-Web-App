@@ -6379,6 +6379,8 @@ function loadMoreNotes(participantId, page) {
 }
 
 const composeBar = document.querySelector('.compose-container');
+const SAFETY_OFFSET = 50; // extra pixels to clear autofill bar
+
 
 window.visualViewport?.addEventListener('resize', () => {
   const viewport = window.visualViewport;
