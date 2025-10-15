@@ -5,6 +5,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // Google Maps Configuration
+        const GOOGLE_MAPS_API_KEY = 'AIzaSyDo5V32Ix0Xi40HdORZ5XGtxYxMBGbUJfw'; 
+        
+       
+        
+        // Call this when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            loadGoogleMapsForTeam();
+        });
+        </script>
     <title>My Carers</title>
   
     <!-- favicon links -->
@@ -14,6 +25,498 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
     <style>
+
+    /* Transport Claim Specific Styles */
+    .transport-claim-wrapper {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            height: calc(100vh - 200px);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Step Navigation */
+        .transport-steps {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            color: white;
+        }
+        
+        .transport-steps-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .transport-steps-header h3 {
+            margin: 0;
+            font-size: 1.3rem;
+        }
+        
+        .step-indicators {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .step-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transition: all 0.3s;
+        }
+        
+        .step-dot.active {
+            width: 30px;
+            border-radius: 5px;
+            background: white;
+        }
+        
+        .step-dot.completed {
+            background: #28a745;
+        }
+        
+        /* Transport Content Area */
+        .transport-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        
+        .transport-section {
+            display: none;
+        }
+        
+        .transport-section.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        /* Quick Routes Cards */
+        .quick-routes-grid {
+            display: grid;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .route-card {
+            background: #f8f9fa;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+        
+        .route-card:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
+        }
+        
+        .route-card.selected {
+            border-color: #667eea;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+        }
+        
+        .route-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 10px;
+        }
+        
+        .route-name {
+            font-weight: 600;
+            color: #333;
+            flex: 1;
+        }
+        
+        .route-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .route-favorite {
+            color: #ffc107;
+            font-size: 0.9rem;
+        }
+        
+        .route-delete {
+            color: #dc3545;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 2px;
+            font-size: 0.9rem;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+        
+        .route-delete:hover {
+            opacity: 1;
+        }
+        
+        .route-info {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+            color: #666;
+        }
+        
+        .route-stat {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .route-stat.highlight {
+            color: #28a745;
+            font-weight: 600;
+        }
+        
+        .route-addresses {
+            font-size: 0.85rem;
+            color: #666;
+            line-height: 1.4;
+        }
+        
+        .route-address-line {
+            margin: 3px 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        /* New Route Form */
+        .new-route-form {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+            font-size: 0.95rem;
+        }
+        
+        .address-input-group {
+            display: flex;
+            gap: 10px;
+            align-items: stretch;
+        }
+        
+        .address-input {
+            flex: 1;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            transition: border-color 0.3s;
+        }
+        
+        .address-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .btn-home {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            transition: all 0.3s;
+        }
+        
+        .btn-home:hover {
+            background: #218838;
+            transform: translateY(-1px);
+        }
+        
+        /* Map Container */
+        .map-container {
+            width: 100%;
+            height: 350px;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 20px 0;
+            border: 1px solid #ddd;
+            background: #f0f0f0;
+            position: relative;
+        }
+        
+        .map-loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+        
+        /* Route Options */
+        .route-options-list {
+            display: grid;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .route-option {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .route-option:hover {
+            border-color: #667eea;
+            box-shadow: 0 3px 10px rgba(102, 126, 234, 0.15);
+        }
+        
+        .route-option.selected {
+            border-color: #667eea;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+        }
+        
+        .route-option-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .route-option-header input[type="radio"] {
+            margin: 0;
+        }
+        
+        .route-label {
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .badge-recommended {
+            background: #28a745;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            margin-left: auto;
+        }
+        
+        .route-details {
+            margin-left: 25px;
+        }
+        
+        .route-via {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+        }
+        
+        /* Confirmation Section */
+        .confirmation-form {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+        }
+        
+        .trip-summary {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .summary-row:last-child {
+            border-bottom: none;
+        }
+        
+        .summary-label {
+            color: #666;
+            font-weight: 500;
+        }
+        
+        .summary-value {
+            color: #333;
+            text-align: right;
+        }
+        
+        .summary-row.total {
+            background: linear-gradient(135deg, rgba(40, 167, 69, 0.1) 0%, rgba(40, 167, 69, 0.05) 100%);
+            margin: 10px -20px -20px;
+            padding: 15px 20px;
+            border-radius: 0 0 8px 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        
+        .summary-row.total .summary-value {
+            color: #28a745;
+        }
+        
+        /* Save Route Checkbox */
+        .save-route-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 15px;
+            background: #e3f2fd;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        .save-route-option input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        /* Action Footer */
+        .transport-actions {
+            background: #f8f9fa;
+            padding: 20px;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        
+        .btn-transport {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-transport:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .btn-back {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-next {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-submit {
+            background: #28a745;
+            color: white;
+        }
+        
+        .btn-transport:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        /* Loading States */
+        .route-loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Divider */
+        .divider-text {
+            text-align: center;
+            margin: 30px 0;
+            color: #999;
+            position: relative;
+        }
+        
+        .divider-text::before,
+        .divider-text::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: calc(50% - 30px);
+            height: 1px;
+            background: #e0e0e0;
+        }
+        
+        .divider-text::before {
+            left: 0;
+        }
+        
+        .divider-text::after {
+            right: 0;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .transport-claim-wrapper {
+                height: calc(100vh - 100px);
+            }
+            
+            .map-container {
+                height: 250px;
+            }
+            
+            .route-info {
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+            
+            .btn-home {
+                padding: 10px;
+            }
+            
+            .btn-home span {
+                display: none;
+            }
+        }
+
+        /*end transport styles*/
+
         
         :root {
             --primary-color: #004990;
@@ -36,6 +539,30 @@
             --radius-lg: 12px;
         }
 
+        .shift-note {
+    margin: 15px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-left: 3px solid #ffd93d;
+    border-radius: 4px;
+}
+
+.shift-note-header {
+    font-size: 12px;
+    font-weight: 600;
+    color: #ffd93d;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.shift-note-content {
+    font-size: 14px;
+    color: rgba(0, 0, 0, 0.8); /* Dark color for contrast */
+    line-height: 1.5;
+    white-space: pre-wrap; /* Preserves line breaks */
+}
         .claim-filter-btn:hover {
     transform: translateY(-1px);
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
@@ -2821,10 +3348,6 @@ body.loading {
                 <span class="icon"><i class="fa-solid fa-umbrella-beach"></i></span>
                 <span>Request Leave</span>
             </div>
-            <div class="quick-action-btn" data-action="showTransportModal">
-                <span class="icon"><i class="fa-solid fa-car"></i></span>
-                <span>Transport Claim</span>
-            </div>
             <div class="quick-action-btn" data-action="showSchoolHolidayModal">
                 <span class="icon"><i class="fa-solid fa-graduation-cap"></i></span>
                 <span>School Holidays</span>
@@ -2835,14 +3358,6 @@ body.loading {
         <div class="requests-summary">
             <h3>Pending Requests</h3>
             <div id="pendingRequestsList">
-                <!-- Will be populated dynamically -->
-            </div>
-        </div>
-
-        <!-- Recent Notifications -->
-        <div class="requests-summary">
-            <h3>Recent Updates</h3>
-            <div id="recentNotifications">
                 <!-- Will be populated dynamically -->
             </div>
         </div>
@@ -3060,6 +3575,7 @@ id="nav-profile">
 <div>Profile</div>
 </button>
 </nav>
+
 <!-- Updated Participants Section with Menu -->
 <div id="participants" class="content-section" style="display: none;">
     <!-- Participant Selector -->
@@ -3070,7 +3586,7 @@ id="nav-profile">
         </select>
     </div>
     
-    <!-- Navigation Buttons Grid (instead of tabs) -->
+    <!-- Navigation Buttons Grid -->
     <div class="participant-menu" id="participantMenu" style="display: none;">
         <button class="btn-nav" data-participant-view="roster">
             <i class="fa-solid fa-calendar-week"></i>
@@ -3087,7 +3603,11 @@ id="nav-profile">
         <button class="btn-nav" data-participant-view="notes">
             <i class="fa-solid fa-clipboard"></i>
             <span>Shift Notes</span>
-        </button>        
+        </button>       
+        <button class="btn-nav" data-participant-view="transport">
+            <i class="fa-solid fa-car"></i>
+            <span>Transport Claim</span>
+        </button>
     </div>
 </div>
 
@@ -3101,20 +3621,20 @@ id="nav-profile">
     </div>
     
     <div class="panel-content">
-        <!-- Roster View in the slide panel -->
-<div id="rosterView" class="panel-view" style="display: none;">
-    <div class="roster-period-selector">
-        <button class="period-nav" onclick="changeRosterPeriod(-1)">◀</button>
-        <div class="period-display">
-            <div class="period-label">Pay Period</div>
-            <div id="rosterPeriod">Loading...</div>
+        <!-- Roster View -->
+        <div id="rosterView" class="panel-view" style="display: none;">
+            <div class="roster-period-selector">
+                <button class="period-nav" onclick="changeRosterPeriod(-1)">◀</button>
+                <div class="period-display">
+                    <div class="period-label">Pay Period</div>
+                    <div id="rosterPeriod">Loading...</div>
+                </div>
+                <button class="period-nav" onclick="changeRosterPeriod(1)">▶</button>
+            </div>
+            <div id="rosterGrid">
+                <!-- Roster content will be populated here -->
+            </div>
         </div>
-        <button class="period-nav" onclick="changeRosterPeriod(1)">▶</button>
-    </div>
-    <div id="rosterGrid">
-        <!-- Roster content will be populated here -->
-    </div>
-</div>
         
         <!-- Profile View -->
         <div id="profileView" class="panel-view" style="display: none;">
@@ -3128,18 +3648,153 @@ id="nav-profile">
             <p class="info-text">Family members can request schedule changes here (coming soon)</p>
         </div>
         
-        <!-- Notes View -->
+        <!-- Notes View - FIXED -->
         <div id="notesView" class="panel-view" style="display: none;">
             <!-- This will be populated by renderNotesView() -->
-        </div>        
-            
-            <!-- Comments Timeline Container -->
             <div class="comments-container" id="notesTimeline">
                 <!-- Notes will be loaded here -->
             </div>
-        </div>        
+        </div>
+
+        <div id="transportView" class="panel-view" style="display: none;">
+            <div class="transport-claim-wrapper">
+                <!-- Step Header -->
+                <div class="transport-steps">
+                    <div class="transport-steps-header">
+                        <h3>Transport Claim</h3>
+                        <div class="step-indicators">
+                            <span class="step-dot active" id="step1Dot"></span>
+                            <span class="step-dot" id="step2Dot"></span>
+                            <span class="step-dot" id="step3Dot"></span>
+                        </div>
+                    </div>
+                    <div id="stepTitle" style="font-size: 0.9rem; opacity: 0.9;">
+                        Step 1: Select or Create Route
+                    </div>
+                </div>
+                
+                <!-- Content Area -->
+                <div class="transport-content" id="transportContent">
+                    <!-- Step 1: Route Selection -->
+                    <div id="step1Content" class="transport-section active">
+                        <div class="quick-routes-grid" id="quickRoutesGrid">
+                            <!-- Quick routes will be loaded here -->
+                        </div>
+                        
+                        <div class="divider-text">OR</div>
+                        
+                        <div class="new-route-form">
+                            <h4 style="margin-top: 0; margin-bottom: 20px; color: #333;">Create New Route</h4>
+                            
+                            <div class="form-group">
+                                <label>Pickup Location</label>
+                                <div class="address-input-group">
+                                    <input type="text" 
+                                           id="routeOrigin" 
+                                           class="address-input" 
+                                           placeholder="Enter pickup address...">
+                                    <button class="btn-home" onclick="useClientHome()">
+                                        <i class="fas fa-home"></i>
+                                        <span>Client Home</span>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Destination</label>
+                                <input type="text" 
+                                       id="routeDestination" 
+                                       class="address-input" 
+                                       placeholder="Enter destination address...">
+                            </div>
+                            
+                            <button class="btn-transport btn-next" 
+                                    onclick="proceedToRouteOptions()" 
+                                    style="width: 100%;">
+                                Calculate Route
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Step 2: Route Options -->
+                    <div id="step2Content" class="transport-section">
+                        <h4 style="margin-top: 0; color: #333;">Select Your Route</h4>
+                        
+                        <div class="map-container">
+                            <div id="transportMap"></div>
+                            <div class="map-loading" id="mapLoading" style="display: none;">
+                                <div class="spinner"></div>
+                                <p>Loading map...</p>
+                            </div>
+                        </div>
+                        
+                        <div class="route-options-list" id="routeOptionsList">
+                            <!-- Route options will be loaded here -->
+                        </div>
+                    </div>
+                    
+                    <!-- Step 3: Confirmation -->
+                    <div id="step3Content" class="transport-section">
+                        <div class="confirmation-form">
+                            <h4 style="margin-top: 0; margin-bottom: 20px; color: #333;">Confirm Details</h4>
+                            
+                            <div class="form-group">
+                                <label>Date of Travel</label>
+                                <input type="date" 
+                                       id="transportDate" 
+                                       class="address-input" 
+                                       required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Reason for Travel</label>
+                                <input type="text" 
+                                       id="transportReason" 
+                                       class="address-input" 
+                                       placeholder="e.g., Client support visit" 
+                                       required>
+                            </div>
+                            
+                            <div class="trip-summary" id="tripSummary">
+                                <!-- Summary will be populated here -->
+                            </div>
+                            
+                            <div class="save-route-option">
+                                <input type="checkbox" id="saveRouteCheck">
+                                <label for="saveRouteCheck">
+                                    Save this route for quick access next time
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Action Footer -->
+                <div class="transport-actions">
+                    <button class="btn-transport btn-back" 
+                            id="btnBack" 
+                            onclick="previousTransportStep()" 
+                            style="display: none;">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </button>
+                    
+                    <button class="btn-transport btn-next" 
+                            id="btnNext" 
+                            onclick="nextTransportStep()">
+                        Continue <i class="fas fa-arrow-right"></i>
+                    </button>
+                    
+                    <button class="btn-transport btn-submit" 
+                            id="btnSubmit" 
+                            onclick="submitTransportClaim()" 
+                            style="display: none;">
+                        <i class="fas fa-check"></i> Submit Claim
+                    </button>
+                </div>
+            </div>
+        </div>         
     </div>
-</div>
+
 
 
 <!-- Place this with your other content sections (after dashboard, timesheet, etc.) -->
@@ -3242,84 +3897,68 @@ id="nav-profile">
 
 
     <!-- Add Shift Modal -->
-<div id="addShiftModal" class="modal" role="dialog">
-    <div class="modal-content">
-        <header class="modal-header">
-            <h3 class="modal-title">Add New Shift</h3>
-            <button class="modal-close" data-modal-close="addShiftModal" type="button">&times;</button>
-        </header>
-        
-        <div class="modal-body">
-            <form id="addShiftForm" novalidate>
-                <div class="form-group">
-                    <label for="shiftDate">Date *</label>
-                    <input type="date" id="shiftDate" name="shiftDate" class="form-control" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="shiftParticipant">Participant *</label>
-                    <select id="shiftParticipant" name="shiftParticipant" class="form-control" required>
-                        <option value="">Select participant</option>
-                    </select>
-                </div>
-
-                <div id="transportFields" style="display: none;">
+    <div id="addShiftModal" class="modal" role="dialog">
+        <div class="modal-content">
+            <header class="modal-header">
+                <h3 class="modal-title">Add New Shift</h3>
+                <button class="modal-close" data-modal-close="addShiftModal" type="button">&times;</button>
+            </header>
+            
+            <div class="modal-body">
+                <form id="addShiftForm" novalidate>
                     <div class="form-group">
-                        <label for="transportKilometres">Kilometres Travelled</label>
-                        <input type="number" 
-                               id="transportKilometres" 
-                               name="transportKilometres" 
+                        <label for="shiftDate">Date *</label>
+                        <input type="date" 
+                               id="shiftDate" 
+                               name="shiftDate" 
                                class="form-control" 
-                               min="0" 
-                               step="0.1"
-                               placeholder="Enter kilometres">
+                               required>
+                        <small class="form-text text-muted">You can only submit shifts for past dates up to tomorrow</small>
                     </div>
                     
                     <div class="form-group">
-                        <label for="transportParking">Parking Cost ($)</label>
-                        <input type="number" 
-                               id="transportParking" 
-                               name="transportParking" 
-                               class="form-control" 
-                               min="0" 
-                               step="0.01"
-                               placeholder="Enter parking cost">
-                    </div>
-                </div>
-                
-                
-                <div class="form-group">
-                    <label for="shiftDutyType">Duty Type *</label>
-                    <select id="shiftDutyType" name="shiftDutyType" class="form-control" required onchange="toggleTimeFields()">
-                        <option value="">Select duty type</option>
-                    </select>
-                </div>
-                
-                <div id="timeFields">
-                    <div class="form-group">
-                        <label for="shiftStartTime">Start Time</label>
-                        <input type="time" id="shiftStartTime" name="shiftStartTime" class="form-control">
+                        <label for="shiftParticipant">Participant *</label>
+                        <select id="shiftParticipant" name="shiftParticipant" class="form-control" required>
+                            <option value="">Select participant</option>
+                        </select>
                     </div>
                     
                     <div class="form-group">
-                        <label for="shiftEndTime">End Time</label>
-                        <input type="time" id="shiftEndTime" name="shiftEndTime" class="form-control">
+                        <label for="shiftDutyType">Duty Type *</label>
+                        <select id="shiftDutyType" name="shiftDutyType" class="form-control" required onchange="toggleTimeFields()">
+                            <option value="">Select duty type</option>
+                        </select>
                     </div>
-                </div>
-                
-                <div class="form-group">
-                    <label for="shiftNotes">Notes</label>
-                    <textarea id="shiftNotes" name="shiftNotes" class="form-control" rows="3"></textarea>
-                </div>
-            </form>
+                    
+                    <div id="timeFields">
+                        <div class="form-group">
+                            <label for="shiftStartTime">Start Time</label>
+                            <select id="shiftStartTime" name="shiftStartTime" class="form-control">
+                                <option value="">Select start time</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="shiftEndTime">End Time</label>
+                            <select id="shiftEndTime" name="shiftEndTime" class="form-control">
+                                <option value="">Select end time</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="shiftNotes">Notes</label>
+                        <textarea id="shiftNotes" name="shiftNotes" class="form-control" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            
+            <footer class="modal-footer">
+                <button type="button" class="modal-btn secondary" data-modal-close="addShiftModal">Cancel</button>
+                <button type="button" class="modal-btn primary" onclick="submitShift()">Submit for Approval</button>
+            </footer>
         </div>
-        
-        <footer class="modal-footer">
-            <button type="button" class="modal-btn secondary" data-modal-close="addShiftModal">Cancel</button>
-            <button type="button" class="modal-btn primary" data-action="submitShift">Submit for Approval</button>
-        </footer>
     </div>
-</div>
 
 <!-- Transport Claim Modal -->
 <div id="transportModal" class="modal" role="dialog">
@@ -3854,7 +4493,6 @@ id="nav-profile">
         
         const { createClient } = supabase;
         const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
         //DAY OFFSETTER!
         const DATE_OFFSET_DAYS = 0; // Set to 0 to disable testing mode
         const PERIOD_LENGTH = 14; // 14-day pay periods
@@ -3863,6 +4501,17 @@ id="nav-profile">
     UNIQUE_VIOLATION: "23505",
     NOT_NULL_VIOLATION: "23502"
 };
+
+let googleMapsLoaded = false;
+let directionsService;
+let directionsRenderer;
+let placesService;
+let map;
+let autocompleteOrigin;
+let autocompleteDestination;
+
+
+        let isValidAddressSelected = false;
         let currentUser = null;
         let currentStaff = null;
         let allShifts = [];
@@ -4381,7 +5030,7 @@ async function initializeApp() {
         staffData = result.data;
         
         if (staffData) {
-            console.log('✅ Staff found by user_id - already linked');
+            console.log(' Staff found by user_id - already linked');
         }
         
         // Method 2: Try by email match (auto-link if needed)
@@ -4414,13 +5063,13 @@ async function initializeApp() {
                         showToast('Warning: Could not link your account. Contact admin.', 'warning');
                     } else {
                         staffData = updatedStaff;
-                        console.log('✅ Staff record auto-linked successfully!');
+                        console.log(' Staff record auto-linked successfully!');
                         console.log('   Staff ID:', staffData.id);
                         console.log('   Now linked to Auth ID:', staffData.user_id);
                         showToast('Account linked successfully', 'success');
                     }
                 } else {
-                    console.log('✅ Staff already has user_id, updating to current auth user');
+                    console.log(' Staff already has user_id, updating to current auth user');
                     // Update to current auth user (in case auth account was recreated)
                     const { data: updatedStaff } = await supabaseClient
                         .from('staff')
@@ -4476,7 +5125,7 @@ async function initializeApp() {
         currentStaff = staffData;
         window.currentStaff = staffData; // Ensure global access
         
-        console.log('✅ Staff record loaded:', staffData.first_name, staffData.last_name);
+        console.log(' Staff record loaded:', staffData.first_name, staffData.last_name);
         console.log('   Staff ID:', staffData.id);
         console.log('   Linked to Auth ID:', staffData.user_id);
         
@@ -4721,7 +5370,7 @@ async function initializeApp() {
         // FINAL SUCCESS MESSAGE
         // ============================================
         
-        console.log('✅ Application initialized successfully');
+        console.log(' Application initialized successfully');
         console.log('   Current Staff:', currentStaff.first_name, currentStaff.last_name);
         console.log('   Global Arrays:', {
             participants: participants.length,
@@ -5475,9 +6124,9 @@ async function submitQuickNote(participantId) {
             .from('shift_notes')
             .insert({
                 staff_id: currentStaff.id,
-                participant_id: participantId,  // ✅ CRITICAL: Link to participant
+                participant_id: participantId,  //  CRITICAL: Link to participant
                 note: noteText || 'Image attachment',
-                shift_id: null,  // ✅ OK to be null - not shift-specific
+                shift_id: null,  //  OK to be null - not shift-specific
                 attachments: attachments,
                 created_at: new Date().toISOString()
             });
@@ -7047,75 +7696,847 @@ function ensureRequiredElements() {
     }
 }
 
+// Shift state constants
+const SHIFT_STATES = {
+    TOO_EARLY: 'too_early',
+    READY_TO_CLOCK_IN: 'ready_to_clock_in',
+    IN_PROGRESS: 'in_progress',
+    OVERTIME: 'overtime',
+    MISSED: 'missed',
+    MISSED_CLOCK_OUT: 'missed_clock_out',
+    COMPLETED: 'completed'
+};
 
-        async function loadCurrentShift() {
-            const now = getTestDate();
-            const today = now.toISOString().split('T')[0];
-            
-            // Get today's and tomorrow's shifts
-            const { data: upcomingShifts } = await supabaseClient
-                .from('shifts')
-                .select(`
-                    *,
-                    participant:participant_id(first_name, last_name),
-                    location:location_id(name, address),
-                    duty_type:duty_type_id(name)
-                `)
-                .eq('staff_id', currentStaff.id)
-                .gte('date', today)
-                .lte('date', new Date(now.getTime() + 24*60*60*1000).toISOString().split('T')[0])
-                .is('deleted_at', null)
-                .order('date')
-                .order('start_time')
-                .limit(1);
 
-            const container = document.getElementById('currentShift');
-            
-            if (!upcomingShifts || upcomingShifts.length === 0) {
-                container.innerHTML = `
-                    <div class="shift-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                        <div class="shift-card-header">
-                            <div class="shift-time">No shifts today</div>
-                            <div class="shift-participant">Enjoy your day off!</div>
-                        </div>
+// Fixed getShiftState function - now uses getTestDate()
+function getShiftState(shift) {
+    const now = getTestDate(); // FIXED: Use getTestDate() instead of new Date()
+    const shiftDate = new Date(shift.date);
+    
+    // Check if it's a sleepover shift
+    const isSleepover = !shift.start_time || !shift.end_time || 
+                        shift.start_time === 'Sleepover' || 
+                        shift.duty_type?.name?.toLowerCase().includes('sleepover');
+    
+    let shiftStart, shiftEnd, clockInStart, clockInEnd, clockOutEnd;
+    
+    if (isSleepover) {
+        // Sleepover shifts: 8pm to 9am next day
+        shiftStart = new Date(shiftDate);
+        shiftStart.setHours(20, 0, 0, 0); // 8 PM
+        
+        shiftEnd = new Date(shiftDate);
+        shiftEnd.setDate(shiftEnd.getDate() + 1); // Next day
+        shiftEnd.setHours(9, 0, 0, 0); // 9 AM
+        
+        // Clock in: 7:30 PM - 9:30 PM
+        clockInStart = new Date(shiftDate);
+        clockInStart.setHours(19, 30, 0, 0); // 7:30 PM
+        
+        clockInEnd = new Date(shiftDate);
+        clockInEnd.setHours(21, 30, 0, 0); // 9:30 PM
+        
+        // Clock out: 8:30 AM - 9:30 AM next day
+        clockOutEnd = new Date(shiftDate);
+        clockOutEnd.setDate(clockOutEnd.getDate() + 1);
+        clockOutEnd.setHours(9, 30, 0, 0); // 9:30 AM next day
+    } else {
+        // Regular shifts
+        const [startHour, startMin] = shift.start_time.split(':').map(Number);
+        const [endHour, endMin] = shift.end_time.split(':').map(Number);
+        
+        shiftStart = new Date(shiftDate);
+        shiftStart.setHours(startHour, startMin, 0, 0);
+        
+        shiftEnd = new Date(shiftDate);
+        shiftEnd.setHours(endHour, endMin, 0, 0);
+        
+        // 30 minute grace periods
+        clockInStart = new Date(shiftStart.getTime() - 30 * 60 * 1000);
+        clockInEnd = new Date(shiftStart.getTime() + 30 * 60 * 1000);
+        clockOutEnd = new Date(shiftEnd.getTime() + 30 * 60 * 1000);
+    }
+    
+    // Check if already clocked in/out
+    if (shift.clock_out_time) {
+        return SHIFT_STATES.COMPLETED;
+    }
+    
+    if (shift.clock_in_time) {
+        // Clocked in but not out
+        if (now > clockOutEnd) {
+            return SHIFT_STATES.MISSED_CLOCK_OUT; // Missed the clock out window
+        }
+        if (now > shiftEnd) {
+            return SHIFT_STATES.OVERTIME;
+        }
+        return SHIFT_STATES.IN_PROGRESS;
+    }
+    
+    // Not clocked in yet
+    if (now < clockInStart) {
+        return SHIFT_STATES.TOO_EARLY;
+    }
+    
+    if (now >= clockInStart && now <= clockInEnd) {
+        return SHIFT_STATES.READY_TO_CLOCK_IN;
+    }
+    
+    if (now > clockInEnd && now <= clockOutEnd) {
+        // Within shift hours but missed clock in window
+        return SHIFT_STATES.MISSED;
+    }
+    
+    if (now > clockOutEnd) {
+        return SHIFT_STATES.MISSED_CLOCK_OUT;
+    }
+    
+    return SHIFT_STATES.TOO_EARLY;
+}
+
+// Helper function to format time
+function formatTime(timeString) {
+    if (!timeString) return '';
+    
+    // If it's already a formatted time, return it
+    if (timeString === 'Sleepover') return 'Sleepover';
+    
+    // Handle ISO datetime strings
+    if (timeString.includes('T')) {
+        const date = new Date(timeString);
+        const hours = date.getHours();
+        const minutes = date.getMinutes();
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        const displayHours = hours % 12 || 12;
+        const displayMinutes = minutes < 10 ? '0' + minutes : minutes;
+        return `${displayHours}:${displayMinutes} ${ampm}`;
+    }
+    
+    // Handle HH:MM format
+    const [hours, minutes] = timeString.split(':').map(Number);
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const displayHours = hours % 12 || 12;
+    const displayMinutes = minutes < 10 ? '0' + minutes : minutes;
+    return `${displayHours}:${displayMinutes} ${ampm}`;
+}
+
+async function loadCurrentShift() {
+    if (!currentStaff || !currentStaff.id) {
+        console.log('Current staff not loaded yet, skipping shift load');
+        return;
+    }
+    const now = getTestDate();
+    const today = now.toISOString().split('T')[0];
+    
+    const { data: upcomingShifts } = await supabaseClient
+        .from('shifts')
+        .select(`
+            *,
+            participant:participant_id(first_name, last_name, address, location_lat, location_lng, location_radius_meters),
+            location:location_id(name, address),
+            duty_type:duty_type_id(name)
+        `)
+        .eq('staff_id', currentStaff.id)
+        .gte('date', today)
+        .lte('date', new Date(now.getTime() + 48*60*60*1000).toISOString().split('T')[0])
+        .is('deleted_at', null)
+        .order('date')
+        .order('start_time')
+        .limit(5); // Get more shifts to find next valid one
+
+    const container = document.getElementById('currentShift');
+    
+    if (!upcomingShifts || upcomingShifts.length === 0) {
+        container.innerHTML = `
+        <div class="shift-card" style="background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);">
+
+<div class="shift-card-header">
+                    <div class="shift-time">No shifts today</div>
+                    <div class="shift-participant">Enjoy your day off!</div>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    // Find the first shift that isn't missed/completed
+    let shiftToShow = null;
+    for (const shift of upcomingShifts) {
+        const state = getShiftState(shift);
+        // Skip shifts that are completed or have missed clock out
+        if (state !== SHIFT_STATES.COMPLETED && state !== SHIFT_STATES.MISSED_CLOCK_OUT) {
+            shiftToShow = shift;
+            break;
+        }
+    }
+
+    if (!shiftToShow) {
+        // All shifts are completed or missed
+        container.innerHTML = `
+        <div class="shift-card" style="background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);">
+                <div class="shift-card-header">
+                    <div class="shift-time">No active shifts</div>
+                    <div class="shift-participant">All shifts completed</div>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    const shift = shiftToShow;
+    const isToday = shift.date === today;
+    const isSleepover = !shift.start_time || !shift.end_time || shift.start_time === 'Sleepover';
+    const participantName = shift.participant ? 
+        `${shift.participant.first_name} ${shift.participant.last_name}` :
+        (shift.location?.name || 'Unassigned');
+    
+    // Determine card background based on shift state
+    const state = getShiftState(shift);
+    let cardStyle = 'background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);'; // Blue gradient default
+
+    if (shift.clock_in_time && !shift.clock_out_time) {
+    cardStyle = 'background: linear-gradient(135deg, #2d5a3d 0%, #3a6b4a 100%);'; // Green gradient when clocked in
+}
+    container.innerHTML = `
+        <div class="shift-card" id="shift-card-${shift.id}" data-shift-id="${shift.id}" style="${cardStyle}">
+            <div class="shift-card-header" style="cursor: pointer;">
+                <div class="shift-time">
+                    ${isSleepover ? 'Sleepover (8PM - 9AM)' : 
+                      `${formatTime(shift.start_time)} - ${formatTime(shift.end_time)}`}
+                </div>
+                <div class="shift-participant">${participantName}</div>
+                <div class="shift-location">
+                    <i class="fa-solid fa-location-dot"></i> ${shift.location?.name || 'Client Home'}
+                </div>
+                <div class="shift-status">${isToday ? 'TODAY' : 'TOMORROW'}</div>
+            </div>
+            <div class="shift-expand-icon">▼</div>
+            <div class="shift-details" id="shift-details-${shift.id}">
+                <div id="clock-section-${shift.id}"></div>
+                ${shift.notes ? `
+                    <div class="shift-note">
+                        <div class="shift-note-content">${shift.notes}</div>
                     </div>
-                `;
-                return;
+                ` : ''}
+            </div>
+        </div>
+    `;
+    
+    // Add click handler
+    setTimeout(() => {
+        const card = document.getElementById(`shift-card-${shift.id}`);
+        const cardHeader = card?.querySelector('.shift-card-header');
+        const details = document.getElementById(`shift-details-${shift.id}`);
+        const icon = card?.querySelector('.shift-expand-icon');
+        
+        if (cardHeader && details) {
+            cardHeader.addEventListener('click', async function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                details.classList.toggle('expanded');
+                if (icon) {
+                    icon.textContent = details.classList.contains('expanded') ? '▲' : '▼';
+                }
+                
+                // Load clock UI when expanding
+                if (details.classList.contains('expanded')) {
+                    await loadShiftClockingUI(shift.id, shift);
+                }
+            });
+            
+            // Auto-expand if shift is in progress
+            if (shift.clock_in_time && !shift.clock_out_time) {
+                details.classList.add('expanded');
+                icon.textContent = '▲';
+                loadShiftClockingUI(shift.id, shift);
+            }
+        }
+    }, 100);
+    
+    // Ensure styles are added
+    addClockStyles();
+}
+
+function formatTimeNSW(timeString) {
+    if (!timeString) return '';
+    
+    // If it's already a formatted time like "Sleepover", return it
+    if (timeString === 'Sleepover') return 'Sleepover';
+    
+    // Handle ISO datetime strings (from database)
+    if (timeString.includes('T') || timeString.includes('-')) {
+        const date = new Date(timeString);
+        // Convert to NSW timezone
+        const nswTime = new Date(date.toLocaleString("en-US", {timeZone: "Australia/Sydney"}));
+        const hours = nswTime.getHours();
+        const minutes = nswTime.getMinutes();
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        const displayHours = hours % 12 || 12;
+        const displayMinutes = minutes < 10 ? '0' + minutes : minutes;
+        return `${displayHours}:${displayMinutes} ${ampm}`;
+    }
+    
+    // Handle HH:MM format (already in local time)
+    const [hours, minutes] = timeString.split(':').map(Number);
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const displayHours = hours % 12 || 12;
+    const displayMinutes = minutes < 10 ? '0' + minutes : minutes;
+    return `${displayHours}:${displayMinutes} ${ampm}`;
+}
+
+// Updated Clock in handler with NSW timezone
+async function handleClockIn(shiftId) {
+    console.log('Handling clock in for shift:', shiftId);
+    
+    const btn = event.target.closest('.clock-btn');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="location-spinner"></span> Getting location...';
+    }
+    
+    try {
+        // Get current location
+        const position = await getCurrentPosition();
+        const coords = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude
+        };
+        
+        // Get shift details with participant location info
+        const { data: shift, error: shiftError } = await supabaseClient
+            .from('shifts')
+            .select(`
+                *,
+                participant:participant_id(location_lat, location_lng, location_radius_meters, address),
+                location:location_id(name, address)
+            `)
+            .eq('id', shiftId)
+            .single();
+            
+        if (shiftError) throw shiftError;
+        
+        // Calculate distance if participant has location coordinates
+        let distance = null;
+        let isWithinRange = true;
+        
+        if (shift.participant?.location_lat && shift.participant?.location_lng) {
+            distance = calculateDistance(
+                coords.latitude, 
+                coords.longitude,
+                shift.participant.location_lat, 
+                shift.participant.location_lng
+            );
+            
+            const maxDistance = shift.participant.location_radius_meters || 500;
+            isWithinRange = distance <= maxDistance;
+        }
+        
+        // Get address for the current location
+        const address = await reverseGeocode(coords.latitude, coords.longitude);
+        
+        // Store clock-in time in UTC (database handles this)
+        const { error: updateError } = await supabaseClient
+            .from('shifts')
+            .update({
+                clock_in_time: new Date().toISOString(),
+                clock_in_lat: coords.latitude,
+                clock_in_lng: coords.longitude,
+                clock_in_address: address,
+                clock_in_distance_meters: distance,
+                clock_in_location: { 
+                    lat: coords.latitude, 
+                    lng: coords.longitude, 
+                    address: address,
+                    distance_meters: distance,
+                    within_range: isWithinRange
+                }
+            })
+            .eq('id', shiftId);
+            
+        if (updateError) throw updateError;
+        
+        // Reload the shift display
+        await loadCurrentShift();
+        
+        // Show success message if function exists
+        if (typeof showNotification === 'function') {
+            showNotification('Successfully clocked in!', 'success');
+        }
+        
+    } catch (error) {
+        console.error('Clock in error:', error);
+        if (typeof showNotification === 'function') {
+            showNotification('Failed to clock in. Please try again.', 'error');
+        }
+        
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-clock"></i> Clock In';
+        }
+    }
+}
+
+// Updated Clock out handler with distance calculation and NSW timezone
+async function handleClockOut(shiftId) {
+    console.log('Handling clock out for shift:', shiftId);
+    
+    const btn = event.target.closest('.clock-btn');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="location-spinner"></span> Getting location...';
+    }
+    
+    try {
+        // Get current location
+        const position = await getCurrentPosition();
+        const coords = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude
+        };
+        
+        // Get shift details with participant location info
+        const { data: shift, error: shiftError } = await supabaseClient
+            .from('shifts')
+            .select(`
+                *,
+                participant:participant_id(location_lat, location_lng, location_radius_meters, address),
+                location:location_id(name, address)
+            `)
+            .eq('id', shiftId)
+            .single();
+            
+        if (shiftError) throw shiftError;
+        
+        // Calculate distance if participant has location coordinates
+        let distance = null;
+        let isWithinRange = true;
+        
+        if (shift.participant?.location_lat && shift.participant?.location_lng) {
+            distance = calculateDistance(
+                coords.latitude, 
+                coords.longitude,
+                shift.participant.location_lat, 
+                shift.participant.location_lng
+            );
+            
+            const maxDistance = shift.participant.location_radius_meters || 500;
+            isWithinRange = distance <= maxDistance;
+        }
+        
+        // Get address
+        const address = await reverseGeocode(coords.latitude, coords.longitude);
+        
+        // Update shift with clock out data - store in UTC
+        const { error: updateError } = await supabaseClient
+            .from('shifts')
+            .update({
+                clock_out_time: new Date().toISOString(),
+                clock_out_lat: coords.latitude,
+                clock_out_lng: coords.longitude,
+                clock_out_address: address,
+                clock_out_distance_meters: distance, // Now including distance
+                clock_out_location: {
+                    lat: coords.latitude,
+                    lng: coords.longitude,
+                    address: address,
+                    distance_meters: distance,
+                    within_range: isWithinRange
+                }
+            })
+            .eq('id', shiftId);
+            
+        if (updateError) throw updateError;
+        
+        // Reload the shift display
+        await loadCurrentShift();
+        
+        // Show success message if function exists
+        if (typeof showNotification === 'function') {
+            showNotification('Successfully clocked out!', 'success');
+        }
+        
+    } catch (error) {
+        console.error('Clock out error:', error);
+        if (typeof showNotification === 'function') {
+            showNotification('Failed to clock out. Please try again.', 'error');
+        }
+        
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-clock"></i> Clock Out';
+        }
+    }
+}
+
+async function loadShiftClockingUI(shiftId, shiftData) {
+    const clockSection = document.getElementById(`clock-section-${shiftId}`);
+    if (!clockSection) return;
+    
+    // Check if clock-in is required for this shift
+    if (shiftData.clock_in_required === false) {
+        // Self-submitted shift - no clock-in required
+        clockSection.innerHTML = `
+            <div class="clock-info-message">
+                <i class="fa-solid fa-info-circle"></i>
+                <span>Clock-in not required for this shift</span>
+            </div>
+            <div class="shift-status-info">
+                <p class="status-label">Status: ${shiftData.status || 'Pending'}</p>
+                <p class="shift-type-label">Self-submitted shift</p>
+            </div>
+        `;
+        return;
+    }
+    
+    // Regular shift with clock-in required
+    const now = getTestDate();
+    const shiftDate = new Date(shiftData.date);
+    const isToday = shiftDate.toDateString() === now.toDateString();
+    
+    if (!isToday) {
+        clockSection.innerHTML = `
+            <div class="clock-message">
+                <i class="fa-solid fa-clock"></i>
+                <span>Clock-in will be available on the day of your shift</span>
+            </div>
+        `;
+        return;
+    }
+    
+    // Determine shift state
+    const state = getShiftState(shiftData);
+    
+    if (shiftData.clock_in_time && !shiftData.clock_out_time) {
+        // Currently clocked in
+        const clockInTime = new Date(shiftData.clock_in_time);
+        const duration = Math.floor((now - clockInTime) / 1000 / 60); // minutes
+        const hours = Math.floor(duration / 60);
+        const minutes = duration % 60;
+        
+        clockSection.innerHTML = `
+            <div class="clock-status active">
+                <div class="clock-status-header">
+                    <i class="fa-solid fa-business-time"></i>
+                    <span>Currently Working</span>
+                </div>
+                <div class="clock-info">
+                    <p>Clocked in at ${formatTime(shiftData.clock_in_time)}</p>
+                    <p>Duration: ${hours}h ${minutes}m</p>
+                    ${shiftData.clock_in_address ? `<p class="location-text"><i class="fa-solid fa-location-dot"></i> ${shiftData.clock_in_address}</p>` : ''}
+                </div>
+                <button class="clock-btn clock-out" onclick="handleClockOut('${shiftId}')">
+                    <i class="fa-solid fa-stop"></i> Clock Out
+                </button>
+            </div>
+        `;
+    } else if (shiftData.clock_out_time) {
+        // Shift completed
+        clockSection.innerHTML = `
+            <div class="clock-status completed">
+                <div class="clock-status-header">
+                    <i class="fa-solid fa-check-circle"></i>
+                    <span>Shift Completed</span>
+                </div>
+                <div class="clock-info">
+                    <p>Clocked in: ${formatTime(shiftData.clock_in_time)}</p>
+                    <p>Clocked out: ${formatTime(shiftData.clock_out_time)}</p>
+                </div>
+            </div>
+        `;
+    } else if (state === SHIFT_STATES.READY_TO_CLOCK_IN || state === SHIFT_STATES.CAN_CLOCK_IN_EARLY) {
+        // Ready to clock in
+        const message = state === SHIFT_STATES.CAN_CLOCK_IN_EARLY ? 
+            'You can clock in up to 30 minutes early' : 
+            'Ready to start your shift';
+            
+        clockSection.innerHTML = `
+            <div class="clock-ready">
+                <p class="clock-message">${message}</p>
+                <button class="clock-btn clock-in" onclick="handleClockIn('${shiftId}')">
+                    <i class="fa-solid fa-play"></i> Clock In
+                </button>
+            </div>
+        `;
+    } else if (state === SHIFT_STATES.TOO_EARLY) {
+        const shiftStart = new Date(`${shiftData.date}T${shiftData.start_time}`);
+        const thirtyMinBefore = new Date(shiftStart.getTime() - 30 * 60 * 1000);
+        const timeUntilCanClock = Math.ceil((thirtyMinBefore - now) / 1000 / 60);
+        
+        clockSection.innerHTML = `
+            <div class="clock-message">
+                <i class="fa-solid fa-hourglass-half"></i>
+                <span>You can clock in ${timeUntilCanClock} minutes before shift start</span>
+            </div>
+        `;
+    } else {
+        // Missed shift or other state
+        clockSection.innerHTML = `
+            <div class="clock-message warning">
+                <i class="fa-solid fa-exclamation-triangle"></i>
+                <span>Please contact your supervisor about this shift</span>
+            </div>
+        `;
+    }
+}
+
+// Add CSS for the clock info message
+function addClockInfoStyles() {
+    if (document.getElementById('clock-info-styles')) return;
+    
+    const style = document.createElement('style');
+    style.id = 'clock-info-styles';
+    style.textContent = `
+        .clock-info-message {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #black;
+            margin-bottom: 10px;
+        }
+        
+        .clock-info-message i {
+            font-size: 18px;
+            color: #64b5f6;
+        }
+        
+        .shift-status-info {
+            padding: 10px 16px;
+            color: #64b5f6;
+        }
+        
+        .shift-status-info p {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        
+        .status-label {
+            font-weight: 500;
+            text-transform: capitalize;
+        }
+        
+        .shift-type-label {
+            font-style: italic;
+            color: black;
+            font-size: 13px;
+        }
+        
+        .clock-ready, .clock-status, .clock-message {
+            padding: 15px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .clock-btn {
+            margin-top: 10px;
+            padding: 10px 20px;
+            border-radius: 5px;
+            border: none;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            justify-content: center;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+        
+        .clock-btn.clock-in {
+            background: #4caf50;
+            color: white;
+        }
+        
+        .clock-btn.clock-in:hover {
+            background: #45a049;
+        }
+        
+        .clock-btn.clock-out {
+            background: #f44336;
+            color: white;
+        }
+        
+        .clock-btn.clock-out:hover {
+            background: #da190b;
+        }
+    `;
+    
+    document.head.appendChild(style);
+}
+
+// Call this when the page loads
+document.addEventListener('DOMContentLoaded', function() {
+    addClockInfoStyles();
+});
+
+
+// Helper function to get current position
+function getCurrentPosition() {
+    return new Promise((resolve, reject) => {
+        if (!navigator.geolocation) {
+            reject(new Error('Geolocation not supported'));
+            return;
+        }
+        
+        navigator.geolocation.getCurrentPosition(
+            resolve,
+            reject,
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            }
+        );
+    });
+}
+
+// Helper function to calculate distance between two points
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371e3; // Earth radius in meters
+    const φ1 = lat1 * Math.PI/180;
+    const φ2 = lat2 * Math.PI/180;
+    const Δφ = (lat2-lat1) * Math.PI/180;
+    const Δλ = (lon2-lon1) * Math.PI/180;
+
+    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ/2) * Math.sin(Δλ/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+    return R * c; // Distance in meters
+}
+
+// Update your addClockStyles function to include the note styles
+function addClockStyles() {
+    if (!document.getElementById('clock-styles')) {
+        const styleElement = document.createElement('style');
+        styleElement.id = 'clock-styles';
+        styleElement.textContent = `
+            .shift-card {
+                border-radius: 8px;
+                color: white;
+                margin-bottom: 16px;
+                transition: all 0.3s ease;
             }
 
-            const shift = upcomingShifts[0];
-            const isToday = shift.date === today;
-            const participantName = shift.participant ? 
-                `${shift.participant.first_name} ${shift.participant.last_name}` :
-                (shift.location?.name || 'Unassigned');
-            
-            container.innerHTML = `
-            <div class="shift-card" data-shift-id="${shift.id}" data-action="toggleShiftDetails">
-                    <div class="shift-card-header">
-                        <div class="shift-time">
-                            ${shift.start_time ? formatTime(shift.start_time) : 'Sleepover'} - 
-                            ${shift.end_time ? formatTime(shift.end_time) : ''}
-                        </div>
-                        <div class="shift-participant">${participantName}</div>
-                        <div class="shift-location">
-    <i class="fa-solid fa-location-dot"></i> ${shift.locations?.name || 'Client Home'}
-</div>
-                        <div class="shift-status">${isToday ? 'TODAY' : 'TOMORROW'}</div>
-                    </div>
-                    <div class="shift-expand-icon">▼</div>
-                    <div class="shift-details">
-                        <div class="handover-section">
-                            <div class="handover-title">Handover Notes</div>
-                            <div id="handoverNotes">Loading...</div>
-                            <button class="modal-btn primary mt-2" data-action-with-param="addNoteToShift" data-param="${shift.id}">Add Note</button>
-                        </div>
-                    </div>
-                </div>
-            `;
+            .clock-section {
+                padding: 15px;
+                border-top: 1px solid rgba(255,255,255,0.1);
+                margin-top: 10px;
+            }
 
-            // Load handover notes
-            loadHandoverNotes(shift.id);
-        }
+            .clock-status {
+                padding: 12px;
+                border-radius: 8px;
+                margin-bottom: 10px;
+                background: rgba(255, 255, 255, 0.05);
+            }
+
+            .clock-btn {
+                width: 100%;
+                padding: 12px;
+                border: none;
+                border-radius: 8px;
+                font-size: 16px;
+                font-weight: 600;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+                transition: all 0.3s ease;
+                background: #1976d2;
+                color: white;
+            }
+
+            .clock-btn:hover {
+                background: #1565c0;
+            }
+
+            .clock-btn:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
+
+            .location-info {
+                padding: 8px;
+                background: rgba(255,255,255,0.05);
+                border-radius: 4px;
+                font-size: 12px;
+                margin-top: 8px;
+            }
+
+            .distance {
+                display: block;
+                font-size: 11px;
+                color: rgba(255, 255, 255, 0.7);
+                margin-top: 4px;
+            }
+
+            .overtime-warning {
+                padding: 8px;
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 4px;
+                color: #ffd93d;
+                text-align: center;
+                margin-top: 10px;
+                font-size: 12px;
+            }
+
+            .shift-details {
+                max-height: 0;
+                overflow: hidden;
+                transition: max-height 0.3s ease;
+            }
+
+            .shift-details.expanded {
+                max-height: 800px;
+            }
+
+            .location-spinner {
+                display: inline-block;
+                width: 20px;
+                height: 20px;
+                border: 3px solid rgba(255,255,255,.3);
+                border-radius: 50%;
+                border-top-color: #fff;
+                animation: spin 1s ease-in-out infinite;
+            }
+
+            .clock-message {
+    font-size: 12px;
+    color: rgba(0, 0, 0, 0.8); /* Dark color for contrast */
+    font-style: italic;
+    margin-top: 8px;
+    line-height: 1.4;
+}
+
+            .shift-note {
+                margin: 15px;
+                padding: 12px;
+                background: rgba(255, 255, 255, 0.05);
+                border-radius: 4px;
+            }
+
+            .shift-note-content {
+    font-size: 14px;
+    color: rgba(0, 0, 0, 0.8); /* Dark color for contrast */
+    font-style: italic;
+    line-height: 1.5;
+    white-space: pre-wrap;
+}
+
+            @keyframes spin {
+                to { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(styleElement);
+    }
+}
 
 
 async function enrichRequestData(requests, type) {
@@ -7794,6 +9215,7 @@ function showAddShiftModal() {
     populateShiftModalDropdowns();
     ModalManager.show('addShift');
 }
+
 
 
 
@@ -10003,9 +11425,9 @@ async function submitAdjustment() {
             .insert({
                 shift_id: parseInt(shiftId),
                 staff_id: currentStaff.id,
-                new_start_time: formattedStartTime,  // ✅ FIXED
-                new_end_time: formattedEndTime,      // ✅ FIXED
-                adjustment_type: 'time_change',      // ✅ ADDED (required field)
+                new_start_time: formattedStartTime,  //  FIXED
+                new_end_time: formattedEndTime,      //  FIXED
+                adjustment_type: 'time_change',      //  ADDED (required field)
                 reason: reason,
                 status: 'pending',
                 created_at: new Date().toISOString()
@@ -10437,6 +11859,1113 @@ function onDutyTypeChange() {
     }
 }
 
+//TRANSPORT
+let transportState = {
+            currentStep: 1,
+            participantId: null,
+            participant: null,
+            selectedRoute: null,
+            selectedQuickRoute: null,
+            googleMapsLoaded: false
+        };
+
+        // Main async function to load transport claim view
+        async function loadTransportClaim(participantId) {
+            try {
+                transportState.participantId = participantId;
+                transportState.currentStep = 1;
+                
+                // Load participant data
+                const { data: participant, error } = await supabaseClient
+                    .from('participants')
+                    .select('*')
+                    .eq('id', participantId)
+                    .single();
+                
+                if (error) throw error;
+                
+                transportState.participant = participant;
+                
+                // Load Google Maps if not loaded
+                if (!transportState.googleMapsLoaded) {
+                    await loadGoogleMapsScript();
+                    transportState.googleMapsLoaded = true;
+                }
+                
+                // Initialize the view
+                initializeTransportView();
+                
+                // Load quick routes
+                await loadQuickRoutes(participantId);
+                
+                // Set today's date
+                document.getElementById('transportDate').valueAsDate = new Date();
+                
+                // Setup autocomplete after a delay to ensure Google Maps is ready
+                setTimeout(() => {
+                    setupAddressAutocomplete(document.getElementById('routeOrigin'), true);
+                    setupAddressAutocomplete(document.getElementById('routeDestination'), false);
+                }, 500);
+                
+            } catch (error) {
+                console.error('Error loading transport claim:', error);
+                showToast('Failed to load transport claim', 'error');
+            }
+        }
+
+        // Initialize transport view
+        function initializeTransportView() {
+            updateTransportStep(1);
+        }
+
+        // Load quick routes for the participant
+        async function loadQuickRoutes(participantId) {
+            const container = document.getElementById('quickRoutesGrid');
+            container.innerHTML = `
+                <div class="route-loading">
+                    <div class="spinner"></div>
+                    <p>Loading saved routes...</p>
+                </div>
+            `;
+            
+            try {
+                const { data: routes, error } = await supabaseClient
+                    .rpc('get_participant_quick_routes', {
+                        p_participant_id: participantId,
+                        p_staff_id: currentStaff.id,
+                        p_limit: 5
+                    });
+                
+                if (error) throw error;
+                
+                if (!routes || routes.length === 0) {
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: 40px; color: #999;">
+                            <i class="fas fa-route" style="font-size: 2rem; margin-bottom: 10px;"></i>
+                            <p>No saved routes yet. Create your first route below!</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                let html = '<h4 style="margin-top: 0; margin-bottom: 15px; color: #333;">Quick Routes</h4>';
+                
+                routes.forEach((route, index) => {
+                    html += `
+                        <div class="route-card" onclick="selectQuickRoute('${route.id}', ${JSON.stringify(route).replace(/"/g, '&quot;')})">
+                            <div class="route-card-header">
+                                <div class="route-name">${route.route_name || `Route ${index + 1}`}</div>
+                                <div class="route-actions">
+                                    ${route.is_favorite ? '<i class="fas fa-star route-favorite"></i>' : ''}
+                                    <button class="route-delete" onclick="event.stopPropagation(); deleteTransportRoute('${route.id}')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="route-info">
+                                <div class="route-stat">
+                                    <i class="fas fa-road"></i>
+                                    <span>${parseFloat(route.distance_km).toFixed(1)} km</span>
+                                </div>
+                                <div class="route-stat">
+                                    <i class="fas fa-clock"></i>
+                                    <span>${route.duration_minutes || '~'} mins</span>
+                                </div>
+                                <div class="route-stat highlight">
+                                    <i class="fas fa-dollar-sign"></i>
+                                    <span>$${parseFloat(route.distance_km).toFixed(2)}</span>
+                                </div>
+                            </div>
+                            
+                            <div class="route-addresses">
+                                <div class="route-address-line"><strong>From:</strong> ${route.origin_address}</div>
+                                <div class="route-address-line"><strong>To:</strong> ${route.destination_address}</div>
+                                ${route.route_via ? `<div class="route-address-line"><strong>Via:</strong> ${route.route_via}</div>` : ''}
+                            </div>
+                            
+                            ${route.use_count > 0 ? `
+                                <div style="margin-top: 8px; color: #999; font-size: 0.8rem;">
+                                    Used ${route.use_count} time${route.use_count > 1 ? 's' : ''}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                });
+                
+                container.innerHTML = html;
+                
+            } catch (error) {
+                console.error('Error loading quick routes:', error);
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 20px; color: #dc3545;">
+                        <i class="fas fa-exclamation-triangle"></i> Failed to load saved routes
+                    </div>
+                `;
+            }
+        }
+
+        // Select a quick route
+        function selectQuickRoute(routeId, routeData) {
+            transportState.selectedQuickRoute = routeData;
+            
+            // Mark as selected
+            document.querySelectorAll('.route-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            event.currentTarget.classList.add('selected');
+            
+            // Set route data
+            window.selectedOrigin = {
+                address: routeData.origin_address,
+                placeId: routeData.origin_place_id
+            };
+            
+            window.selectedDestination = {
+                address: routeData.destination_address,
+                placeId: routeData.destination_place_id
+            };
+            
+            window.selectedRouteData = {
+                distance: routeData.distance_km,
+                duration: routeData.duration_minutes,
+                via: routeData.route_via,
+                polyline: routeData.route_polyline
+            };
+            
+            // Update use count
+            supabaseClient.rpc('use_saved_route', { p_route_id: routeId });
+            
+            // Skip to confirmation
+            updateTransportStep(3);
+        }
+
+        // Use client's home address
+        function useClientHome() {
+            if (!transportState.participant) return;
+            
+            const homeAddress = getParticipantHomeAddress(transportState.participant);
+            if (homeAddress && homeAddress !== 'Address not available') {
+                document.getElementById('routeOrigin').value = homeAddress;
+                
+                // Trigger place changed event for autocomplete
+                const event = new Event('input', { bubbles: true });
+                document.getElementById('routeOrigin').dispatchEvent(event);
+                
+                showToast('Client home address added', 'success');
+            } else {
+                showToast('Client home address not available', 'warning');
+            }
+        }
+
+        // Proceed to route options
+        async function proceedToRouteOptions() {
+            const origin = document.getElementById('routeOrigin').value;
+            const destination = document.getElementById('routeDestination').value;
+            
+            if (!origin || !destination) {
+                showToast('Please enter both pickup and destination addresses', 'warning');
+                return;
+            }
+            
+            updateTransportStep(2);
+            
+            // Initialize map if needed
+            if (!map) {
+                const mapElement = document.getElementById('transportMap');
+                if (mapElement) {
+                    initializeMapServices(mapElement);
+                }
+            }
+            
+            // Calculate routes
+            calculateRoutes();
+        }
+
+        // Update step display
+        function updateTransportStep(step) {
+            transportState.currentStep = step;
+            
+            // Update step indicators
+            ['step1Dot', 'step2Dot', 'step3Dot'].forEach((id, index) => {
+                const dot = document.getElementById(id);
+                if (index + 1 < step) {
+                    dot.classList.add('completed');
+                    dot.classList.remove('active');
+                } else if (index + 1 === step) {
+                    dot.classList.add('active');
+                    dot.classList.remove('completed');
+                } else {
+                    dot.classList.remove('active', 'completed');
+                }
+            });
+            
+            // Update step title
+            const titles = [
+                'Step 1: Select or Create Route',
+                'Step 2: Choose Your Path',
+                'Step 3: Confirm Details'
+            ];
+            document.getElementById('stepTitle').textContent = titles[step - 1];
+            
+            // Update content sections
+            ['step1Content', 'step2Content', 'step3Content'].forEach((id, index) => {
+                document.getElementById(id).classList.toggle('active', index + 1 === step);
+            });
+            
+            // Update buttons
+            document.getElementById('btnBack').style.display = step > 1 ? 'block' : 'none';
+            document.getElementById('btnNext').style.display = step < 3 ? 'block' : 'none';
+            document.getElementById('btnSubmit').style.display = step === 3 ? 'block' : 'none';
+            
+            // Update summary if on step 3
+            if (step === 3) {
+                updateTripSummary();
+            }
+        }
+
+        // Navigate steps
+        function nextTransportStep() {
+            if (transportState.currentStep === 1) {
+                // Check if a route is selected or new route is ready
+                if (!transportState.selectedQuickRoute && !window.selectedRouteData) {
+                    const origin = document.getElementById('routeOrigin').value;
+                    const destination = document.getElementById('routeDestination').value;
+                    
+                    if (origin && destination) {
+                        proceedToRouteOptions();
+                    } else {
+                        showToast('Please select a route or enter addresses', 'warning');
+                    }
+                }
+            } else if (transportState.currentStep === 2) {
+                if (!window.selectedRouteData) {
+                    showToast('Please select a route option', 'warning');
+                    return;
+                }
+                updateTransportStep(3);
+            }
+        }
+
+        function previousTransportStep() {
+            if (transportState.currentStep > 1) {
+                updateTransportStep(transportState.currentStep - 1);
+            }
+        }
+
+        // Update trip summary
+        function updateTripSummary() {
+            if (!window.selectedRouteData) return;
+            
+            const summary = document.getElementById('tripSummary');
+            const distance = parseFloat(window.selectedRouteData.distance);
+            const reimbursement = distance * 1; // $1 per km
+            
+            summary.innerHTML = `
+                <div class="summary-row">
+                    <span class="summary-label">From:</span>
+                    <span class="summary-value">${window.selectedOrigin?.address || 'N/A'}</span>
+                </div>
+                <div class="summary-row">
+                    <span class="summary-label">To:</span>
+                    <span class="summary-value">${window.selectedDestination?.address || 'N/A'}</span>
+                </div>
+                <div class="summary-row">
+                    <span class="summary-label">Via:</span>
+                    <span class="summary-value">${window.selectedRouteData.via || 'Direct route'}</span>
+                </div>
+                <div class="summary-row">
+                    <span class="summary-label">Distance:</span>
+                    <span class="summary-value">${distance.toFixed(1)} km</span>
+                </div>
+                <div class="summary-row">
+                    <span class="summary-label">Duration:</span>
+                    <span class="summary-value">${window.selectedRouteData.duration || '~'} minutes</span>
+                </div>
+                <div class="summary-row total">
+                    <span class="summary-label">Reimbursement:</span>
+                    <span class="summary-value">$${reimbursement.toFixed(2)}</span>
+                </div>
+            `;
+        }
+
+        // Submit transport claim
+        async function submitTransportClaim() {
+            const btn = document.getElementById('btnSubmit');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+            
+            try {
+                await submitTransportClaimWithRoute(transportState.participantId);
+                
+                // Reset and close
+                transportState.currentStep = 1;
+                transportState.selectedQuickRoute = null;
+                window.selectedOrigin = null;
+                window.selectedDestination = null;
+                window.selectedRouteData = null;
+                
+                // Clear form
+                document.getElementById('routeOrigin').value = '';
+                document.getElementById('routeDestination').value = '';
+                document.getElementById('transportReason').value = '';
+                document.getElementById('saveRouteCheck').checked = false;
+                
+                // Reload quick routes
+                await loadQuickRoutes(transportState.participantId);
+                
+                showToast('Transport claim submitted successfully!', 'success');
+                
+                // Optionally navigate back to participant menu
+                // closeParticipantPanel();
+                
+            } catch (error) {
+                console.error('Error submitting claim:', error);
+                showToast('Failed to submit transport claim', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-check"></i> Submit Claim';
+            }
+        }
+
+        // Delete a saved route
+        async function deleteTransportRoute(routeId) {
+            if (confirm('Delete this saved route?')) {
+                try {
+                    const { error } = await supabaseClient
+                        .from('saved_routes')
+                        .delete()
+                        .eq('id', routeId)
+                        .eq('staff_id', currentStaff.id);
+                    
+                    if (error) throw error;
+                    
+                    showToast('Route deleted', 'success');
+                    await loadQuickRoutes(transportState.participantId);
+                    
+                } catch (error) {
+                    console.error('Error deleting route:', error);
+                    showToast('Failed to delete route', 'error');
+                }
+            }
+        }
+
+        // Add to your participant view switch handler
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add click handler for transport button
+            document.querySelector('[data-participant-view="transport"]')?.addEventListener('click', function() {
+                const participantId = document.getElementById('participantSelect').value;
+                if (participantId) {
+                    openParticipantPanel('transport');
+                    loadTransportClaim(participantId);
+                } else {
+                    showToast('Please select a participant first', 'warning');
+                }
+            });
+        });
+
+async function loadGoogleMapsScript() {
+    if (googleMapsLoaded) return Promise.resolve();
+    
+    return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&callback=initGoogleMaps`;
+        script.async = true;
+        script.defer = true;
+        
+        window.initGoogleMaps = () => {
+            googleMapsLoaded = true;
+            resolve();
+        };
+        
+        script.onerror = reject;
+        document.head.appendChild(script);
+    });
+}
+
+// Initialize Google Maps Services
+function initializeMapServices(mapElement) {
+    if (!mapElement) return;
+    
+    // Initialize map
+    map = new google.maps.Map(mapElement, {
+        zoom: 10,
+        center: { lat: -33.8688, lng: 151.2093 }, // Sydney default
+        mapTypeControl: false,
+        fullscreenControl: false,
+        streetViewControl: false
+    });
+    
+    directionsService = new google.maps.DirectionsService();
+    directionsRenderer = new google.maps.DirectionsRenderer({
+        map: map,
+        suppressMarkers: false,
+        preserveViewport: false
+    });
+}
+
+function setupAddressAutocomplete(inputElement, isOrigin = true) {
+    if (!inputElement || !google) return;
+    
+    const autocomplete = new google.maps.places.Autocomplete(inputElement, {
+        componentRestrictions: { country: 'au' },
+        fields: ['place_id', 'formatted_address', 'geometry']
+    });
+    
+    // Fix 1: Force blur on place selection
+    autocomplete.addListener('place_changed', () => {
+        const place = autocomplete.getPlace();
+        if (!place.geometry) return;
+        
+        // Store the selected place data
+        if (isOrigin) {
+            window.selectedOrigin = {
+                address: place.formatted_address,
+                placeId: place.place_id,
+                lat: place.geometry.location.lat(),
+                lng: place.geometry.location.lng()
+            };
+        } else {
+            window.selectedDestination = {
+                address: place.formatted_address,
+                placeId: place.place_id,
+                lat: place.geometry.location.lat(),
+                lng: place.geometry.location.lng()
+            };
+        }
+        
+        // FIX: Force close the dropdown
+        inputElement.blur();
+        setTimeout(() => {
+            inputElement.focus();
+            inputElement.blur();
+        }, 100);
+        
+        // If both locations selected, calculate routes
+        if (window.selectedOrigin && window.selectedDestination) {
+            calculateRoutes();
+        }
+    });
+    
+    // Fix 2: Handle Enter key to close dropdown
+    inputElement.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            // Allow Google to process the selection first
+            setTimeout(() => {
+                this.blur();
+            }, 100);
+        }
+    });
+    
+    // Fix 3: Handle clicks on autocomplete suggestions
+    // This uses MutationObserver to detect when user clicks on dropdown
+    let observer = new MutationObserver(() => {
+        const pacContainer = document.querySelector('.pac-container');
+        if (pacContainer) {
+            pacContainer.addEventListener('mousedown', (e) => {
+                // Prevent default to allow selection
+                e.stopPropagation();
+                
+                // Close dropdown after selection
+                setTimeout(() => {
+                    inputElement.blur();
+                    // Hide all pac-containers
+                    document.querySelectorAll('.pac-container').forEach(container => {
+                        container.style.display = 'none';
+                    });
+                }, 300);
+            });
+            
+            // Disconnect observer once we've attached the listener
+            observer.disconnect();
+        }
+    });
+    
+    // Start observing
+    observer.observe(document.body, { childList: true, subtree: true });
+    
+    return autocomplete;
+}
+
+function closeAutocompleteDropdown(inputElement) {
+    // Method 1: Blur and refocus
+    inputElement.blur();
+    
+    // Method 2: Hide pac-container directly
+    setTimeout(() => {
+        const containers = document.querySelectorAll('.pac-container');
+        containers.forEach(container => {
+            container.style.display = 'none';
+        });
+    }, 100);
+    
+    // Method 3: Trigger a click outside
+    setTimeout(() => {
+        document.body.click();
+    }, 150);
+    
+    // Method 4: Dispatch blur event
+    setTimeout(() => {
+        inputElement.dispatchEvent(new Event('blur', { bubbles: true }));
+    }, 200);
+}
+
+// For staff address modal - specific implementation
+function setupStaffAddressAutocomplete(inputElement) {
+    if (!inputElement || !google) return;
+    
+    const autocomplete = new google.maps.places.Autocomplete(inputElement, {
+        componentRestrictions: { country: 'au' },
+        fields: ['address_components', 'formatted_address', 'geometry'],
+        types: ['address'] // More specific for home addresses
+    });
+    
+    autocomplete.addListener('place_changed', () => {
+        const place = autocomplete.getPlace();
+        
+        if (!place.geometry) {
+            showToast('Please select a valid address from the dropdown', 'warning');
+            return;
+        }
+        
+        // Parse address components for staff profile
+        const addressComponents = {};
+        place.address_components.forEach(component => {
+            const types = component.types;
+            if (types.includes('street_number')) {
+                addressComponents.streetNumber = component.long_name;
+            } else if (types.includes('route')) {
+                addressComponents.streetName = component.long_name;
+            } else if (types.includes('locality')) {
+                addressComponents.suburb = component.long_name;
+            } else if (types.includes('administrative_area_level_1')) {
+                addressComponents.state = component.short_name;
+            } else if (types.includes('postal_code')) {
+                addressComponents.postcode = component.long_name;
+            }
+        });
+        
+        // Auto-fill staff address fields if they exist
+        if (document.getElementById('staffStreetNumber')) {
+            document.getElementById('staffStreetNumber').value = addressComponents.streetNumber || '';
+        }
+        if (document.getElementById('staffStreetName')) {
+            document.getElementById('staffStreetName').value = addressComponents.streetName || '';
+        }
+        if (document.getElementById('staffSuburb')) {
+            document.getElementById('staffSuburb').value = addressComponents.suburb || '';
+        }
+        if (document.getElementById('staffState')) {
+            document.getElementById('staffState').value = addressComponents.state || '';
+        }
+        if (document.getElementById('staffPostcode')) {
+            document.getElementById('staffPostcode').value = addressComponents.postcode || '';
+        }
+        
+        // Store the full address
+        inputElement.value = place.formatted_address;
+        
+        // Store location coordinates if needed
+        if (place.geometry && place.geometry.location) {
+            window.staffLocation = {
+                lat: place.geometry.location.lat(),
+                lng: place.geometry.location.lng(),
+                address: place.formatted_address
+            };
+        }
+        
+        // Force close the dropdown
+        closeAutocompleteDropdown(inputElement);
+        
+        // Show success
+        showToast('Address selected successfully', 'success');
+    });
+    
+    // Handle focus/blur to ensure dropdown closes
+    inputElement.addEventListener('blur', function() {
+        setTimeout(() => {
+            const containers = document.querySelectorAll('.pac-container');
+            containers.forEach(container => {
+                container.style.display = 'none';
+            });
+        }, 200);
+    });
+    
+    return autocomplete;
+}
+
+function initializeAutocompleteFixes() {
+    // Add global CSS to ensure dropdowns close properly
+    const style = document.createElement('style');
+    style.textContent = `
+        .pac-container {
+            z-index: 10000 !important;
+        }
+        .pac-container:empty {
+            display: none !important;
+        }
+    `;
+    document.head.appendChild(style);
+    
+    // Global click handler to close dropdowns
+    document.addEventListener('click', function(e) {
+        // If clicking outside of autocomplete input
+        if (!e.target.classList.contains('address-input') && 
+            !e.target.closest('.pac-container')) {
+            setTimeout(() => {
+                document.querySelectorAll('.pac-container').forEach(container => {
+                    container.style.display = 'none';
+                });
+            }, 100);
+        }
+    });
+}
+
+// Initialize fixes when Google Maps loads
+window.initGoogleMaps = function() {
+    googleMapsLoaded = true;
+    initializeAutocompleteFixes();
+    
+    // Setup autocomplete for any existing inputs
+    const transportOrigin = document.getElementById('routeOrigin');
+    const transportDestination = document.getElementById('routeDestination');
+    const staffAddressInput = document.getElementById('staffAddress');
+    
+    if (transportOrigin) {
+        setupAddressAutocompleteV2(transportOrigin, true);
+    }
+    
+    if (transportDestination) {
+        setupAddressAutocompleteV2(transportDestination, false);
+    }
+    
+    if (staffAddressInput) {
+        setupStaffAddressAutocomplete(staffAddressInput);
+    }
+};
+
+// Enhanced initialization for transport claim
+async function initTransportAutocomplete() {
+    // Wait for Google Maps to be ready
+    if (!window.google || !window.google.maps) {
+        await loadGoogleMapsScript();
+    }
+    
+    // Small delay to ensure DOM is ready
+    setTimeout(() => {
+        const originInput = document.getElementById('routeOrigin');
+        const destInput = document.getElementById('routeDestination');
+        
+        if (originInput && !originInput.hasAttribute('data-autocomplete-initialized')) {
+            setupAddressAutocompleteV2(originInput, true);
+            originInput.setAttribute('data-autocomplete-initialized', 'true');
+        }
+        
+        if (destInput && !destInput.hasAttribute('data-autocomplete-initialized')) {
+            setupAddressAutocompleteV2(destInput, false);
+            destInput.setAttribute('data-autocomplete-initialized', 'true');
+        }
+    }, 500);
+}
+
+// Calculate routes between origin and destination
+async function calculateRoutes() {
+    if (!window.selectedOrigin || !window.selectedDestination) {
+        showToast('Please select both origin and destination', 'warning');
+        return;
+    }
+    
+    const loadingEl = document.getElementById('routeLoadingIndicator');
+    const routesContainer = document.getElementById('routeOptionsContainer');
+    
+    if (loadingEl) loadingEl.style.display = 'block';
+    if (routesContainer) routesContainer.innerHTML = '';
+    
+    const request = {
+        origin: { placeId: window.selectedOrigin.placeId },
+        destination: { placeId: window.selectedDestination.placeId },
+        travelMode: google.maps.TravelMode.DRIVING,
+        unitSystem: google.maps.UnitSystem.METRIC,
+        provideRouteAlternatives: true, // Request alternative routes
+        region: 'AU'
+    };
+    
+    directionsService.route(request, (response, status) => {
+        if (loadingEl) loadingEl.style.display = 'none';
+        
+        if (status === 'OK') {
+            window.availableRoutes = response.routes;
+            displayRouteOptions(response.routes);
+            
+            // Display first route on map by default
+            directionsRenderer.setDirections(response);
+            directionsRenderer.setRouteIndex(0);
+        } else {
+            showToast('Could not calculate route: ' + status, 'error');
+        }
+    });
+}
+
+// Display route options for user to choose
+function displayRouteOptions(routes) {
+    const container = document.getElementById('routeOptionsContainer');
+    if (!container) return;
+    
+    let html = '<div class="route-options">';
+    
+    routes.forEach((route, index) => {
+        const leg = route.legs[0]; // We only have one leg (origin to destination)
+        const distance = leg.distance.value / 1000; // Convert to km
+        const duration = Math.ceil(leg.duration.value / 60); // Convert to minutes
+        const viaRoute = route.summary;
+        
+        // Calculate reimbursement
+        const reimbursement = (distance * 1).toFixed(2); // $1 per km
+        
+        html += `
+            <div class="route-option ${index === 0 ? 'selected' : ''}" 
+                 onclick="selectRoute(${index})" 
+                 data-route-index="${index}">
+                
+                <div class="route-option-header">
+                    <input type="radio" name="routeSelection" 
+                           value="${index}" 
+                           ${index === 0 ? 'checked' : ''}
+                           onchange="selectRoute(${index})">
+                    <span class="route-label">Route ${index + 1}</span>
+                    ${index === 0 ? '<span class="badge badge-primary">Recommended</span>' : ''}
+                </div>
+                
+                <div class="route-details">
+                    <div class="route-via">
+                        <i class="fas fa-route"></i> via ${viaRoute}
+                    </div>
+                    
+                    <div class="route-stats">
+                        <div class="stat">
+                            <i class="fas fa-road"></i>
+                            <span>${distance.toFixed(1)} km</span>
+                        </div>
+                        <div class="stat">
+                            <i class="fas fa-clock"></i>
+                            <span>${duration} mins</span>
+                        </div>
+                        <div class="stat highlight">
+                            <i class="fas fa-dollar-sign"></i>
+                            <span>$${reimbursement}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="route-waypoints">
+                        ${route.warnings ? `<div class="warning">${route.warnings.join(', ')}</div>` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Store route data for submission
+        route._calculatedData = {
+            distance: distance,
+            duration: duration,
+            via: viaRoute,
+            polyline: route.overview_polyline.points
+        };
+    });
+    
+    html += '</div>';
+    container.innerHTML = html;
+    
+    // Store selected route data
+    if (routes.length > 0) {
+        window.selectedRouteData = routes[0]._calculatedData;
+    }
+}
+
+// Select a specific route
+function selectRoute(index) {
+    // Update map display
+    directionsRenderer.setRouteIndex(index);
+    
+    // Update UI selection
+    document.querySelectorAll('.route-option').forEach((el, i) => {
+        el.classList.toggle('selected', i === index);
+    });
+    
+    // Store selected route data
+    window.selectedRouteData = window.availableRoutes[index]._calculatedData;
+    window.selectedRouteIndex = index;
+    
+    // Update total display
+    updateTransportClaimTotal();
+}
+
+
+// Save a route for future use
+async function saveRoute(participantId, routeName = null) {
+    if (!window.selectedOrigin || !window.selectedDestination || !window.selectedRouteData) {
+        showToast('Please select a complete route first', 'warning');
+        return;
+    }
+    
+    try {
+        const routeData = {
+            participant_id: participantId,
+            staff_id: currentStaff.id,
+            origin_address: window.selectedOrigin.address,
+            destination_address: window.selectedDestination.address,
+            origin_place_id: window.selectedOrigin.placeId,
+            destination_place_id: window.selectedDestination.placeId,
+            route_polyline: window.selectedRouteData.polyline,
+            distance_km: window.selectedRouteData.distance,
+            duration_minutes: window.selectedRouteData.duration,
+            route_via: window.selectedRouteData.via,
+            route_name: routeName || `${window.selectedOrigin.address.split(',')[0]} to ${window.selectedDestination.address.split(',')[0]}`
+        };
+        
+        const { data, error } = await supabaseClient
+            .from('saved_routes')
+            .insert(routeData)
+            .select()
+            .single();
+        
+        if (error) throw error;
+        
+        showToast('Route saved for future use!', 'success');
+        return data;
+    } catch (error) {
+        console.error('Error saving route:', error);
+        showToast('Failed to save route', 'error');
+    }
+}
+
+// Delete a saved route
+async function deleteSavedRoute(routeId) {
+    try {
+        const { error } = await supabaseClient
+            .from('saved_routes')
+            .delete()
+            .eq('id', routeId)
+            .eq('staff_id', currentStaff.id); // Ensure staff can only delete their own routes
+        
+        if (error) throw error;
+        
+        showToast('Route deleted', 'success');
+        return true;
+    } catch (error) {
+        console.error('Error deleting route:', error);
+        showToast('Failed to delete route', 'error');
+        return false;
+    }
+}
+
+// Use a saved route
+async function useSavedRoute(routeId, routeData) {
+    // Set the origin and destination
+    window.selectedOrigin = {
+        address: routeData.origin_address,
+        placeId: routeData.origin_place_id
+    };
+    
+    window.selectedDestination = {
+        address: routeData.destination_address,
+        placeId: routeData.destination_place_id
+    };
+    
+    window.selectedRouteData = {
+        distance: routeData.distance_km,
+        duration: routeData.duration_minutes,
+        via: routeData.route_via,
+        polyline: routeData.route_polyline
+    };
+    
+    // Update use count
+    await supabaseClient.rpc('use_saved_route', { p_route_id: routeId });
+    
+    // Display on map if available
+    if (map && routeData.route_polyline) {
+        const decodedPath = google.maps.geometry.encoding.decodePath(routeData.route_polyline);
+        const bounds = new google.maps.LatLngBounds();
+        decodedPath.forEach(point => bounds.extend(point));
+        map.fitBounds(bounds);
+    }
+    
+    // Move to submission step
+    showTransportClaimStep('confirm');
+}
+
+// Check for duplicate claims
+async function checkDuplicateClaim(participantId, date) {
+    if (!window.selectedOrigin || !window.selectedDestination) return null;
+    
+    try {
+        const { data, error } = await supabaseClient
+            .rpc('check_duplicate_transport_claim', {
+                p_staff_id: currentStaff.id,
+                p_participant_id: participantId,
+                p_date: date,
+                p_origin: window.selectedOrigin.address,
+                p_destination: window.selectedDestination.address
+            });
+        
+        if (error) throw error;
+        
+        return data[0]; // Returns { has_duplicate, existing_claim_id, existing_total }
+    } catch (error) {
+        console.error('Error checking duplicate:', error);
+        return null;
+    }
+}
+
+// Submit transport claim with route data
+async function submitTransportClaimWithRoute(participantId) {
+    if (!window.selectedOrigin || !window.selectedDestination || !window.selectedRouteData) {
+        showToast('Please complete route selection first', 'error');
+        return;
+    }
+    
+    try {
+        const date = document.getElementById('transportClaimDate').value;
+        const reason = document.getElementById('transportReason').value;
+        const saveRouteCheck = document.getElementById('saveRouteCheck');
+        
+        // Check for duplicates
+        const duplicate = await checkDuplicateClaim(participantId, date);
+        if (duplicate && duplicate.has_duplicate) {
+            const confirm = window.confirm(
+                `A similar trip was already claimed on this date for $${duplicate.existing_total}.\n\n` +
+                `Continue with submission?`
+            );
+            if (!confirm) return;
+        }
+        
+        // Calculate total (simplified: $1 per km)
+        const total = window.selectedRouteData.distance;
+        
+        // Submit claim
+        const claimData = {
+            staff_id: currentStaff.id,
+            participant_id: participantId,
+            date: date,
+            kilometres: window.selectedRouteData.distance,
+            route_origin: window.selectedOrigin.address,
+            route_destination: window.selectedDestination.address,
+            route_origin_place_id: window.selectedOrigin.placeId,
+            route_destination_place_id: window.selectedDestination.placeId,
+            route_polyline: window.selectedRouteData.polyline,
+            calculated_distance: window.selectedRouteData.distance,
+            route_duration_minutes: window.selectedRouteData.duration,
+            route_via: window.selectedRouteData.via,
+            selected_route_index: window.selectedRouteIndex || 0,
+            reason: reason,
+            total_claim: total,
+            status: 'pending',
+            created_at: new Date().toISOString()
+        };
+        
+        const { data, error } = await supabaseClient
+            .from('transport_claims')
+            .insert(claimData)
+            .select()
+            .single();
+        
+        if (error) throw error;
+        
+        // Save route if checkbox is checked
+        if (saveRouteCheck && saveRouteCheck.checked) {
+            await saveRoute(participantId);
+        }
+        
+        showToast(
+            `Transport claim submitted!\nReimbursement: $${total.toFixed(2)} (${window.selectedRouteData.distance.toFixed(1)}km @ $1/km)`,
+            'success'
+        );
+        
+        // Reset form
+        resetTransportClaimForm();
+        closeTransportClaimModal();
+        
+        // Refresh claims list if function exists
+        if (typeof loadTransportClaims === 'function') {
+            loadTransportClaims();
+        }
+        
+        return data;
+    } catch (error) {
+        console.error('Error submitting transport claim:', error);
+        showToast('Failed to submit transport claim', 'error');
+    }
+}
+
+// Get participant home address
+function getParticipantHomeAddress(participant) {
+    if (!participant) return null;
+    
+    // Construct address from components
+    const parts = [];
+    
+    if (participant.unit_number) parts.push(participant.unit_number);
+    if (participant.street_number) parts.push(participant.street_number);
+    if (participant.street_name) parts.push(participant.street_name);
+    
+    const streetAddress = parts.join(' ');
+    
+    const fullParts = [];
+    if (streetAddress) fullParts.push(streetAddress);
+    if (participant.suburb) fullParts.push(participant.suburb);
+    if (participant.state) fullParts.push(participant.state);
+    if (participant.postcode) fullParts.push(participant.postcode);
+    if (participant.country) fullParts.push(participant.country || 'Australia');
+    
+    return fullParts.join(', ');
+}
+
+// Helper function to update total display
+function updateTransportClaimTotal() {
+    if (!window.selectedRouteData) return;
+    
+    const total = window.selectedRouteData.distance; // $1 per km
+    const totalDisplay = document.getElementById('transportClaimTotal');
+    const summaryDisplay = document.getElementById('claimSummary');
+    
+    if (totalDisplay) {
+        totalDisplay.innerHTML = `
+            <div class="claim-total">
+                <span class="label">Reimbursement Amount:</span>
+                <span class="amount">$${total.toFixed(2)}</span>
+                <span class="calculation">(${window.selectedRouteData.distance.toFixed(1)}km × $1/km)</span>
+            </div>
+        `;
+    }
+    
+    if (summaryDisplay) {
+        summaryDisplay.innerHTML = `
+            <div class="claim-summary-details">
+                <div class="summary-item">
+                    <label>From:</label>
+                    <span>${window.selectedOrigin.address}</span>
+                </div>
+                <div class="summary-item">
+                    <label>To:</label>
+                    <span>${window.selectedDestination.address}</span>
+                </div>
+                <div class="summary-item">
+                    <label>Via:</label>
+                    <span>${window.selectedRouteData.via}</span>
+                </div>
+                <div class="summary-item">
+                    <label>Distance:</label>
+                    <span>${window.selectedRouteData.distance.toFixed(1)} km</span>
+                </div>
+                <div class="summary-item highlight">
+                    <label>Reimbursement:</label>
+                    <span>$${total.toFixed(2)}</span>
+                </div>
+            </div>
+        `;
+    }
+}
+
 // Add this warning when opening transport modal
 async function loadTransportModal() {
     try {
@@ -10494,161 +13023,7 @@ async function loadTransportModal() {
     }
 }
 
-async function submitTransportClaim() {
-    // Prevent double submission
-    if (isSubmittingTransport) {
-        console.log('Already submitting, ignoring duplicate call');
-        return;
-    }
-    
-    try {
-        isSubmittingTransport = true;
-        
-        // Disable submit button
-        const submitBtn = document.getElementById('submitTransportClaim');
-        if (submitBtn) {
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Submitting...';
-        }
 
-        const date = document.getElementById('transportDate').value;
-        const participantId = document.getElementById('transportParticipant').value || null;
-        const kilometres = parseFloat(document.getElementById('transportKilometres').value) || 0;
-        const parking = parseFloat(document.getElementById('transportParkingCost').value) || 0;
-        const tolls = parseFloat(document.getElementById('transportTollCost').value) || 0;
-        const reason = document.getElementById('transportReason').value?.trim();
-        const fileInput = document.getElementById('transportEvidence'); // New: file input
-        
-        // Validation
-        if (!date) {
-            showToast('Please select a date', 'error');
-            return;
-        }
-        
-        if (!reason || reason.length < 5) {
-            showToast('Please provide a detailed reason (minimum 5 characters)', 'error');
-            return;
-        }
-        
-        if (kilometres === 0 && parking === 0 && tolls === 0) {
-            showToast('Please enter at least one cost', 'error');
-            return;
-        }
-        
-        // Validate date is not in the future
-        const claimDate = new Date(date);
-        const today = new Date();
-        today.setHours(23, 59, 59, 999);
-        
-        if (claimDate > today) {
-            showToast('Cannot submit claims for future dates', 'error');
-            return;
-        }
-        
-        // Validate reasonable amounts
-        if (kilometres > 1000) {
-            const confirm = window.confirm(`${kilometres}km seems high. Are you sure this is correct?`);
-            if (!confirm) return;
-        }
-        
-        if (parking > 100 || tolls > 100) {
-            const confirm = window.confirm(`High parking/toll costs detected. Continue?`);
-            if (!confirm) return;
-        }
-        
-        // Upload evidence file if provided
-        let evidenceUrl = null;
-        if (fileInput?.files && fileInput.files[0]) {
-            const file = fileInput.files[0];
-            
-            // Validate file size (5MB max)
-            if (file.size > 5 * 1024 * 1024) {
-                showToast('File too large. Maximum 5MB allowed', 'error');
-                return;
-            }
-            
-            // Create unique filename
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${currentStaff.id}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-            
-            showToast('Uploading evidence...', 'info');
-            
-            // Upload to Supabase storage
-            const { data: uploadData, error: uploadError } = await supabaseClient.storage
-                .from('transport-evidence')
-                .upload(fileName, file);
-            
-            if (uploadError) {
-                console.error('Upload error:', uploadError);
-                showToast('Failed to upload evidence file', 'warning');
-                // Continue without evidence rather than failing the whole submission
-            } else {
-                // Get public URL
-                const { data: urlData } = supabaseClient.storage
-                    .from('transport-evidence')
-                    .getPublicUrl(fileName);
-                
-                evidenceUrl = urlData.publicUrl;
-            }
-        }
-        
-        // Calculate total
-        const kmRate = 0.72;
-        const mileageReimbursement = kilometres * kmRate;
-        const total = mileageReimbursement + parking + tolls;
-        
-        // Prepare claim data
-        const claimData = {
-            staff_id: currentStaff.id,
-            participant_id: participantId === '' ? null : participantId,
-            date: date,
-            kilometres: kilometres,
-            parking_cost: parking,
-            toll_cost: tolls,
-            reason: reason,
-            total_claim: total,
-            evidence_url: evidenceUrl, // New: evidence URL
-            status: 'pending',
-            created_at: new Date().toISOString()
-        };
-        
-        const { data, error } = await supabaseClient
-            .from('transport_claims')
-            .insert(claimData)
-            .select()
-            .single();
-        
-        if (error) throw error;
-        
-        // Success feedback with breakdown
-        let successMsg = `Transport claim submitted successfully!\n`;
-        successMsg += `Total: $${total.toFixed(2)}`;
-        if (kilometres > 0) successMsg += ` (${kilometres}km @ $${kmRate}/km = $${mileageReimbursement.toFixed(2)})`;
-        if (evidenceUrl) successMsg += '\n✓ Evidence uploaded';
-        
-        showToast(successMsg, 'success');
-        
-        // Close modal and reset form
-        closeModal('transportModal');
-        document.getElementById('transportForm').reset();
-        
-        // Clear file preview if exists
-        const preview = document.getElementById('evidencePreview');
-        if (preview) preview.innerHTML = '';
-        
-    } catch (error) {
-        console.error('Error submitting transport claim:', error);
-        showToast(error.message || 'Failed to submit transport claim', 'error');
-    } finally {
-        // Reset flag and button
-        isSubmittingTransport = false;
-        const submitBtn = document.getElementById('submitTransportClaim');
-        if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Submit Claim';
-        }
-    }
-}
 
 // Add preview function for evidence files
 function previewTransportEvidence(input) {
@@ -10691,27 +13066,114 @@ function previewTransportEvidence(input) {
     }
 }
 
-// Real-time total calculation display (optional but nice)
+// Real-time total calculation display
 function updateTransportTotal() {
     const kilometres = parseFloat(document.getElementById('transportKilometres').value) || 0;
     const parking = parseFloat(document.getElementById('transportParkingCost').value) || 0;
     const tolls = parseFloat(document.getElementById('transportTollCost').value) || 0;
     
     const kmRate = 0.72;
-    const total = (kilometres * kmRate) + parking + tolls;
+    const mileageReimbursement = kilometres * kmRate;
+    const total = mileageReimbursement + parking + tolls;
     
     // Display total somewhere in the modal
     const totalDisplay = document.getElementById('transportTotalDisplay');
     if (totalDisplay) {
         totalDisplay.textContent = `Estimated Total: $${total.toFixed(2)}`;
+        
+        // Also show breakdown if elements exist
+        const breakdownEl = document.getElementById('transportBreakdown');
+        if (breakdownEl) {
+            let breakdown = '';
+            if (kilometres > 0) {
+                breakdown += `Mileage: ${kilometres}km × $${kmRate}/km = $${mileageReimbursement.toFixed(2)}<br>`;
+            }
+            if (parking > 0) {
+                breakdown += `Parking: $${parking.toFixed(2)}<br>`;
+            }
+            if (tolls > 0) {
+                breakdown += `Tolls: $${tolls.toFixed(2)}<br>`;
+            }
+            breakdownEl.innerHTML = breakdown;
+        }
     }
 }
 
 // Attach to all relevant inputs
-['transportKilometres', 'transportParkingCost', 'transportTollCost'].forEach(id => {
-    document.getElementById(id)?.addEventListener('input', updateTransportTotal);
+document.addEventListener('DOMContentLoaded', function() {
+    ['transportKilometres', 'transportParkingCost', 'transportTollCost'].forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.addEventListener('input', updateTransportTotal);
+        }
+    });
 });
 
+function initializeDatePicker() {
+    const dateInput = document.getElementById('shiftDate');
+    if (!dateInput) return;
+    
+    // Calculate date limits
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    const thirtyDaysAgo = new Date(today);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    // Set max to tomorrow and min to 30 days ago
+    dateInput.max = tomorrow.toISOString().split('T')[0];
+    dateInput.min = thirtyDaysAgo.toISOString().split('T')[0];
+    
+    // Set default to today
+    dateInput.value = today.toISOString().split('T')[0];
+}
+
+// Generate time options in 30-minute increments
+function populateTimeSelects() {
+    const startTimeSelect = document.getElementById('shiftStartTime');
+    const endTimeSelect = document.getElementById('shiftEndTime');
+    
+    if (!startTimeSelect || !endTimeSelect) return;
+    
+    // Clear existing options
+    startTimeSelect.innerHTML = '<option value="">Select start time</option>';
+    endTimeSelect.innerHTML = '<option value="">Select end time</option>';
+    
+    // Generate time options from 00:00 to 23:30 in 30-minute increments
+    for (let hour = 0; hour < 24; hour++) {
+        for (let minute = 0; minute < 60; minute += 30) {
+            const hourStr = hour.toString().padStart(2, '0');
+            const minuteStr = minute.toString().padStart(2, '0');
+            const timeValue = `${hourStr}:${minuteStr}`;
+            
+            let displayHour = hour;
+            let period = 'AM';
+            if (hour === 0) {
+                displayHour = 12;
+            } else if (hour === 12) {
+                period = 'PM';
+            } else if (hour > 12) {
+                displayHour = hour - 12;
+                period = 'PM';
+            }
+            const displayText = `${displayHour}:${minuteStr} ${period}`;
+            
+            // Add options to both selects
+            const startOption = new Option(displayText, timeValue);
+            const endOption = new Option(displayText, timeValue);
+            
+            startTimeSelect.appendChild(startOption);
+            endTimeSelect.appendChild(endOption);
+        }
+    }
+    
+    // Add 11:59 PM as the last option for end time only (for shifts ending at midnight)
+    const midnightOption = new Option('11:59 PM', '23:59');
+    endTimeSelect.appendChild(midnightOption);
+}
+
+// Modified submitShift function
 async function submitShift() {
     try {
         const date = document.getElementById('shiftDate').value;
@@ -10724,33 +13186,51 @@ async function submitShift() {
             return;
         }
         
+        // Validate date is not beyond tomorrow
+        const selectedDate = new Date(date);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        
+        if (selectedDate > tomorrow) {
+            showToast('Cannot submit shifts for dates beyond tomorrow', 'error');
+            return;
+        }
+        
         const dutyTypeName = document.getElementById('shiftDutyType').
             options[document.getElementById('shiftDutyType').selectedIndex]?.textContent?.toLowerCase() || '';
         
         let startTime = null;
         let endTime = null;
         
-        // Only get times for non-sleepover, non-transport shifts
-        if (!dutyTypeName.includes('sleepover') && !dutyTypeName.includes('transport')) {
+        // Only get times for non-sleepover shifts
+        if (!dutyTypeName.includes('sleepover')) {
             startTime = document.getElementById('shiftStartTime').value;
             endTime = document.getElementById('shiftEndTime').value;
             
             if (!startTime || !endTime) {
-                showToast('Please enter start and end times', 'error');
+                showToast('Please select start and end times', 'error');
+                return;
+            }
+            
+            // Validate end time is after start time
+            if (startTime >= endTime) {
+                showToast('End time must be after start time', 'error');
                 return;
             }
         }
         
         // Get location from stored assignment
-        const locationId = window.staffAssignments[participantId]?.locationId;
-        const payRateId = window.staffAssignments[participantId]?.payRateId || currentStaff.pay_rate_id;
+        const locationId = window.staffAssignments?.[participantId]?.locationId;
+        const payRateId = window.staffAssignments?.[participantId]?.payRateId || currentStaff.pay_rate_id;
         
-        // Create shift
+        // Create shift with clock_in_required = false for self-submitted shifts
         const shiftData = {
             date: date,
             staff_id: currentStaff.id,
             participant_id: participantId,
-            location_id: locationId, // Auto from participant
+            location_id: locationId,
             duty_type_id: dutyTypeId,
             pay_override_id: payRateId,
             start_time: startTime ? `${startTime}:00` : null,
@@ -10758,7 +13238,21 @@ async function submitShift() {
             status: 'pending',
             notes: notes,
             created_by: currentStaff.id,
-            created_at: new Date().toISOString()
+            created_at: new Date().toISOString(),
+            
+            // Self-submitted shifts don't require clock-in
+            clock_in_required: false,
+            
+            // Set all clock-in/out fields to null for self-submitted shifts
+            clock_in_time: null,
+            clock_out_time: null,
+            clock_in_lat: null,
+            clock_in_lng: null,
+            clock_out_lat: null,
+            clock_out_lng: null,
+            clock_in_address: null,
+            clock_out_address: null,
+            clock_in_distance_meters: null
         };
         
         const { data: newShift, error } = await supabaseClient
@@ -10769,36 +13263,58 @@ async function submitShift() {
         
         if (error) throw error;
         
-        // If transport, create transport claim
-        if (dutyTypeName.includes('transport')) {
-            const kilometres = document.getElementById('transportKilometres').value;
-            const parking = document.getElementById('transportParking').value;
-            
-            if (kilometres || parking) {
-                await supabaseClient
-                    .from('transport_claims')
-                    .insert({
-                        shift_id: newShift.id,
-                        staff_id: currentStaff.id,
-                        participant_id: participantId,
-                        date: date,
-                        kilometres: kilometres || 0,
-                        parking_cost: parking || 0,
-                        total_claim: (kilometres * 0.72) + (parking || 0), // Example rate
-                        status: 'pending'
-                    });
-            }
-        }
-        
         showToast('Shift submitted for approval', 'success');
         closeModal('addShiftModal');
         document.getElementById('addShiftForm').reset();
+        
+        // Refresh any shift displays if needed
+        if (typeof loadCurrentShift === 'function') {
+            loadCurrentShift();
+        }
         
     } catch (error) {
         console.error('Error submitting shift:', error);
         showToast('Failed to submit shift', 'error');
     }
 }
+
+// Toggle time fields based on duty type
+function toggleTimeFields() {
+    const dutyTypeSelect = document.getElementById('shiftDutyType');
+    const timeFields = document.getElementById('timeFields');
+    
+    if (!dutyTypeSelect || !timeFields) return;
+    
+    const dutyTypeName = dutyTypeSelect.options[dutyTypeSelect.selectedIndex]?.textContent?.toLowerCase() || '';
+    
+    // Hide time fields for sleepover shifts
+    if (dutyTypeName.includes('sleepover')) {
+        timeFields.style.display = 'none';
+        // Clear time values
+        document.getElementById('shiftStartTime').value = '';
+        document.getElementById('shiftEndTime').value = '';
+    } else {
+        timeFields.style.display = 'block';
+    }
+}
+
+// Initialize when modal is opened
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize date and time selects
+    initializeDatePicker();
+    populateTimeSelects();
+    
+    // Re-initialize when modal is opened
+    const addShiftBtn = document.querySelector('[data-modal-open="addShiftModal"]');
+    if (addShiftBtn) {
+        addShiftBtn.addEventListener('click', function() {
+            initializeDatePicker();
+            populateTimeSelects();
+        });
+    }
+});
+
+
 // 1. Load Profile Data
 async function loadProfile() {
     try {
@@ -11005,29 +13521,42 @@ async function savePersonalInfo() {
     }
 }
 
-// 4. Edit Contact Information
 function editContactInfo() {
     const container = document.getElementById('contactInfo');
     if (!container) return;
     
+    // Reset the validation flag when entering edit mode
+    isValidAddressSelected = false;
+    
     container.innerHTML = `
         <div class="profile-field">
-            <div class="field-label">Address</div>
-            <textarea class="form-control" id="editAddress" rows="3">${currentStaff.address || ''}</textarea>
+            <div class="field-label">Address <span style="color: red;">*</span></div>
+            <input type="text" 
+                   class="form-control" 
+                   id="editAddress" 
+                   placeholder="Start typing address..."
+                   value="${currentStaff.address || ''}"
+                   autocomplete="off">
+            <small class="form-hint" id="addressHint" style="color: #666; font-size: 0.85em;">
+                ⚠️ Please select an address from the dropdown
+            </small>
+            <!-- Store coordinates in hidden fields -->
+            <input type="hidden" id="addressLat" value="${currentStaff.location_lat || ''}">
+            <input type="hidden" id="addressLng" value="${currentStaff.location_lng || ''}">
         </div>
         <div class="profile-field">
             <div class="field-label">Emergency Contact Name</div>
-            <input type="text" class="form-control" id="editEmergencyName" 
+            <input type="text" class="form-control" id="editEmergencyName"
                    value="${currentStaff.emergency_contact_name || currentStaff.emergency_contact || ''}">
         </div>
         <div class="profile-field">
             <div class="field-label">Emergency Contact Phone</div>
-            <input type="tel" class="form-control" id="editEmergencyPhone" 
+            <input type="tel" class="form-control" id="editEmergencyPhone"
                    value="${currentStaff.emergency_contact_phone || ''}">
         </div>
         <div class="profile-field">
             <div class="field-label">Emergency Contact Relationship</div>
-            <input type="text" class="form-control" id="editEmergencyRelationship" 
+            <input type="text" class="form-control" id="editEmergencyRelationship"
                    value="${currentStaff.emergency_contact_relationship || ''}">
         </div>
         <div class="form-actions">
@@ -11035,40 +13564,507 @@ function editContactInfo() {
             <button class="btn btn-secondary" data-action="loadProfile">Cancel</button>
         </div>
     `;
+    
+    // If there's already a valid address with coordinates, mark as valid
+    if (currentStaff.location_lat && currentStaff.location_lng) {
+        isValidAddressSelected = true;
+        updateAddressValidationUI(true);
+    }
+    
+    // Initialize autocomplete after rendering the HTML
+    setTimeout(() => {
+        initAddressAutocomplete();
+    }, 100);
 }
 
-// 5. Save Contact Information
+
+
+// Initialize address autocomplete for the staff address field
+function initAddressAutocomplete() {
+    // Check if Google Maps is loaded
+    if (!window.google || !window.google.maps || !window.google.maps.places) {
+        console.warn('Google Maps not loaded, trying to load...');
+        loadGoogleMapsForTeam();
+        return;
+    }
+    
+    const addressInput = document.getElementById('editAddress');
+    if (!addressInput) {
+        console.warn('Address input not found');
+        return;
+    }
+    
+    // Add input event listener to detect manual typing
+    addressInput.addEventListener('input', function(event) {
+        // If user is typing manually, reset validation
+        if (!event.isAutocompleteSelection) {
+            isValidAddressSelected = false;
+            // Clear the hidden coordinate fields
+            document.getElementById('addressLat').value = '';
+            document.getElementById('addressLng').value = '';
+            updateAddressValidationUI(false);
+        }
+    });
+    
+    // Add blur event to show warning if they leave without selecting
+    addressInput.addEventListener('blur', function() {
+        if (addressInput.value && !isValidAddressSelected) {
+            updateAddressValidationUI(false, true); // Show error state
+        }
+    });
+    
+    // Prevent Enter key from submitting
+    addressInput.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            return false;
+        }
+    });
+    
+    try {
+        // Create autocomplete
+        const autocomplete = new google.maps.places.Autocomplete(addressInput, {
+            componentRestrictions: { country: 'au' },
+            fields: ['formatted_address', 'geometry']
+        });
+        
+        // Handle place selection
+        autocomplete.addListener('place_changed', function() {
+            const place = autocomplete.getPlace();
+            
+            if (!place || !place.geometry || !place.geometry.location) {
+                console.log('No valid place selected');
+                isValidAddressSelected = false;
+                updateAddressValidationUI(false);
+                return;
+            }
+            
+            // Get coordinates
+            const lat = place.geometry.location.lat();
+            const lng = place.geometry.location.lng();
+            
+            // Update hidden fields
+            document.getElementById('addressLat').value = lat;
+            document.getElementById('addressLng').value = lng;
+            
+            // Update the address field with formatted address
+            addressInput.value = place.formatted_address || '';
+            
+            // Mark as valid selection
+            isValidAddressSelected = true;
+            updateAddressValidationUI(true);
+            
+            // Trigger a custom event to mark this as autocomplete selection
+            const inputEvent = new Event('input');
+            inputEvent.isAutocompleteSelection = true;
+            addressInput.dispatchEvent(inputEvent);
+            
+            console.log(' Valid address selected:', {
+                address: place.formatted_address,
+                lat: lat,
+                lng: lng
+            });
+        });
+        
+        console.log(' Address autocomplete initialized');
+        
+    } catch (error) {
+        console.error('Error initializing autocomplete:', error);
+    }
+}
+function updateAddressValidationUI(isValid, showError = false) {
+    const addressInput = document.getElementById('editAddress');
+    const addressHint = document.getElementById('addressHint');
+    
+    if (!addressInput || !addressHint) return;
+    
+    if (isValid) {
+        // Valid selection
+        addressInput.style.borderColor = '#28a745';
+        addressInput.style.backgroundColor = '#f8fff9';
+        addressHint.innerHTML = ' Valid address selected';
+        addressHint.style.color = '#28a745';
+    } else if (showError && addressInput.value) {
+        // Invalid - user typed but didn't select
+        addressInput.style.borderColor = '#dc3545';
+        addressInput.style.backgroundColor = '#fff8f8';
+        addressHint.innerHTML = '❌ Please select an address from the dropdown';
+        addressHint.style.color = '#dc3545';
+    } else {
+        // Neutral state
+        addressInput.style.borderColor = '';
+        addressInput.style.backgroundColor = '';
+        addressHint.innerHTML = '⚠️ Please select an address from the dropdown';
+        addressHint.style.color = '#666';
+    }
+}
+
+function editContactInfo() {
+    const container = document.getElementById('contactInfo');
+    if (!container) return;
+    
+    // Reset the validation flag when entering edit mode
+    isValidAddressSelected = false;
+    
+    container.innerHTML = `
+        <div class="profile-field">
+            <div class="field-label">Address <span style="color: red;">*</span></div>
+            <input type="text" 
+                   class="form-control" 
+                   id="editAddress" 
+                   placeholder="Start typing address..."
+                   value="${currentStaff.address || ''}"
+                   autocomplete="off">
+            <small class="form-hint" id="addressHint" style="color: #666; font-size: 0.85em;">
+                ⚠️ Please select an address from the dropdown
+            </small>
+            <!-- Store coordinates in hidden fields -->
+            <input type="hidden" id="addressLat" value="${currentStaff.location_lat || ''}">
+            <input type="hidden" id="addressLng" value="${currentStaff.location_lng || ''}">
+        </div>
+        <div class="profile-field">
+            <div class="field-label">Emergency Contact Name</div>
+            <input type="text" class="form-control" id="editEmergencyName"
+                   value="${currentStaff.emergency_contact_name || currentStaff.emergency_contact || ''}">
+        </div>
+        <div class="profile-field">
+            <div class="field-label">Emergency Contact Phone</div>
+            <input type="tel" class="form-control" id="editEmergencyPhone"
+                   value="${currentStaff.emergency_contact_phone || ''}">
+        </div>
+        <div class="profile-field">
+            <div class="field-label">Emergency Contact Relationship</div>
+            <input type="text" class="form-control" id="editEmergencyRelationship"
+                   value="${currentStaff.emergency_contact_relationship || ''}">
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" data-action="saveContactInfo">Save Changes</button>
+            <button class="btn btn-secondary" data-action="loadProfile">Cancel</button>
+        </div>
+    `;
+    
+    // If there's already a valid address with coordinates, mark as valid
+    if (currentStaff.location_lat && currentStaff.location_lng) {
+        isValidAddressSelected = true;
+        updateAddressValidationUI(true);
+    }
+    
+    // Initialize autocomplete after rendering the HTML
+    setTimeout(() => {
+        initAddressAutocomplete();
+    }, 100);
+}
+
+// Initialize address autocomplete for the staff address field
+function initAddressAutocomplete() {
+    // Check if Google Maps is loaded
+    if (!window.google || !window.google.maps || !window.google.maps.places) {
+        console.warn('Google Maps not loaded, trying to load...');
+        loadGoogleMapsForTeam();
+        return;
+    }
+    
+    const addressInput = document.getElementById('editAddress');
+    if (!addressInput) {
+        console.warn('Address input not found');
+        return;
+    }
+    
+    // Add input event listener to detect manual typing
+    addressInput.addEventListener('input', function(event) {
+        // If user is typing manually, reset validation
+        if (!event.isAutocompleteSelection) {
+            isValidAddressSelected = false;
+            // Clear the hidden coordinate fields
+            document.getElementById('addressLat').value = '';
+            document.getElementById('addressLng').value = '';
+            updateAddressValidationUI(false);
+        }
+    });
+    
+    // Add blur event to show warning if they leave without selecting
+    addressInput.addEventListener('blur', function() {
+        if (addressInput.value && !isValidAddressSelected) {
+            updateAddressValidationUI(false, true); // Show error state
+        }
+    });
+    
+    // Prevent Enter key from submitting
+    addressInput.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            return false;
+        }
+    });
+    
+    try {
+        // Create autocomplete
+        const autocomplete = new google.maps.places.Autocomplete(addressInput, {
+            componentRestrictions: { country: 'au' },
+            fields: ['formatted_address', 'geometry']
+        });
+        
+        // Handle place selection
+        autocomplete.addListener('place_changed', function() {
+            const place = autocomplete.getPlace();
+            
+            if (!place || !place.geometry || !place.geometry.location) {
+                console.log('No valid place selected');
+                isValidAddressSelected = false;
+                updateAddressValidationUI(false);
+                return;
+            }
+            
+            // Get coordinates
+            const lat = place.geometry.location.lat();
+            const lng = place.geometry.location.lng();
+            
+            // Update hidden fields
+            document.getElementById('addressLat').value = lat;
+            document.getElementById('addressLng').value = lng;
+            
+            // Update the address field with formatted address
+            addressInput.value = place.formatted_address || '';
+            
+            // Mark as valid selection
+            isValidAddressSelected = true;
+            updateAddressValidationUI(true);
+            
+            // Trigger a custom event to mark this as autocomplete selection
+            const inputEvent = new Event('input');
+            inputEvent.isAutocompleteSelection = true;
+            addressInput.dispatchEvent(inputEvent);
+            
+            console.log(' Valid address selected:', {
+                address: place.formatted_address,
+                lat: lat,
+                lng: lng
+            });
+        });
+        
+        console.log(' Address autocomplete initialized');
+        
+    } catch (error) {
+        console.error('Error initializing autocomplete:', error);
+    }
+}
+
+// Update UI to show validation state
+function updateAddressValidationUI(isValid, showError = false) {
+    const addressInput = document.getElementById('editAddress');
+    const addressHint = document.getElementById('addressHint');
+    
+    if (!addressInput || !addressHint) return;
+    
+    if (isValid) {
+        // Valid selection
+        addressInput.style.borderColor = '#28a745';
+        addressInput.style.backgroundColor = '#f8fff9';
+        addressHint.innerHTML = ' Valid address selected';
+        addressHint.style.color = '#28a745';
+    } else if (showError && addressInput.value) {
+        // Invalid - user typed but didn't select
+        addressInput.style.borderColor = '#dc3545';
+        addressInput.style.backgroundColor = '#fff8f8';
+        addressHint.innerHTML = '❌ Please select an address from the dropdown';
+        addressHint.style.color = '#dc3545';
+    } else {
+        // Neutral state
+        addressInput.style.borderColor = '';
+        addressInput.style.backgroundColor = '';
+        addressHint.innerHTML = '⚠️ Please select an address from the dropdown';
+        addressHint.style.color = '#666';
+    }
+}
+
+// Modified saveContactInfo with validation
 async function saveContactInfo() {
     try {
-        const updateData = {
-            address: document.getElementById('editAddress')?.value || null,
+        // Get the address and coordinates
+        const address = document.getElementById('editAddress')?.value || '';
+        const lat = document.getElementById('addressLat')?.value;
+        const lng = document.getElementById('addressLng')?.value;
+        
+        // Validate that an address was selected from dropdown
+        if (address && !isValidAddressSelected) {
+            // Show error state
+            updateAddressValidationUI(false, true);
+            
+            // Show notification
+            showNotification('Please select a valid address from the dropdown', 'error');
+            
+            // Focus the address field
+            document.getElementById('editAddress')?.focus();
+            
+            // Scroll to the address field
+            document.getElementById('editAddress')?.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'center' 
+            });
+            
+            return; // Don't save
+        }
+        
+        // Optional: Make address required
+        if (!address) {
+            showNotification('Address is required', 'error');
+            document.getElementById('editAddress')?.focus();
+            return;
+        }
+        
+        const updates = {
+            address: address,
+            location_lat: lat ? parseFloat(lat) : null,
+            location_lng: lng ? parseFloat(lng) : null,
             emergency_contact_name: document.getElementById('editEmergencyName')?.value || null,
             emergency_contact_phone: document.getElementById('editEmergencyPhone')?.value || null,
-            emergency_contact_relationship: document.getElementById('editEmergencyRelationship')?.value || null,
-            emergency_contact: document.getElementById('editEmergencyName')?.value || null, // Backup field
-            updated_at: new Date().toISOString()
+            emergency_contact_relationship: document.getElementById('editEmergencyRelationship')?.value || null
         };
         
-        const { data, error } = await supabaseClient
+        console.log('Saving contact info with location:', {
+            address: updates.address,
+            lat: updates.location_lat,
+            lng: updates.location_lng
+        });
+        
+        const { error } = await supabaseClient
             .from('staff')
-            .update(updateData)
-            .eq('id', currentStaff.id)
-            .select()
-            .single();
+            .update(updates)
+            .eq('id', currentStaff.id);
         
         if (error) throw error;
         
-        currentStaff = data;
-        AppState.staff.current = data;
+        // Update current staff object
+        Object.assign(currentStaff, updates);
         
-        loadProfile();
-        showToast('Contact information updated successfully', 'success');
+        showNotification('Contact information updated successfully', 'success');
+        loadProfile(); // Reload profile view
         
     } catch (error) {
         console.error('Error saving contact info:', error);
-        showToast('Failed to save changes: ' + error.message, 'error');
+        showNotification('Failed to save contact information', 'error');
     }
 }
+
+// Enhanced CSS for validation states
+if (!document.getElementById('team-autocomplete-css')) {
+    const style = document.createElement('style');
+    style.id = 'team-autocomplete-css';
+    style.innerHTML = `
+        /* Fix Google Places dropdown visibility */
+        .pac-container {
+            z-index: 10000 !important;
+            background: white !important;
+            border: 1px solid #ccc !important;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3) !important;
+        }
+        
+        .pac-item {
+            padding: 10px 14px !important;
+            cursor: pointer !important;
+            font-size: 14px !important;
+        }
+        
+        .pac-item:hover {
+            background-color: #f5f5f5 !important;
+        }
+        
+        .form-hint {
+            display: block;
+            margin-top: 4px;
+            color: #666;
+            font-size: 0.85em;
+            transition: color 0.3s ease;
+        }
+        
+        /* Validation states */
+        #editAddress {
+            transition: border-color 0.3s ease, background-color 0.3s ease;
+        }
+        
+        #editAddress:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+
+// Load Google Maps if not already loaded
+function loadGoogleMapsForTeam() {
+    if (window.google && window.google.maps) {
+        console.log('Google Maps already loaded');
+        return;
+    }
+    
+    // Check if script is already loading
+    if (document.querySelector('script[src*="maps.googleapis.com"]')) {
+        console.log('Google Maps script already in DOM, waiting...');
+        // Wait for it to load
+        const checkInterval = setInterval(() => {
+            if (window.google && window.google.maps && window.google.maps.places) {
+                clearInterval(checkInterval);
+                initAddressAutocomplete();
+            }
+        }, 500);
+        return;
+    }
+        
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&callback=onGoogleMapsLoaded`;
+    script.async = true;
+    script.defer = true;
+    document.head.appendChild(script);
+}
+
+// Callback when Google Maps loads
+window.onGoogleMapsLoaded = function() {
+    console.log('Google Maps loaded');
+    // Check if we're in edit mode and need to initialize autocomplete
+    if (document.getElementById('editAddress')) {
+        initAddressAutocomplete();
+    }
+}
+
+// CSS for dropdown visibility (add this once to your page)
+if (!document.getElementById('team-autocomplete-css')) {
+    const style = document.createElement('style');
+    style.id = 'team-autocomplete-css';
+    style.innerHTML = `
+        /* Fix Google Places dropdown visibility */
+        .pac-container {
+            z-index: 10000 !important;
+            background: white !important;
+            border: 1px solid #ccc !important;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3) !important;
+        }
+        
+        .pac-item {
+            padding: 10px 14px !important;
+            cursor: pointer !important;
+            font-size: 14px !important;
+        }
+        
+        .pac-item:hover {
+            background-color: #f5f5f5 !important;
+        }
+        
+        .form-hint {
+            display: block;
+            margin-top: 4px;
+            color: #666;
+            font-size: 0.85em;
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Load Google Maps proactively
+    loadGoogleMapsForTeam();
+});
 
 // 6. Edit Banking Information
 function editBankingInfo() {
@@ -12556,11 +15552,6 @@ function formatDateTime(dateString) {
     });
 }
 
-function formatTime(timeStr) {
-    if (!timeStr) return '';
-    const [hours, minutes] = timeStr.split(':');
-    return `${hours}:${minutes}`;
-}
 
 
 function formatDateShort(dateStr) {
@@ -13574,6 +16565,298 @@ function toggleTimesheetView(view) {
     renderTimesheetShifts();
 }
 
+
+
+// Toggle shift details expansion
+function toggleShiftDetails(shiftId) {
+    const shiftCard = document.querySelector(`[data-shift-id="${shiftId}"]`);
+    if (!shiftCard) return;
+    
+    const details = shiftCard.querySelector('.shift-details');
+    const expandIcon = shiftCard.querySelector('.shift-expand-icon');
+    
+    if (details.classList.contains('expanded')) {
+        details.classList.remove('expanded');
+        expandIcon.textContent = '▼';
+    } else {
+        details.classList.add('expanded');
+        expandIcon.textContent = '▲';
+        
+        // Load clock in/out UI if appropriate
+        loadClockInOutUI(shiftId);
+    }
+}
+
+function attachClockEventListeners(shiftId, shift) {
+    // Clock In button
+    const clockInBtn = document.getElementById(`clock-in-btn-${shiftId}`);
+    if (clockInBtn) {
+        clockInBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            await handleClockIn(shiftId);
+        });
+    }
+    
+    // Clock Out button
+    const clockOutBtn = document.getElementById(`clock-out-btn-${shiftId}`);
+    if (clockOutBtn) {
+        clockOutBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            await handleClockOut(shiftId);
+        });
+    }
+}
+
+function addEnhancedClockStyles() {
+    if (!document.getElementById('enhanced-clock-styles')) {
+        const styleElement = document.createElement('style');
+        styleElement.id = 'enhanced-clock-styles';
+        styleElement.textContent = `
+            .clock-info-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+                margin-bottom: 10px;
+            }
+            
+            .clock-info-item {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                font-size: 13px;
+                color: rgba(255, 255, 255, 0.9);
+            }
+            
+            .clock-info-item i {
+                font-size: 12px;
+                color: rgba(255, 255, 255, 0.7);
+            }
+            
+            .status-icon {
+                font-size: 32px;
+                margin-bottom: 10px;
+                opacity: 0.8;
+            }
+            
+            .status-message {
+                font-size: 16px;
+                font-weight: 600;
+                margin-bottom: 8px;
+            }
+            
+            .distance.in-range {
+                color: #51cf66;
+            }
+            
+            .distance.out-range {
+                color: #ffd93d;
+            }
+            
+            .shift-complete-message {
+                text-align: center;
+                padding: 12px;
+                background: rgba(81, 207, 102, 0.2);
+                border-radius: 8px;
+                color: #51cf66;
+                font-weight: 600;
+                margin-top: 10px;
+            }
+            
+            .location-precheck {
+                text-align: center;
+                margin-top: 10px;
+                color: rgba(255, 255, 255, 0.6);
+            }
+            
+            .clock-status {
+                text-align: center;
+            }
+            
+            .clock-status.ready .status-icon {
+                color: #51cf66;
+            }
+            
+            .clock-status.too-early .status-icon {
+                color: #ffd93d;
+            }
+            
+            .clock-status.missed .status-icon {
+                color: #ff6b6b;
+            }
+            
+            .clock-btn:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
+            
+            .clock-btn:hover:not(:disabled) {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            }
+        `;
+        document.head.appendChild(styleElement);
+    }
+}
+
+// Initialize enhanced clock styles
+document.addEventListener('DOMContentLoaded', () => {
+    addEnhancedClockStyles();
+});
+
+// Function to manually trigger clock UI refresh for a specific shift
+async function refreshClockUI(shiftId) {
+    const { data: shift, error } = await supabaseClient
+        .from('shifts')
+        .select(`
+            *,
+            participant:participant_id(
+                first_name, 
+                last_name, 
+                address,
+                location_lat, 
+                location_lng, 
+                location_radius_meters
+            ),
+            location:location_id(name, address)
+        `)
+        .eq('id', shiftId)
+        .single();
+        
+    if (!error && shift) {
+        await loadShiftClockingUI(shiftId, shift);
+    }
+}
+
+// Auto-refresh clock UI every minute for active shifts
+let clockRefreshInterval = null;
+
+function startClockRefresh(shiftId) {
+    stopClockRefresh(); // Clear any existing interval
+    
+    clockRefreshInterval = setInterval(() => {
+        const clockSection = document.getElementById(`clock-section-${shiftId}`);
+        if (clockSection && clockSection.closest('.shift-details.expanded')) {
+            refreshClockUI(shiftId);
+        }
+    }, 60000); // Refresh every minute
+}
+
+function stopClockRefresh() {
+    if (clockRefreshInterval) {
+        clearInterval(clockRefreshInterval);
+        clockRefreshInterval = null;
+    }
+}
+
+
+// Helper function to get current position
+function getCurrentPosition() {
+    return new Promise((resolve, reject) => {
+        if (!navigator.geolocation) {
+            reject(new Error('Geolocation not supported'));
+            return;
+        }
+        
+        navigator.geolocation.getCurrentPosition(
+            resolve,
+            reject,
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            }
+        );
+    });
+}
+
+
+
+// Placeholder for reverse geocoding
+async function reverseGeocode(lat, lng) {
+    try {
+        const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+            {
+                headers: {
+                    'User-Agent': 'NDIS-Care-App/1.0' // Required by Nominatim
+                }
+            }
+        );
+        
+        if (!response.ok) {
+            throw new Error('Geocoding failed');
+        }
+        
+        const data = await response.json();
+        
+        // Build a readable address
+        const parts = [];
+        if (data.address.house_number) parts.push(data.address.house_number);
+        if (data.address.road) parts.push(data.address.road);
+        if (data.address.suburb || data.address.city) {
+            parts.push(data.address.suburb || data.address.city);
+        }
+        if (data.address.state) parts.push(data.address.state);
+        if (data.address.postcode) parts.push(data.address.postcode);
+        
+        return parts.join(', ') || `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+        
+    } catch (error) {
+        console.error('Reverse geocoding error:', error);
+        // Fallback to coordinates if geocoding fails
+        return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+    }
+}
+
+// Initialize everything when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    // Add notification styles
+    addNotificationStyles();
+    
+    // Load current shift
+    if (typeof loadCurrentShift === 'function') {
+        loadCurrentShift();
+    }
+    
+    // Refresh shift display every 5 minutes
+    setInterval(() => {
+        if (typeof loadCurrentShift === 'function') {
+            loadCurrentShift();
+        }
+    }, 5 * 60 * 1000);
+
+});
+
+
+// Simple toast notification if you don't have one already
+function showToast(message, type = 'info') {
+    // If you already have a showToast function, remove this one
+    console.log(`[${type.toUpperCase()}]: ${message}`);
+    
+    // Basic toast implementation
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    toast.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        padding: 12px 24px;
+        background: ${type === 'success' ? '#51cf66' : type === 'error' ? '#ff6b6b' : '#339af0'};
+        color: white;
+        border-radius: 8px;
+        z-index: 9999;
+        animation: slideIn 0.3s ease;
+    `;
+    
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     try {        
         // ===== UNIVERSAL EVENT DELEGATION (ONLY ONCE, COMPREHENSIVE VERSION) =====
@@ -13984,8 +17267,8 @@ function renderTimesheetShifts() {
                                     : ''}
                             </div>
                             <div class="shift-location">
-                                📍 ${shift.locations?.name || 'Client Home'}
-                            </div>
+                    <i class="fa-solid fa-location-dot"></i> ${shift.location?.name || 'Client Home'}
+                </div>
                         </div>
                         <div class="shift-hours">
                             <div class="shift-hours-value">${hours.total.toFixed(1)}h</div>
@@ -14101,26 +17384,104 @@ function showToast(message, type = 'info') {
 }
 
 function showNotification(message, type = 'info') {
-    // Alias for showToast to ensure compatibility
-    showToast(message, type === 'error' ? 'error' : type === 'success' ? 'success' : 'info');
-}
+    // Remove any existing notifications
+    const existingNotification = document.querySelector('.notification-toast');
+    if (existingNotification) {
+        existingNotification.remove();
+    }
 
-
-if (!document.querySelector('#toastStyles')) {
-    const style = document.createElement('style');
-    style.id = 'toastStyles';
-    style.textContent = `
-        @keyframes slideUp {
-            from { transform: translate(-50%, 100%); opacity: 0; }
-            to { transform: translate(-50%, 0); opacity: 1; }
-        }
-        @keyframes slideDown {
-            from { transform: translate(-50%, 0); opacity: 1; }
-            to { transform: translate(-50%, 100%); opacity: 0; }
-        }
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `notification-toast ${type}`;
+    notification.innerHTML = `
+        <div class="notification-content">
+            ${type === 'success' ? '<i class="fa-solid fa-check-circle"></i>' : ''}
+            ${type === 'error' ? '<i class="fa-solid fa-exclamation-circle"></i>' : ''}
+            ${type === 'warning' ? '<i class="fa-solid fa-exclamation-triangle"></i>' : ''}
+            <span>${message}</span>
+        </div>
     `;
-    document.head.appendChild(style);
+    
+    document.body.appendChild(notification);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        notification.classList.add('fade-out');
+        setTimeout(() => notification.remove(), 300);
+    }, 5000);
 }
+
+// Add CSS for notifications
+function addNotificationStyles() {
+    if (!document.getElementById('notification-styles')) {
+        const styleElement = document.createElement('style');
+        styleElement.id = 'notification-styles';
+        styleElement.textContent = `
+            .notification-toast {
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                z-index: 9999;
+                padding: 16px 24px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                animation: slideIn 0.3s ease;
+                max-width: 400px;
+                background: #1e3a5f;
+                color: white;
+            }
+            
+            .notification-toast.success {
+                background: #2d5a3d;
+            }
+            
+            .notification-toast.error {
+                background: #d32f2f;
+            }
+            
+            .notification-toast.warning {
+                background: #f57c00;
+            }
+            
+            .notification-content {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                font-size: 14px;
+                font-weight: 500;
+            }
+            
+            .notification-toast.fade-out {
+                animation: slideOut 0.3s ease;
+                opacity: 0;
+            }
+            
+            @keyframes slideIn {
+                from {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+            
+            @keyframes slideOut {
+                from {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+                to {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(styleElement);
+    }
+}
+
 
 // Update your switchSection function to handle participants
 function switchSection(section) {
