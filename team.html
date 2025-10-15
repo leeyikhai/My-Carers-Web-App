@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1297,6 +1298,7 @@ body.loading {
     overflow-y: auto;
     overflow-x: hidden;
     padding: 5px;
+    padding-bottom: 200px; /* INCREASED - space for compose + keyboard */
     background: #f9fafb;
     -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
 }
@@ -1408,9 +1410,12 @@ body.loading {
     }
     
     .compose-container {
-        padding-bottom: env(safe-area-inset-bottom); /* For iPhone notch */
+        position: fixed; /* Change to fixed on mobile */
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding-bottom: max(20px, env(safe-area-inset-bottom));
     }
-    
     /* Hide autofill icons on mobile */
     input::-webkit-credentials-auto-fill-button,
     input::-webkit-caps-lock-indicator,
@@ -6074,7 +6079,7 @@ function renderNotesView(notes, participantId) {
                     Load All Messages with Filters
                 </button>
                 <div class="messages-list">
-                    ${renderNotesList(notes.reverse())}
+                    ${renderNotesList(notes)}
                 </div>
             </div>
             
@@ -6138,44 +6143,43 @@ document.addEventListener('selectionchange', () => {
 });
 
 
+// Add this function for loading earlier messages
+async function loadMoreNotes(participantId, page) {
+    const container = document.getElementById('notesContainer');
+    const currentScrollHeight = container.scrollHeight;
+    
+    // Load the page
+    await loadParticipantNotes(participantId, page, {});
+    
+    // Maintain scroll position (don't jump to bottom)
+    setTimeout(() => {
+        const newScrollHeight = container.scrollHeight;
+        const scrollDiff = newScrollHeight - currentScrollHeight;
+        container.scrollTop = scrollDiff;
+    }, 100);
+}
+
 async function loadParticipantNotes(participantId, page = 1, filters = {}) {
     try {
         const notesPerPage = 20;
-        const offset = (page - 1) * notesPerPage;
         
-        let query = supabaseClient
+        // First, get total count
+        let countQuery = supabaseClient
             .from('shift_notes')
-            .select(`
-                id,
-                note,
-                attachments,
-                created_at,
-                staff:staff_id (
-                    id,
-                    first_name,
-                    last_name
-                )
-            `, { count: 'exact' })
+            .select('id', { count: 'exact', head: true })
             .eq('participant_id', participantId);
         
-        // Apply filters...
+        const { count } = await countQuery;
+        const totalPages = Math.ceil(count / notesPerPage);
         
-        // Get data - CHANGE TO ASCENDING for chat view
-        const { data: notes, error, count } = await query
-            .order('created_at', { ascending: true })  // Changed to ascending
-            .range(offset, offset + notesPerPage - 1);
+        // Calculate offset from END for chat-style pagination
+        // Page 1 = most recent 20 messages
+        // Page 2 = next 20 older messages, etc.
+        const offset = Math.max(0, count - (page * notesPerPage));
+        const limit = notesPerPage;
         
-        if (error) throw error;
-        
-        // For chat view, we want newest at bottom
-        // Page 1 should be the most recent notes
-        // So we need to calculate offset from the END
-        const totalNotes = count;
-        const actualOffset = Math.max(0, totalNotes - (page * notesPerPage));
-        const actualEnd = totalNotes - ((page - 1) * notesPerPage) - 1;
-        
-        // Re-query with correct offset from end
-        const { data: correctNotes, error: error2 } = await supabaseClient
+        // Get the notes in ascending order (oldest to newest)
+        const { data: notes, error } = await supabaseClient
             .from('shift_notes')
             .select(`
                 id,
@@ -6190,11 +6194,11 @@ async function loadParticipantNotes(participantId, page = 1, filters = {}) {
             `)
             .eq('participant_id', participantId)
             .order('created_at', { ascending: true })
-            .range(actualOffset, actualEnd);
+            .range(offset, offset + limit - 1);
         
-        if (error2) throw error2;
+        if (error) throw error;
         
-        renderNotesViewWithControls(correctNotes, participantId, page, Math.ceil(count / notesPerPage));
+        renderNotesViewWithControls(notes, participantId, page, totalPages, count);
         
     } catch (error) {
         console.error('Error loading notes:', error);
@@ -6250,7 +6254,7 @@ function renderNotesViewWithControls(notes, participantId, currentPage, totalPag
                 ` : ''}
                 
                 <div class="messages-list">
-                    ${renderNotesList(notes.reverse())}
+                    ${renderNotesList(notes)}
                 </div>
             </div>
             
@@ -6298,12 +6302,10 @@ function renderNotesViewWithControls(notes, participantId, currentPage, totalPag
     
     // Populate staff filter
     populateStaffFilter(participantId);
-    
-    // Scroll to bottom for latest
-    setTimeout(() => {
-        const container = document.getElementById('notesContainer');
-        if (container && currentPage === 1) {
-            container.scrollTop = container.scrollHeight;
+     // Scroll to bottom ONLY on first page
+     setTimeout(() => {
+        if (currentPage === 1) {
+            scrollToBottom(false);
         }
     }, 100);
 }
@@ -6380,7 +6382,7 @@ function loadMoreNotes(participantId, page) {
 }
 
 const composeBar = document.querySelector('.compose-container');
-const SAFETY_OFFSET = 50; // extra pixels to clear autofill bar
+const SAFETY_OFFSET = 0; // extra pixels to clear autofill bar
 
 
 window.visualViewport?.addEventListener('resize', () => {
@@ -6391,6 +6393,33 @@ window.visualViewport?.addEventListener('resize', () => {
     ? `${keyboardHeight + extra}px`
     : '0px';
 });
+
+function scrollToBottom(smooth = true) {
+    const container = document.getElementById('notesContainer');
+    if (container) {
+        if (smooth) {
+            container.scrollTo({
+                top: container.scrollHeight,
+                behavior: 'smooth'
+            });
+        } else {
+            container.scrollTop = container.scrollHeight;
+        }
+    }
+}
+
+// Update in renderNotesView
+setTimeout(() => {
+    scrollToBottom(false); // Instant scroll on load
+}, 100);
+
+// Update in renderNotesViewWithControls
+setTimeout(() => {
+    if (currentPage === 1) {
+        scrollToBottom(false); // Instant scroll for page 1
+    }
+}, 100);
+
 
 async function submitQuickNote(participantId) {
     const compose = document.getElementById('noteCompose');
@@ -6495,10 +6524,12 @@ function handleNoteKeypress(event) {
 }
 
 // Confirm before submitting
-function confirmAndSubmitNote(participantId) {
+async function confirmAndSubmitNote(participantId) {
     if (confirm('Submit this note? Once submitted, it cannot be edited or deleted.')) {
         submitQuickNote(participantId);
     }
+    await loadParticipantNotes(participantId, 1, {});
+    scrollToBottom(true); // Smooth scroll after new message
 }
 
 // Updated render notes list with better date display
