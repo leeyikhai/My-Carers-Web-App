@@ -2928,7 +2928,7 @@ function renderAssignments() {
                             </h4>
                             ${participantAssignments.length > 0 ? `
                                 <table class="shifts-detail-table" style="width: 100%; background: white; border-radius: 6px; overflow: hidden;">
-                                    <thead style="background: #f8f9fa;">
+                                    <thead style="background: #667eea;">
                                         <tr>
                                             <th style="padding: 10px 16px; text-align: left;">Staff Member</th>
                                             <th style="padding: 10px 16px;">Staff Code</th>
@@ -3032,7 +3032,7 @@ function renderAssignments() {
                             </h4>
                             ${staffAssignments.length > 0 ? `
                                 <table class="shifts-detail-table" style="width: 100%; background: white; border-radius: 6px; overflow: hidden;">
-                                    <thead style="background: #f8f9fa;">
+                                    <thead style="background: #667eea;">
                                         <tr>
                                             <th style="padding: 10px 16px; text-align: left;">Participant</th>
                                             <th style="padding: 10px 16px;">NDIS Number</th>
@@ -4386,7 +4386,7 @@ async function loadTransportClaims() {
                         </div>
                         
                         <table class="request-table" style="width: 100%; border-collapse: collapse;">
-                            <thead style="background: #f8f9fa;">
+                            <thead style="background: #667eea;">
                                 <tr>
                                     <th style="padding: 12px;">Date</th>
                                     <th style="padding: 12px;">Staff</th>
@@ -4629,7 +4629,7 @@ async function loadLeaveRequests() {
                         </div>
                         
                         <table class="request-table" style="width: 100%; border-collapse: collapse;">
-                            <thead style="background: #f8f9fa;">
+                            <thead style="background: #667eea;">
                                 <tr>
                                     <th style="padding: 12px;">Leave Type</th>
                                     <th style="padding: 12px;">Start Date</th>
@@ -4761,19 +4761,28 @@ async function loadShiftApprovals() {
                     `${participant.first_name} ${participant.last_name}` : 
                     'Unassigned';
                 
+                const shiftIds = group.shifts.map(s => s.id);
+                
                 html += `
                     <div class="shift-group" style="margin-bottom: 20px; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                         <div class="shift-group-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center;">
                             <span style="font-weight: 600; font-size: 16px;">
                                 <i class="fas fa-user"></i> ${participantName}
                             </span>
-                            <span class="badge" style="background: white; color: #667eea; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">
-                                ${group.shifts.length} shifts
-                            </span>
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <span class="badge" style="background: white; color: #667eea; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">
+                                    ${group.shifts.length} shifts
+                                </span>
+                                <button class="btn-sm" 
+                                        style="background: #4CAF50; color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 6px;"
+                                        onclick="approveAllShifts(${JSON.stringify(shiftIds).replace(/"/g, '&quot;')}, '${participantName}')">
+                                    <i class="fas fa-check-double"></i> Approve All
+                                </button>
+                            </div>
                         </div>
                         
                         <table class="request-table" style="width: 100%; border-collapse: collapse;">
-                            <thead style="background: #f8f9fa;">
+                            <thead style="background: #667eea;">
                                 <tr>
                                     <th style="padding: 12px;">Date</th>
                                     <th style="padding: 12px;">Time</th>
@@ -4845,6 +4854,8 @@ async function loadShiftApprovals() {
                     `${staff.first_name} ${staff.last_name}` : 
                     'Unassigned';
                 
+                const shiftIds = group.shifts.map(s => s.id);
+                
                 html += `
                     <div class="shift-group" style="margin-bottom: 20px; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                         <div class="shift-group-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center;">
@@ -4852,13 +4863,20 @@ async function loadShiftApprovals() {
                                 <i class="fas fa-user-tie"></i> ${staffName}
                                 ${staff?.staff_code ? `<span style="margin-left: 8px; opacity: 0.8; font-size: 13px;">${staff.staff_code}</span>` : ''}
                             </span>
-                            <span class="badge" style="background: white; color: #667eea; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">
-                                ${group.shifts.length} shifts
-                            </span>
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <span class="badge" style="background: white; color: #667eea; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">
+                                    ${group.shifts.length} shifts
+                                </span>
+                                <button class="btn-sm" 
+                                        style="background: #4CAF50; color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 6px;"
+                                        onclick="approveAllShifts(${JSON.stringify(shiftIds).replace(/"/g, '&quot;')}, '${staffName}')">
+                                    <i class="fas fa-check-double"></i> Approve All
+                                </button>
+                            </div>
                         </div>
                         
                         <table class="request-table" style="width: 100%; border-collapse: collapse;">
-                            <thead style="background: #f8f9fa;">
+                            <thead style="background: #667eea;">
                                 <tr>
                                     <th style="padding: 12px;">Date</th>
                                     <th style="padding: 12px;">Time</th>
@@ -4914,6 +4932,37 @@ async function loadShiftApprovals() {
         container.innerHTML = `<div class="alert alert-danger">Failed to load shift approvals: ${error.message}</div>`;
     }
 }
+
+// Function to approve all shifts for a staff member or participant
+async function approveAllShifts(shiftIds, name) {
+    if (!confirm(`Are you sure you want to approve all ${shiftIds.length} shifts for ${name}?`)) {
+        return;
+    }
+    
+    const button = event.target.closest('button');
+    const originalContent = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Approving...';
+    
+    try {
+        const { error } = await supabaseClient
+            .from('shifts')
+            .update({ status: 'approved' })
+            .in('id', shiftIds);
+        
+        if (error) throw error;
+        
+        showToast(`Successfully approved ${shiftIds.length} shifts for ${name}`, 'success');
+        loadShiftApprovals(); // Reload the list
+        
+    } catch (error) {
+        console.error('Error approving shifts:', error);
+        showToast(`Failed to approve shifts: ${error.message}`, 'error');
+        button.disabled = false;
+        button.innerHTML = originalContent;
+    }
+}
+
 
 async function loadShiftAdjustments() {
     const container = document.getElementById('requestsTableContainer');
@@ -5018,7 +5067,7 @@ async function loadShiftAdjustments() {
                         </div>
                         
                         <table class="request-table" style="width: 100%; border-collapse: collapse;">
-                            <thead style="background: #f8f9fa;">
+                            <thead style="background: #667eea;">
                                 <tr>
                                     <th style="padding: 12px; text-align: left;">Date</th>
                                     <th style="padding: 12px;">Staff</th>
@@ -5489,7 +5538,7 @@ async function loadSchoolHolidays() {
                         </div>
                         
                         <table class="request-table" style="width: 100%; border-collapse: collapse;">
-                            <thead style="background: #f8f9fa;">
+                            <thead style="background: #667eea;">
                                 <tr>
                                     <th style="padding: 12px;">Start Date</th>
                                     <th style="padding: 12px;">End Date</th>
@@ -5693,41 +5742,44 @@ async function approveShift(shiftId) {
     try {
         const { error } = await supabaseClient
             .from('shifts')
-            .update({ 
-                status: 'approved'
-            })
+            .update({ status: 'approved' })
             .eq('id', shiftId);
         
         if (error) throw error;
         
-        showNotification('Shift approved', 'success');
-        await loadRequestData();
+        showToast('Shift approved successfully', 'success');
+        loadShiftApprovals(); // Reload the list
         
     } catch (error) {
         console.error('Error approving shift:', error);
-        showNotification('Failed to approve shift', 'error');
+        showToast(`Failed to approve shift: ${error.message}`, 'error');
     }
 }
 
+
 async function rejectShift(shiftId) {
+    if (!confirm('Are you sure you want to reject and delete this shift? This action cannot be undone.')) {
+        return;
+    }
+    
     try {
         const { error } = await supabaseClient
             .from('shifts')
-            .update({ 
-                status: 'rejected'
-            })
+            .delete()
             .eq('id', shiftId);
         
         if (error) throw error;
         
-        showNotification('Shift rejected', 'info');
-        await loadRequestData();
+        showToast('Shift rejected and deleted successfully', 'success');
+        loadShiftApprovals(); // Reload the list
         
     } catch (error) {
-        console.error('Error rejecting shift:', error);
-        showNotification('Failed to reject shift', 'error');
+        console.error('Error deleting shift:', error);
+        showToast(`Failed to delete shift: ${error.message}`, 'error');
     }
 }
+
+
 async function approveAllParticipantShifts(participantId) {
     if (isLoadingRequest) return;
     
@@ -5782,17 +5834,15 @@ async function isStaffAvailable(staffId, date, startTime, endTime) {
     try {
         // Check staff_availability table
         const { data: availability } = await supabaseClient
-            .from('staff_availability')
-            .select('is_available, start_time, end_time')
-            .eq('staff_id', staffId)
-            .eq('date', date)
-            .single();
+  .from('staff_availability')
+  .select('available, start_time, end_time')
+  .eq('staff_id', staffId)
+  .eq('date', date)
+  .single();
         
         // If no availability record, assume unavailable
-        if (!availability) {
-            return false;
-        }
-        
+        if (!availability?.available) return false;
+
         // If marked as unavailable
         if (!availability.is_available) {
             return false;
@@ -8882,7 +8932,7 @@ async function renderAvailability() {
             .select('*, staff:staff_id(first_name, last_name)')
             .gte('date', weekStart.toISOString().split('T')[0])
             .lte('date', weekEnd.toISOString().split('T')[0])
-            .eq('available', false)
+            .eq('is_available', false)
             .order('date');
         
         // Load regular availability patterns
@@ -9680,7 +9730,7 @@ async function saveTemplate() {
                         day_of_week: uiDayToDbDay(uiDay),
                         start_time: startTime || null,
                         end_time: endTime || null,
-                        staff_id: staffId || null,
+                        staff_id: staffId && staffId !== '' ? staffId : null, // FIX HERE
                         duty_type_id: dutyTypeId || null,
                         location_id: locationId || null,
                         notes: notes || null,
@@ -9689,7 +9739,7 @@ async function saveTemplate() {
                 }
             });
         }
-        
+
         // Check for conflicts within the template itself
         const templateConflicts = checkTemplateInternalConflicts(shiftsToValidate);
         
@@ -9850,8 +9900,9 @@ async function editTemplate(templateId) {
     const template = rosterTemplates.find(t => t.id === templateId);
     if (!template) return;
     
-    openCreateTemplateModal();
-    
+    openCreateTemplateModal(() => {
+  populateTemplateFields(template);
+});    
     setTimeout(() => {
         document.getElementById('templateName').value = template.name;
         document.getElementById('templateParticipant').value = template.participant_id || '';
@@ -10036,7 +10087,6 @@ async function executeDuplicateTemplate(templateId, button) {
 
 async function executeTemplateApplication(templateId) {
     try {
-        // 1. VALIDATION
         const template = rosterTemplates.find(t => t.id === templateId);
         if (!template) throw new Error('Template not found');
         
@@ -10044,6 +10094,7 @@ async function executeTemplateApplication(templateId) {
         const endDate = new Date(document.getElementById('applyEndDate').value);
         const participantId = document.getElementById('applyParticipant').value;
         const skipExisting = document.getElementById('skipExisting').checked;
+        const clockInSetting = document.getElementById('clockInRequirement').value;
         
         if (!participantId) {
             showNotification('Please select a participant', 'warning');
@@ -10055,18 +10106,15 @@ async function executeTemplateApplication(templateId) {
             return;
         }
         
-        // 2. GET PARTICIPANT WITH DEFAULTS
         const participant = await getParticipantWithDefaults(participantId);
         if (!participant) {
             showNotification('Participant not found', 'error');
             return;
         }
         
-        // 3. LOAD REQUIRED DATA
         const staffAssignments = await loadStaffAssignments(participantId);
         const systemDefaults = await loadSystemDefaults();
         
-        // 4. PROCESS SHIFTS
         const processResult = await processTemplateShifts({
             template,
             startDate,
@@ -10074,10 +10122,10 @@ async function executeTemplateApplication(templateId) {
             participant,
             skipExisting,
             staffAssignments,
-            systemDefaults
+            systemDefaults,
+            clockInSetting // Pass the clock-in setting
         });
         
-        // 5. SHOW CONFLICTS IF ANY
         if (processResult.conflicts.length > 0) {
             const shouldContinue = await showApplicationConflictDialog(
                 processResult.conflicts, 
@@ -10088,8 +10136,10 @@ async function executeTemplateApplication(templateId) {
             }
         }
         
-        // 6. CREATE SHIFTS
         if (processResult.validShifts.length > 0) {
+            // Log what we're about to insert for debugging
+            console.log('Inserting shifts:', processResult.validShifts);
+            
             const { data, error } = await supabaseClient
                 .from('shifts')
                 .insert(processResult.validShifts);
@@ -10105,7 +10155,6 @@ async function executeTemplateApplication(templateId) {
             
             showNotification(message, 'success');
             
-            // Close modal and refresh
             document.querySelector('.modal-overlay')?.remove();
             if (typeof loadShifts === 'function') {
                 await loadShifts();
@@ -10119,6 +10168,7 @@ async function executeTemplateApplication(templateId) {
         showNotification(`Failed to apply template: ${error.message}`, 'error');
     }
 }
+
 
 function showApplyTemplateModal(templateId) {
     const template = rosterTemplates.find(t => t.id === templateId);
@@ -10148,7 +10198,7 @@ function showApplyTemplateModal(templateId) {
                     <label>Apply To Participant</label>
                     <select id="applyParticipant" class="form-control">
                         ${template.participant_id ? 
-                            `<option value="${template.participant_id}" selected>${template.participant.first_name} ${template.participant.last_name}</option>` :
+                            `<option value="${template.participant_id}" selected>${template.participant?.first_name} ${template.participant?.last_name}</option>` :
                             `<option value="">Select Participant</option>`
                         }
                         ${participants.filter(p => p.id !== template.participant_id).map(p => 
@@ -10164,10 +10214,14 @@ function showApplyTemplateModal(templateId) {
                     </label>
                 </div>
                 
-                <div class="alert alert-info" style="margin-top: 16px;">
-                    <strong>Clock-in Requirements:</strong><br>
-                    • Shifts for today and past dates: Clock-in not required (auto-populated)<br>
-                    • Future shifts: Clock-in will be required at location
+                <div class="form-group">
+                    <label>Clock-in Requirement</label>
+                    <select id="clockInRequirement" class="form-control">
+                        <option value="auto">Auto (based on date)</option>
+                        <option value="always">Always require clock-in</option>
+                        <option value="never">Never require clock-in</option>
+                    </select>
+                    <small class="text-muted">Auto: Past/today = no clock-in, Future = clock-in required</small>
                 </div>
             </div>
             <div class="modal-footer">
@@ -10178,6 +10232,8 @@ function showApplyTemplateModal(templateId) {
     `;
     document.body.appendChild(modal);
 }
+
+
 
 // ==========================================
 // PARTICIPANT-SPECIFIC TEMPLATE FUNCTIONS
@@ -10720,7 +10776,7 @@ async function loadSystemDefaults() {
     }
     
     defaults.pay_rate_id = '00000000-0000-0000-0000-000000000002';
-    defaults.staff_id = '00000000-0000-0000-0000-000000000000';
+    // DO NOT SET defaults.staff_id - let it be null for unassigned
     
     const { data: clientHome } = await supabaseClient
         .from('locations')
@@ -10742,7 +10798,8 @@ async function processTemplateShifts(config) {
         participant,
         skipExisting,
         staffAssignments,
-        systemDefaults
+        systemDefaults,
+        clockInSetting // New parameter
     } = config;
     
     const validShifts = [];
@@ -10777,10 +10834,13 @@ async function processTemplateShifts(config) {
                 dateStr,
                 participant,
                 staffAssignments,
-                systemDefaults
+                systemDefaults,
+                clockInSetting // Pass the setting
             });
             
-            if (templateShift.staff_id && templateShift.start_time && templateShift.end_time) {
+            // Only check conflicts if staff is actually assigned
+            if (templateShift.staff_id && templateShift.staff_id !== '' && 
+                templateShift.start_time && templateShift.end_time) {
                 const conflictCheck = await checkShiftConflicts(
                     templateShift.staff_id,
                     participant.id,
@@ -10816,18 +10876,37 @@ async function buildShiftFromTemplate(config) {
         dateStr,
         participant,
         staffAssignments,
-        systemDefaults
+        systemDefaults,
+        clockInSetting // New parameter
     } = config;
     
     const shiftDate = new Date(dateStr);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    const clockInRequired = shiftDate > today;
+    // Determine clock-in requirement based on setting
+    let clockInRequired;
+    if (clockInSetting === 'always') {
+        clockInRequired = true;
+    } else if (clockInSetting === 'never') {
+        clockInRequired = false;
+    } else { // 'auto'
+        clockInRequired = shiftDate > today;
+    }
     
-    let payRateId = systemDefaults.pay_rate_id;
-    if (templateShift.staff_id && staffAssignments[templateShift.staff_id]) {
-        payRateId = staffAssignments[templateShift.staff_id].pay_rate_id || payRateId;
+    // Fix: Ensure staff_id is either a valid UUID or null, never the default UUID
+    const staffId = templateShift.staff_id && templateShift.staff_id !== '' 
+        ? templateShift.staff_id 
+        : null;
+    
+    // Get pay rate based on the actual staff selected
+    let payRateId = null;
+    if (staffId && staffAssignments[staffId]) {
+        payRateId = staffAssignments[staffId].pay_rate_id;
+    }
+    // Only use default pay rate if we have a staff member but no specific rate
+    if (staffId && !payRateId) {
+        payRateId = systemDefaults.pay_rate_id;
     }
     
     const locationId = templateShift.location_id || 
@@ -10847,13 +10926,13 @@ async function buildShiftFromTemplate(config) {
     return {
         date: dateStr,
         participant_id: participant.id,
-        staff_id: templateShift.staff_id || systemDefaults.staff_id,
+        staff_id: staffId, // This will be null for unassigned shifts
         start_time: templateShift.start_time,
         end_time: templateShift.end_time,
         duty_type_id: dutyTypeId,
         location_id: locationId,
-        pay_override_id: payRateId,
-        status: 'pending',
+        pay_override_id: payRateId, // This will be null for unassigned shifts
+        status: 'confirmed',
         notes: templateShift.notes || null,
         clock_in_required: clockInRequired,
         clock_in_time: !clockInRequired && templateShift.start_time ? 
@@ -10861,9 +10940,11 @@ async function buildShiftFromTemplate(config) {
         clock_out_time: !clockInRequired && templateShift.end_time ? 
             `${dateStr}T${templateShift.end_time}` : null,
         created_at: new Date().toISOString(),
-        created_by: currentStaffData?.id || currentUser?.id || systemDefaults.staff_id
+        created_by: currentStaffData?.id || currentUser?.id || null
     };
 }
+
+
 
 function checkTemplateInternalConflicts(shifts) {
     const conflicts = [];
@@ -11980,7 +12061,11 @@ async function createShift() {
 
         // Get the staff member's default pay rate if no override selected
         const selectedStaff = staff.find(s => s.id === staffId);
-        const effectivePayRateId = payRateId || selectedStaff?.pay_rate_id || '00000000-0000-0000-0000-000000000002';
+        const effectivePayRateId = payRateId || selectedStaff?.pay_rate_id;
+if (!effectivePayRateId) {
+  showNotification('Missing pay rate. Please select or assign a valid pay rate.', 'error');
+  return;
+}
 
         // Calculate duration
         let duration_hours = null;
@@ -12007,7 +12092,6 @@ async function createShift() {
             status: 'confirmed',
             duration_hours: duration_hours
         };
-
 
         const { data: newShift, error } = await supabaseClient
             .from('shifts')
@@ -12388,7 +12472,7 @@ function deleteShiftConfirm() {
     }
     
     // If new shift is active and there's a sleepover
-    const hasSleepover = shifts.some(s => s.duty_type?.toLowerCase().includes('sleepover'));
+    const hasSleepover = shifts.some(s => s.duty_type?.name?.toLowerCase().includes('sleepover'));
     if (hasSleepover && newShift.start_time) {
         const startHour = parseInt(newShift.start_time.split(':')[0]);
         const endHour = parseInt(newShift.end_time?.split(':')[0]) || 0;
@@ -12421,7 +12505,7 @@ async function checkShiftConflicts(staffId, participantId, date, startTime, endT
             .select('*')
             .eq('staff_id', staffId)
             .eq('date', date)
-            .eq('available', false)
+            .eq('is_available', false)
             .single();
         
         if (leaveData) {
@@ -12493,7 +12577,7 @@ async function checkShiftConflicts(staffId, participantId, date, startTime, endT
                 .eq('participant_id', participantId)
                 .eq('date', date)
                 .is('deleted_at', null)
-                .neq('id', excludeShiftId || '00000000-0000-0000-0000-000000000000');
+
             
             if (participantShifts) {
                 const overlappingStaff = [];
