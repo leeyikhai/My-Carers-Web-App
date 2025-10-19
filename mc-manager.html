@@ -37,6 +37,221 @@
     white-space: nowrap;
 }
 
+/* Modal Tabs Styling */
+.modal-tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 24px;
+    border-bottom: 2px solid #e0e0e0;
+    overflow-x: auto;
+}
+
+.tab-btn {
+    padding: 12px 20px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #666;
+    font-weight: 500;
+    border-bottom: 3px solid transparent;
+    transition: all 0.3s;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tab-btn:hover {
+    color: var(--primary-color);
+    background: #f5f5f5;
+}
+
+.tab-btn.active {
+    color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
+}
+
+/* Section Titles */
+.section-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 24px 0 16px 0;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #e0e0e0;
+    color: var(--text-dark);
+}
+
+/* Info Boxes */
+.info-box {
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    display: flex;
+    gap: 10px;
+    align-items: start;
+}
+
+.info-box.info {
+    background: #e3f2fd;
+    border-left: 4px solid #2196f3;
+}
+
+.info-box i {
+    margin-top: 2px;
+    color: #2196f3;
+}
+
+/* Location Controls */
+.location-controls {
+    display: flex;
+    gap: 16px;
+    align-items: end;
+    margin-bottom: 16px;
+}
+
+.map-container {
+    height: 400px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    margin-bottom: 16px;
+}
+
+.location-info-card {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.location-info-card h4 {
+    margin: 0 0 12px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+
+.location-display {
+    margin-top: 4px;
+    color: #666;
+}
+
+.location-tips {
+    display: grid;
+    gap: 6px;
+    font-size: 13px;
+    color: #666;
+    padding-top: 12px;
+    border-top: 1px solid #dee2e6;
+}
+
+.location-tips div {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.location-tips i {
+    color: var(--primary-color);
+}
+
+/* Tables */
+.table-responsive {
+    overflow-x: auto;
+    margin-top: 16px;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.data-table th {
+    background: #f8f9fa;
+    padding: 12px;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.data-table td {
+    padding: 12px;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.data-table tr.no-data td {
+    text-align: center;
+    color: #999;
+    padding: 24px;
+}
+
+/* Required field indicator */
+label.required::after {
+    content: " *";
+    color: #dc3545;
+}
+
+/* Search bar */
+.search-bar {
+    position: relative;
+    margin-bottom: 16px;
+}
+
+.search-input {
+    width: 100%;
+    padding: 10px 40px 10px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+}
+
+.search-bar i {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #999;
+}
+
+/* Document upload section */
+.document-upload-section {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 24px;
+}
+
+/* Staff assignment form */
+.staff-assignment-form {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 24px;
+}
+
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.95);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-lg);
+}
+
+.modal-content {
+    position: relative; /* For loading overlay positioning */
+}
 .accordion-content { 
     display: none; 
 }
@@ -1297,8 +1512,7 @@
                 <button class="btn btn-warning" onclick="showPublicHolidayModal()">Holidays</button>
                 <button class="btn btn-success btn-sm" onclick="generatePayrollSummary()">Payroll</button>
                 <button class="btn btn-success btn-sm" onclick="exportData()">Export</button>
-                <button class="btn btn-outline btn-sm" onclick="debugDataLoading()" style="background: #ff6b6b; color: white;">Debug</button>
-            </div>
+                <button class="btn btn-outline btn-sm" onclick="openCSVUploadModal()" style="background: #28a745; color: white;">📄 Upload CSV</button>            </div>
         </section>
 
         <!-- Week Navigation -->
@@ -1575,23 +1789,267 @@
 
     </main>
 
-    
-<!--Participant Modals-->
+    <!-- CSV Upload Modal -->
+<div id="csvUploadModal" class="modal-overlay" style="display: none;">
+    <div class="modal" style="max-width: 1200px; width: 95%; max-height: 90vh; overflow-y: auto;">
+        <header class="modal-header">
+            <h3 class="modal-title">Upload Shifts CSV</h3>
+            <button class="modal-close" onclick="closeCSVUploadModal()">&times;</button>
+        </header>
+        <div class="modal-content">
+            <div id="csvUploadContainer"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Shift Modal -->
+<div id="editShiftModal" class="modal-overlay" style="display: none;">
+    <div class="modal large">
+        <header class="modal-header">
+            <h3 class="modal-title">Edit Shift</h3>
+            <button class="modal-close" onclick="closeModal('editShiftModal')">&times;</button>
+        </header>
+        <div class="modal-content">
+            <form id="editShiftForm">
+                <input type="hidden" id="editShiftId">
+                <div class="form-group">
+                    <label>Date *</label>
+                    <input type="date" id="editShiftDate" required onchange="updateEditClockInRequiredOptions()">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Start Time</label>
+                        <input type="time" id="editShiftStartTime">
+                    </div>
+                    <div class="form-group">
+                        <label>End Time</label>
+                        <input type="time" id="editShiftEndTime">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Staff *</label>
+                    <input type="text" class="searchable-input" id="editShiftStaffInput" 
+                           placeholder="Type to search staff..." 
+                           list="editStaffList" required onchange="updateEditStaffSelection()">
+                    <datalist id="editStaffList"></datalist>
+                    <input type="hidden" id="editShiftStaff">
+                </div>
+                <div class="form-group">
+                    <label>Participant *</label>
+                    <input type="text" class="searchable-input" id="editShiftParticipantInput" 
+                           placeholder="Type to search participants..." 
+                           list="editParticipantList" required onchange="updateEditParticipantSelection()">
+                    <datalist id="editParticipantList"></datalist>
+                    <input type="hidden" id="editShiftParticipant">
+                </div>
+                <div class="form-group">
+                    <label>Location (Auto)</label>
+                    <input type="text" id="editShiftLocationDisplay" readonly 
+                           style="background: #f5f5f5; cursor: not-allowed;" 
+                           placeholder="Select participant to auto-populate">
+                    <input type="hidden" id="editShiftLocation">
+                </div>
+                <div class="form-group">
+                    <label>Duty Type *</label>
+                    <select id="editShiftDutyType" required onchange="updateEditTimeFields()">
+                        <option value="">Select Duty Type</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Pay Rate Override</label>
+                    <select id="editShiftPayRate">
+                        <option value="">Use Assignment Default</option>
+                    </select>
+                    <small class="form-help">Leave blank to use staff-participant assignment rate</small>
+                </div>
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 0.5rem;">
+                        <input type="checkbox" id="editClockInRequired" style="width: auto;">
+                        Clock-In Required
+                    </label>
+                    <small class="form-help" id="editClockInHelp">Requires staff to clock in/out via mobile app</small>
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <select id="editShiftStatus">
+                        <option value="scheduled">Scheduled</option>
+                        <option value="confirmed">Confirmed</option>
+                        <option value="completed">Completed</option>
+                        <option value="no_show">No Show</option>
+                        <option value="cancelled">Cancelled</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Notes</label>
+                    <textarea id="editShiftNotes" placeholder="Shift notes..."></textarea>
+                </div>
+            </form>
+        </div>
+        <footer class="modal-footer">
+            <button class="btn btn-danger" onclick="deleteShiftConfirm()">Delete Shift</button>
+            <div class="modal-actions">
+                <button class="btn btn-outline" onclick="closeModal('editShiftModal')">Cancel</button>
+                <button class="btn btn-primary" onclick="updateShift()">Save Changes</button>
+            </div>
+        </footer>
+    </div>
+</div>
+
+<!-- Add Shift Modal -->
+<div id="addShiftModal" class="modal-overlay" style="display: none;">
+    <div class="modal large">
+        <header class="modal-header">
+            <h3 class="modal-title">Add New Shift</h3>
+            <button class="modal-close" onclick="closeModal('addShiftModal')">&times;</button>
+        </header>
+        <div class="modal-content">
+            <form id="addShiftForm">
+                <div class="form-group">
+                    <label>Date *</label>
+                    <input type="date" id="shiftDate" required onchange="updateClockInRequiredOptions()">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Start Time</label>
+                        <input type="time" id="shiftStartTime">
+                    </div>
+                    <div class="form-group">
+                        <label>End Time</label>
+                        <input type="time" id="shiftEndTime">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Staff *</label>
+                    <input type="text" class="searchable-input" id="shiftStaffInput" 
+                           placeholder="Type to search staff..." 
+                           list="staffDataList" required onchange="updateStaffSelection()">
+                    <datalist id="staffDataList"></datalist>
+                    <input type="hidden" id="shiftStaff">
+                </div>
+                <div class="form-group">
+                    <label>Participant *</label>
+                    <input type="text" class="searchable-input" id="shiftParticipantInput" 
+                           placeholder="Type to search participants..." 
+                           list="participantDataList" required onchange="updateParticipantSelection()">
+                    <datalist id="participantDataList"></datalist>
+                    <input type="hidden" id="shiftParticipant">
+                </div>
+                <div class="form-group">
+                    <label>Location (Auto)</label>
+                    <input type="text" id="shiftLocationDisplay" readonly 
+                           style="background: #f5f5f5; cursor: not-allowed;" 
+                           placeholder="Select participant to auto-populate">
+                    <input type="hidden" id="shiftLocation">
+                </div>
+                <div class="form-group">
+                    <label>Duty Type *</label>
+                    <select id="shiftDutyType" required onchange="updateTimeFields()">
+                        <option value="">Select Duty Type</option>
+                        <option value="active_shift_default" selected>Active Shift</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Pay Rate Override</label>
+                    <select id="shiftPayRate" disabled>
+                        <option value="">Select staff first</option>
+                    </select>
+                    <small class="form-help">Select staff and participant to see available pay rates</small>
+                </div>
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 0.5rem;">
+                        <input type="checkbox" id="clockInRequired" style="width: auto;" checked>
+                        Clock-In Required
+                    </label>
+                    <small class="form-help" id="clockInHelp">Requires staff to clock in/out via mobile app</small>
+                </div>
+                <div id="hourWarningText" style="display: none;" class="hour-warning"></div>
+            </form>
+        </div>
+        <footer class="modal-footer">
+            <div class="modal-actions">
+                <button class="btn btn-outline" onclick="closeModal('addShiftModal')">Cancel</button>
+                <button class="btn btn-primary" onclick="createShift()">Create Shift</button>
+            </div>
+        </footer>
+    </div>
+</div>
+
+<!-- Public Holiday Modal -->
+<div id="publicHolidayModal" class="modal-overlay" style="display: none;">
+    <div class="modal large">
+        <header class="modal-header">
+            <h3 class="modal-title">Public Holidays Management</h3>
+            <button class="modal-close" onclick="closeModal('publicHolidayModal')">&times;</button>
+        </header>
+        <div class="modal-content">
+            <div style="margin-bottom: 24px;">
+                <button class="btn btn-primary btn-sm" onclick="showAddHolidayForm()">Add Holiday</button>
+            </div>
+            
+            <div id="addHolidayForm" class="holiday-form" style="display: none;">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Holiday Date</label>
+                        <input type="date" id="holidayDate">
+                    </div>
+                    <div class="form-group">
+                        <label>Holiday Name</label>
+                        <input type="text" id="holidayName" placeholder="e.g., Christmas Day">
+                    </div>
+                </div>
+                <div style="display: flex; gap: 12px;">
+                    <button class="btn btn-success btn-sm" onclick="addHoliday()">Add Holiday</button>
+                    <button class="btn btn-outline btn-sm" onclick="cancelAddHoliday()">Cancel</button>
+                </div>
+            </div>
+
+            <div>
+                <h4 style="margin-bottom: 16px; color: var(--text-secondary);">Current Public Holidays</h4>
+                <div id="holidayList" style="max-height: 300px; overflow-y: auto;">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <span>Loading holidays...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <footer class="modal-footer">
+            <div class="modal-actions">
+                <button class="btn btn-outline" onclick="closeModal('publicHolidayModal')">Close</button>
+            </div>
+        </footer>
+    </div>
+</div>
+
+<!--Participant Modal-->
 <div id="participantModal" class="modal-overlay" style="display: none;">
     <div class="modal large">
         <header class="modal-header">
             <h3 class="modal-title" id="participantModalTitle">Add Participant</h3>
             <button class="modal-close" onclick="closeModal('participantModal')">&times;</button>
         </header>
+        
         <div class="modal-content">
             <!-- Tab Navigation -->
-            <div class="modal-tabs" style="display: flex; gap: 0.5rem; margin-bottom: 1rem; border-bottom: 2px solid #e0e0e0;">
-                <button type="button" class="tab-btn active" onclick="switchParticipantTab('details', event)" style="padding: 0.75rem 1rem; background: none; border: none; cursor: pointer;">Details</button>
-                <button type="button" class="tab-btn" onclick="switchParticipantTab('medical', event)" style="padding: 0.75rem 1rem; background: none; border: none; cursor: pointer;">Medical</button>
-                <button type="button" class="tab-btn" onclick="switchParticipantTab('contacts', event)" style="padding: 0.75rem 1rem; background: none; border: none; cursor: pointer;">Contacts</button>
-                <button type="button" class="tab-btn" onclick="switchParticipantTab('location', event)" style="padding: 0.75rem 1rem; background: none; border: none; cursor: pointer;">Location</button>
-                <button type="button" class="tab-btn" onclick="switchParticipantTab('documents', event)" style="padding: 0.75rem 1rem; background: none; border: none; cursor: pointer;">Documents</button>
-                <button type="button" class="tab-btn" onclick="switchParticipantTab('staff', event)" style="padding: 0.75rem 1rem; background: none; border: none; cursor: pointer;">Staff</button>
+            <div class="modal-tabs">
+                <button type="button" class="tab-btn active" onclick="switchParticipantTab('details', event)">
+                    <i class="fas fa-user"></i> Details
+                </button>
+                <button type="button" class="tab-btn" onclick="switchParticipantTab('medical', event)">
+                    <i class="fas fa-heartbeat"></i> Medical
+                </button>
+                <button type="button" class="tab-btn" onclick="switchParticipantTab('contacts', event)">
+                    <i class="fas fa-address-book"></i> Contacts
+                </button>
+                <button type="button" class="tab-btn" onclick="switchParticipantTab('location', event)">
+                    <i class="fas fa-map-marker-alt"></i> Location
+                </button>
+                <button type="button" class="tab-btn" onclick="switchParticipantTab('documents', event)">
+                    <i class="fas fa-file-alt"></i> Documents
+                </button>
+                <button type="button" class="tab-btn" onclick="switchParticipantTab('staff', event)">
+                    <i class="fas fa-users"></i> Staff
+                </button>
             </div>
 
             <form id="participantForm" onsubmit="saveParticipant(event)">
@@ -1599,54 +2057,31 @@
                 
                 <!-- Details Tab -->
                 <div id="detailsTab" class="tab-content active">
+                    <h4 class="section-title">Personal Information</h4>
                     <div class="form-row">
                         <div class="form-group">
-                            <label>First Name *</label>
+                            <label class="required">First Name</label>
                             <input type="text" id="firstName" name="first_name" required>
                         </div>
                         <div class="form-group">
-                            <label>Last Name *</label>
+                            <label class="required">Last Name</label>
                             <input type="text" id="lastName" name="last_name" required>
                         </div>
-                    </div>
-                    <div class="form-row">
                         <div class="form-group">
                             <label>Preferred Name</label>
                             <input type="text" id="preferredName" name="preferred_name">
                         </div>
+                    </div>
+                    
+                    <div class="form-row">
                         <div class="form-group">
                             <label>Date of Birth</label>
                             <input type="date" id="dateOfBirth" name="date_of_birth">
                         </div>
-                    </div>
-                    <div class="form-row">
                         <div class="form-group">
                             <label>NDIS Number</label>
                             <input type="text" id="ndisNumber" name="ndis_number" pattern="[0-9]{9}" placeholder="9 digits">
                         </div>
-                        <div class="form-group">
-                            <label>Service Type</label>
-                            <select id="serviceType" name="service_type">
-                                <option value="">Select Service</option>
-                                <option value="SIL">SIL (Supported Independent Living)</option>
-                                <option value="SDA">SDA (Specialist Disability Accommodation)</option>
-                                <option value="respite">Respite</option>
-                                <option value="community">Community Access</option>
-                                <option value="other">Other</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Phone</label>
-                            <input type="tel" id="participantPhone" name="phone">
-                        </div>
-                        <div class="form-group">
-                            <label>Email</label>
-                            <input type="email" id="participantEmail" name="email">
-                        </div>
-                    </div>
-                    <div class="form-row">
                         <div class="form-group">
                             <label>Status</label>
                             <select id="participantStatus" name="status">
@@ -1655,11 +2090,58 @@
                                 <option value="pending">Pending</option>
                             </select>
                         </div>
+                    </div>
+
+                    <h4 class="section-title">Contact Information</h4>
+                    <div class="form-row">
                         <div class="form-group">
-                            <label>Plan Manager</label>
-                            <input type="text" id="planManager" name="plan_manager">
+                            <label>Phone</label>
+                            <input type="tel" id="participantPhone" name="phone" placeholder="(04) XXXX XXXX">
+                        </div>
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" id="participantEmail" name="email" placeholder="email@example.com">
                         </div>
                     </div>
+
+                    <h4 class="section-title">Service Details</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Service Type</label>
+                            <select id="serviceType" name="service_type">
+                                <option value="">Select Service</option>
+                                <option value="SIL">SIL (Supported Independent Living)</option>
+                                <option value="SDA">SDA (Specialist Disability Accommodation)</option>
+                                <option value="respite">Respite Care</option>
+                                <option value="community">Community Access</option>
+                                <option value="development">Development Life Skills</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Funding Type</label>
+                            <select id="fundingType" name="funding_type">
+                                <option value="">Select...</option>
+                                <option value="self-managed">Self Managed</option>
+                                <option value="plan-managed">Plan Managed</option>
+                                <option value="agency-managed">Agency Managed (NDIA)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <h4 class="section-title">Plan Information</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Plan Manager</label>
+                            <input type="text" id="planManager" name="plan_manager" placeholder="Plan manager name">
+                        </div>
+                        <div class="form-group">
+                            <label>Plan Manager Email</label>
+                            <input type="email" id="planManagerEmail" name="participant_plan_manager_email" 
+                                   placeholder="pm@example.com">
+                        </div>
+                    </div>
+                    
                     <div class="form-row">
                         <div class="form-group">
                             <label>Plan Start Date</label>
@@ -1671,31 +2153,35 @@
                         </div>
                     </div>
 
-                    <!-- Address Section -->
-                    <h4 style="margin-top: 1.5rem; margin-bottom: 1rem;">Address</h4>
+                    <h4 class="section-title">Residential Address</h4>
                     <div class="form-group">
                         <label>Search Address</label>
-                        <input type="text" id="addressAutocomplete" placeholder="Start typing address..." style="width: 100%;">
-                        <small style="color: #666; display: block; margin-top: 0.25rem;">Type to search and select from suggestions</small>
+                        <input type="text" id="addressAutocomplete" placeholder="Start typing address..." 
+                               class="address-search">
+                        <small class="form-help">
+                            <i class="fas fa-info-circle"></i> Type to search and select from suggestions
+                        </small>
                     </div>
+                    
                     <div class="form-row">
                         <div class="form-group">
                             <label>Unit/Apartment</label>
-                            <input type="text" id="unitNumber" name="unit_number">
+                            <input type="text" id="unitNumber" name="unit_number" placeholder="Unit 1">
                         </div>
                         <div class="form-group">
                             <label>Street Number</label>
-                            <input type="text" id="streetNumber" name="street_number">
+                            <input type="text" id="streetNumber" name="street_number" placeholder="123">
+                        </div>
+                        <div class="form-group">
+                            <label>Street Name</label>
+                            <input type="text" id="streetName" name="street_name" placeholder="Main Street">
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label>Street Name</label>
-                        <input type="text" id="streetName" name="street_name">
-                    </div>
+                    
                     <div class="form-row">
                         <div class="form-group">
                             <label>Suburb</label>
-                            <input type="text" id="suburb" name="suburb">
+                            <input type="text" id="suburb" name="suburb" placeholder="Sydney">
                         </div>
                         <div class="form-group">
                             <label>State</label>
@@ -1713,58 +2199,98 @@
                         </div>
                         <div class="form-group">
                             <label>Postcode</label>
-                            <input type="text" id="postcode" name="postcode" pattern="[0-9]{4}">
+                            <input type="text" id="postcode" name="postcode" pattern="[0-9]{4}" placeholder="2000">
                         </div>
                     </div>
+                    
+                    <!-- Hidden coordinate fields -->
                     <input type="hidden" id="latitude" name="latitude">
                     <input type="hidden" id="longitude" name="longitude">
+
+                    <h4 class="section-title">Support Needs</h4>
+                    <div class="form-group">
+                        <label>Support Needs</label>
+                        <textarea id="supportNeeds" name="support_needs" rows="3" 
+                                  placeholder="Describe support requirements..."></textarea>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Mobility Requirements</label>
+                            <textarea id="mobilityRequirements" name="mobility_requirements" rows="2" 
+                                      placeholder="e.g., Wheelchair access required"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Communication Needs</label>
+                            <textarea id="communicationNeeds" name="communication_needs" rows="2" 
+                                      placeholder="e.g., Uses AUSLAN, Picture cards"></textarea>
+                        </div>
+                    </div>
                     
                     <div class="form-group">
-                        <label>Notes</label>
-                        <textarea id="participantNotes" name="notes" rows="4"></textarea>
+                        <label>Additional Notes</label>
+                        <textarea id="participantNotes" name="notes" rows="4" 
+                                  placeholder="Any other important information..."></textarea>
                     </div>
                 </div>
 
                 <!-- Medical Tab -->
                 <div id="medicalTab" class="tab-content" style="display: none;">
+                    <h4 class="section-title">Health Insurance</h4>
                     <div class="form-row">
                         <div class="form-group">
                             <label>Medicare Number</label>
-                            <input type="text" id="medicareNumber" name="medicare_number">
+                            <input type="text" id="medicareNumber" name="medicare_number" 
+                                   placeholder="XXXX XXXXX X/X">
                         </div>
                         <div class="form-group">
                             <label>Private Health Insurance</label>
-                            <input type="text" id="privateHealth" name="private_health">
+                            <input type="text" id="privateHealth" name="private_health" 
+                                   placeholder="Provider and number">
                         </div>
                     </div>
+
+                    <h4 class="section-title">General Practitioner</h4>
                     <div class="form-row">
                         <div class="form-group">
                             <label>GP Name</label>
-                            <input type="text" id="gpName" name="gp_name">
+                            <input type="text" id="gpName" name="gp_name" placeholder="Dr. Smith">
                         </div>
                         <div class="form-group">
                             <label>GP Phone</label>
-                            <input type="tel" id="gpPhone" name="gp_phone">
+                            <input type="tel" id="gpPhone" name="gp_phone" placeholder="(02) XXXX XXXX">
                         </div>
                     </div>
+
+                    <h4 class="section-title">Medical Information</h4>
                     <div class="form-group">
                         <label>Medical Conditions</label>
-                        <textarea id="medicalConditions" name="medical_conditions" rows="3"></textarea>
+                        <textarea id="medicalConditions" name="medical_conditions" rows="3" 
+                                  placeholder="List known medical conditions..."></textarea>
                     </div>
+                    
                     <div class="form-group">
                         <label>Allergies</label>
-                        <textarea id="allergies" name="allergies" rows="2"></textarea>
+                        <textarea id="allergies" name="allergies" rows="2" 
+                                  placeholder="List any allergies (food, medication, etc.)..."></textarea>
                     </div>
+                    
                     <div class="form-group">
                         <label>Dietary Requirements</label>
-                        <textarea id="dietaryRequirements" name="dietary_requirements" rows="2"></textarea>
+                        <textarea id="dietaryRequirements" name="dietary_requirements" rows="2" 
+                                  placeholder="Special dietary needs or restrictions..."></textarea>
                     </div>
 
-                    <!-- Medications Section -->
-                    <h4 style="margin-top: 1.5rem;">Medications</h4>
-                    <button type="button" class="btn btn-outline btn-sm" onclick="addMedicationRow()">Add Medication</button>
-                    <div style="overflow-x: auto; margin-top: 1rem;">
-                        <table class="roster-table">
+                    <h4 class="section-title">
+                        Medications
+                        <button type="button" class="btn btn-sm btn-outline" onclick="addMedicationRow()" 
+                                style="margin-left: auto;">
+                            <i class="fas fa-plus"></i> Add Medication
+                        </button>
+                    </h4>
+                    
+                    <div class="table-responsive">
+                        <table class="data-table">
                             <thead>
                                 <tr>
                                     <th>Medication Name</th>
@@ -1772,11 +2298,13 @@
                                     <th>Frequency</th>
                                     <th>Prescriber</th>
                                     <th>Start Date</th>
-                                    <th>Actions</th>
+                                    <th width="80">Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="medicationsTableBody">
-                                <!-- Medications will be added here -->
+                                <tr class="no-data">
+                                    <td colspan="6" class="text-center">No medications added</td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
@@ -1784,148 +2312,171 @@
 
                 <!-- Contacts Tab -->
                 <div id="contactsTab" class="tab-content" style="display: none;">
-                    <h4>Primary Contact</h4>
+                    <h4 class="section-title">Primary Contact</h4>
+                    <div class="info-box">
+                        <i class="fas fa-info-circle"></i>
+                        This is the main contact person for the participant (family member, guardian, etc.)
+                    </div>
+                    
                     <div class="form-row">
                         <div class="form-group">
-                            <label>Name</label>
-                            <input type="text" id="primaryContactName" name="primary_contact_name">
+                            <label>Full Name</label>
+                            <input type="text" id="primaryContactName" name="primary_contact_name" 
+                                   placeholder="John Smith">
                         </div>
                         <div class="form-group">
                             <label>Relationship</label>
-                            <input type="text" id="primaryContactRelationship" name="primary_contact_relationship">
+                            <input type="text" id="primaryContactRelationship" name="primary_contact_relationship" 
+                                   placeholder="e.g., Parent, Guardian, Sibling">
                         </div>
                     </div>
+                    
                     <div class="form-row">
                         <div class="form-group">
                             <label>Phone</label>
-                            <input type="tel" id="primaryContactPhone" name="primary_contact_phone">
+                            <input type="tel" id="primaryContactPhone" name="primary_contact_phone" 
+                                   placeholder="(04) XXXX XXXX">
                         </div>
                         <div class="form-group">
                             <label>Email</label>
-                            <input type="email" id="primaryContactEmail" name="primary_contact_email">
+                            <input type="email" id="primaryContactEmail" name="primary_contact_email" 
+                                   placeholder="contact@example.com">
                         </div>
                     </div>
 
-                    <h4 style="margin-top: 1.5rem;">Emergency Contacts</h4>
-                    <button type="button" class="btn btn-outline btn-sm" onclick="addEmergencyContact()">Add Emergency Contact</button>
-                    <div id="emergencyContactsList" style="margin-top: 1rem;">
+                    <h4 class="section-title">
+                        Emergency Contacts
+                        <button type="button" class="btn btn-sm btn-outline" onclick="addEmergencyContact()" 
+                                style="margin-left: auto;">
+                            <i class="fas fa-plus"></i> Add Emergency Contact
+                        </button>
+                    </h4>
+                    
+                    <div class="info-box">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Add additional contacts to be notified in case of emergencies
+                    </div>
+                    
+                    <div id="emergencyContactsList">
                         <!-- Emergency contacts will be added here -->
                     </div>
                 </div>
 
                 <!-- Location Tab -->
                 <div id="locationTab" class="tab-content" style="display: none;">
-                    <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+                    <div class="location-controls">
                         <button type="button" class="btn btn-outline btn-sm" onclick="getCurrentLocation()">
-                            📍 Get Current Location
+                            <i class="fas fa-crosshairs"></i> Get Current Location
                         </button>
-                        <div class="form-group" style="max-width: 200px;">
+                        <div class="form-group" style="max-width: 250px;">
                             <label>Geofence Radius (meters)</label>
-                            <input type="number" id="geofenceRadius" value="100" min="50" max="1000" step="50" onchange="updateGeofence()">
+                            <input type="number" id="geofenceRadius" value="100" min="50" max="1000" step="50" 
+                                   onchange="updateGeofence()">
                         </div>
                     </div>
-                
                     
                     <!-- Map Container -->
-                    <div id="participantMap" style="height: 400px; border: 1px solid #ddd; border-radius: 8px;"></div>
-<!-- Location Tab -->
-<div id="locationTab" class="tab-content" style="display: none;">
-    <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
-        <button type="button" class="btn btn-outline btn-sm" onclick="getCurrentLocation()">
-            📍 Get Current Location
-        </button>
-        <div class="form-group" style="max-width: 200px;">
-            <label>Geofence Radius (meters)</label>
-            <input type="number" id="geofenceRadius" value="100" min="50" max="1000" step="50" onchange="updateGeofence()">
-        </div>
-    </div>
-    
-    <!-- Map Container -->
-    <div id="participantMap" style="height: 400px; border: 1px solid #ddd; border-radius: 8px;"></div>
-    
-    <!-- Show current coordinates (for debugging/verification) -->
-    <div style="margin-top: 1rem; padding: 1rem; background: #f5f5f5; border-radius: 8px;">
-        <h4 style="margin-top: 0;">Location Information</h4>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-            <div>
-                <strong>Address:</strong><br>
-                <span id="locationAddressDisplay">
-                    <!-- This will show the formatted address -->
-                </span>
-            </div>
-            <div>
-                <strong>Coordinates:</strong><br>
-                Latitude: <span id="latDisplay">Not set</span><br>
-                Longitude: <span id="lngDisplay">Not set</span>
-            </div>
-        </div>
-        <div style="margin-top: 0.5rem;">
-            <small style="color: #666;">
-                📍 Drag the map marker to manually adjust location<br>
-                🔄 Address selection automatically updates coordinates<br>
-                ✅ Coordinates save to database as location_lat and location_lng
-            </small>
-        </div>
-    </div>
-    
-    <!-- Note about shift tracking -->
-    <div style="margin-top: 1rem; padding: 1rem; background: #e3f2fd; border-radius: 8px; border-left: 4px solid #2196F3;">
-        <strong>ℹ️ Location Tracking:</strong><br>
-        Staff clock-in/clock-out locations are tracked in the Shifts section.
-        This location is the participant's primary residence/location.
-    </div>
-</div>
-</div>
+                    <div id="participantMap" class="map-container"></div>
+                    
+                    <!-- Location Information Display -->
+                    <div class="location-info-card">
+                        <h4><i class="fas fa-map-marker-alt"></i> Location Information</h4>
+                        <div class="info-grid">
+                            <div>
+                                <strong>Address:</strong>
+                                <div id="locationAddressDisplay" class="location-display">
+                                    Not set - Select address from the Details tab
+                                </div>
+                            </div>
+                            <div>
+                                <strong>Coordinates:</strong>
+                                <div class="location-display">
+                                    <div>Lat: <span id="latDisplay">-</span></div>
+                                    <div>Lng: <span id="lngDisplay">-</span></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="location-tips">
+                            <div><i class="fas fa-hand-pointer"></i> Drag marker to adjust location</div>
+                            <div><i class="fas fa-search"></i> Use address search in Details tab</div>
+                            <div><i class="fas fa-database"></i> Saves as location_lat and location_lng</div>
+                        </div>
+                    </div>
+                    
+                    <div class="info-box info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>About Location Tracking:</strong><br>
+                        This location represents the participant's primary residence. Staff clock-in/out locations 
+                        are tracked separately in the Shifts section.
+                    </div>
+                </div>
 
                 <!-- Documents Tab -->
                 <div id="documentsTab" class="tab-content" style="display: none;">
-                    <div style="padding: 1rem; background: #f5f5f5; border-radius: 8px; margin-bottom: 1.5rem;">
+                    <div class="document-upload-section">
+                        <h4 class="section-title">Upload New Document</h4>
                         <div class="form-row">
                             <div class="form-group">
-                                <label>Document Type</label>
-                                <select id="documentType">
+                                <label class="required">Document Type</label>
+                                <select id="documentType" required>
                                     <option value="">Select Type</option>
                                     <option value="schedule_of_supports">Schedule of Supports</option>
                                     <option value="care_plan">Care Plan</option>
                                     <option value="behavior_support">Behavior Support Plan</option>
                                     <option value="medical_report">Medical Report</option>
                                     <option value="assessment">Assessment</option>
+                                    <option value="consent_form">Consent Form</option>
+                                    <option value="service_agreement">Service Agreement</option>
                                     <option value="other">Other</option>
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label>Document Name</label>
-                                <input type="text" id="documentName" placeholder="Enter document name">
+                                <label class="required">Document Name</label>
+                                <input type="text" id="documentName" placeholder="e.g., Care Plan 2024" required>
                             </div>
                         </div>
+                        
                         <div class="form-row">
                             <div class="form-group">
-                                <label>Expiry Date (if applicable)</label>
+                                <label>Expiry Date</label>
                                 <input type="date" id="documentExpiry">
+                                <small class="form-help">Leave blank if document doesn't expire</small>
                             </div>
                             <div class="form-group">
-                                <label>Upload File</label>
-                                <input type="file" id="documentFile" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                                <label class="required">Select File</label>
+                                <input type="file" id="documentFile" 
+                                       accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" required>
+                                <small class="form-help">PDF, DOC, DOCX, JPG, PNG (Max 10MB)</small>
                             </div>
                         </div>
-                        <button type="button" class="btn btn-primary btn-sm" onclick="uploadDocument()">Upload Document</button>
+                        
+                        <button type="button" class="btn btn-primary" onclick="uploadParticipantDocument()">
+                            <i class="fas fa-upload"></i> Upload Document
+                        </button>
                     </div>
 
-                    <h4>Documents</h4>
-                    <input type="text" placeholder="Search documents..." onkeyup="filterDocuments(this.value)" style="width: 300px; margin-bottom: 1rem;">
-                    <div style="overflow-x: auto;">
-                        <table class="roster-table">
+                    <h4 class="section-title">Existing Documents</h4>
+                    <div class="search-bar">
+                        <input type="text" placeholder="Search documents..." 
+                               onkeyup="filterDocuments(this.value)" class="search-input">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="data-table">
                             <thead>
                                 <tr>
                                     <th>Document Name</th>
                                     <th>Type</th>
                                     <th>Uploaded</th>
                                     <th>Expiry</th>
-                                    <th>Actions</th>
+                                    <th width="120">Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="documentsTableBody">
-                                <tr><td colspan="5" style="text-align: center;">No documents uploaded</td></tr>
+                                <tr class="no-data">
+                                    <td colspan="5" class="text-center">No documents uploaded</td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
@@ -1933,241 +2484,63 @@
 
                 <!-- Staff Tab -->
                 <div id="staffTab" class="tab-content" style="display: none;">
-                    <h4>Assigned Staff</h4>
-                    <div class="form-group">
-                        <label>Add Staff Member</label>
-                        <select id="staffToAdd">
-                            <option value="">Select Staff</option>
-                            <!-- Staff options will be populated here -->
-                        </select>
-                        <button type="button" class="btn btn-outline btn-sm" onclick="assignStaff()" style="margin-top: 0.5rem;">Assign Staff</button>
+                    <h4 class="section-title">Assign Staff</h4>
+                    <div class="staff-assignment-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Select Staff Member</label>
+                                <select id="staffToAdd">
+                                    <option value="">Choose staff...</option>
+                                    <!-- Staff options populated by JS -->
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Role</label>
+                                <select id="staffRole">
+                                    <option value="support_worker">Support Worker</option>
+                                    <option value="team_leader">Team Leader</option>
+                                    <option value="coordinator">Coordinator</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-primary" onclick="assignStaff()">
+                            <i class="fas fa-user-plus"></i> Assign Staff
+                        </button>
                     </div>
 
-                    <h4 style="margin-top: 1.5rem;">Currently Assigned</h4>
-                    <table class="roster-table">
-                        <thead>
-                            <tr>
-                                <th>Staff Name</th>
-                                <th>Role</th>
-                                <th>Primary</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="assignedStaffTable">
-                            <tr><td colspan="4" style="text-align: center;">No staff assigned</td></tr>
-                        </tbody>
-                    </table>
+                    <h4 class="section-title">Assigned Staff Members</h4>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Staff Name</th>
+                                    <th>Role</th>
+                                    <th>Primary</th>
+                                    <th>Assigned Since</th>
+                                    <th width="100">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="assignedStaffTable">
+                                <tr class="no-data">
+                                    <td colspan="5" class="text-center">No staff assigned yet</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </form>
         </div>
+        
         <footer class="modal-footer">
-            <button class="btn btn-outline" onclick="closeModal('participantModal')">Cancel</button>
-            <button class="btn btn-primary" onclick="document.getElementById('participantForm').requestSubmit()">Save Participant</button>
+            <button class="btn btn-outline" onclick="closeModal('participantModal')">
+                <i class="fas fa-times"></i> Cancel
+            </button>
+            <button class="btn btn-primary" onclick="document.getElementById('participantForm').requestSubmit()">
+                <i class="fas fa-save"></i> Save Participant
+            </button>
         </footer>
     </div>
 </div>
-
-    <!-- Edit Shift Modal -->
-    <div id="editShiftModal" class="modal-overlay" style="display: none;">
-        <div class="modal large">
-            <header class="modal-header">
-                <h3 class="modal-title">Edit Shift</h3>
-                <button class="modal-close" onclick="closeModal('editShiftModal')">&times;</button>
-            </header>
-            <div class="modal-content">
-                <form id="editShiftForm">
-                    <input type="hidden" id="editShiftId">
-                    <div class="form-group">
-                        <label>Date *</label>
-                        <input type="date" id="editShiftDate" required>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Start Time</label>
-                            <input type="time" id="editShiftStartTime">
-                        </div>
-                        <div class="form-group">
-                            <label>End Time</label>
-                            <input type="time" id="editShiftEndTime">
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>Staff *</label>
-                        <input type="text" class="searchable-input" id="editShiftStaffInput" 
-                               placeholder="Type to search staff..." 
-                               list="editStaffList" required onchange="updateEditStaffSelection()">
-                        <datalist id="editStaffList"></datalist>
-                        <input type="hidden" id="editShiftStaff">
-                    </div>
-                    <div class="form-group">
-                        <label>Participant</label>
-                        <input type="text" class="searchable-input" id="editShiftParticipantInput" 
-                               placeholder="Type to search participants..." 
-                               list="editParticipantList" onchange="updateEditParticipantSelection()">
-                        <datalist id="editParticipantList"></datalist>
-                        <input type="hidden" id="editShiftParticipant">
-                    </div>
-                    <div class="form-group">
-                        <label>Location</label>
-                        <select id="editShiftLocation">
-                            <option value="">Select Location</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Duty Type *</label>
-                        <select id="editShiftDutyType" required onchange="updateEditTimeFields()">
-                            <option value="">Select Duty Type</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Pay Rate Override</label>
-                        <select id="editShiftPayRate">
-                            <option value="">Use Staff Default</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Status</label>
-                        <select id="editShiftStatus">
-                            <option value="scheduled">Scheduled</option>
-                            <option value="confirmed">Confirmed</option>
-                            <option value="completed">Completed</option>
-                            <option value="no_show">No Show</option>
-                            <option value="cancelled">Cancelled</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Notes</label>
-                        <textarea id="editShiftNotes" placeholder="Shift notes..."></textarea>
-                    </div>
-                </form>
-            </div>
-            <footer class="modal-footer">
-                <button class="btn btn-danger" onclick="deleteShiftConfirm()">Delete Shift</button>
-                <div class="modal-actions">
-                    <button class="btn btn-outline" onclick="closeModal('editShiftModal')">Cancel</button>
-                    <button class="btn btn-primary" onclick="updateShift()">Save Changes</button>
-                </div>
-            </footer>
-        </div>
-    </div>
-
-    <!-- Add Shift Modal -->
-    <div id="addShiftModal" class="modal-overlay" style="display: none;">
-        <div class="modal large">
-            <header class="modal-header">
-                <h3 class="modal-title">Add New Shift</h3>
-                <button class="modal-close" onclick="closeModal('addShiftModal')">&times;</button>
-            </header>
-            <div class="modal-content">
-                <form id="addShiftForm">
-                    <div class="form-group">
-                        <label>Date *</label>
-                        <input type="date" id="shiftDate" required>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Start Time</label>
-                            <input type="time" id="shiftStartTime">
-                        </div>
-                        <div class="form-group">
-                            <label>End Time</label>
-                            <input type="time" id="shiftEndTime">
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>Staff *</label>
-                        <input type="text" class="searchable-input" id="shiftStaffInput" 
-                               placeholder="Type to search staff..." 
-                               list="staffDataList" required onchange="updateStaffSelection()">
-                        <datalist id="staffDataList"></datalist>
-                        <input type="hidden" id="shiftStaff">
-                    </div>
-                    <div class="form-group">
-                        <label>Participant</label>
-                        <input type="text" class="searchable-input" id="shiftParticipantInput" 
-                               placeholder="Type to search participants..." 
-                               list="participantDataList" onchange="updateParticipantSelection()">
-                        <datalist id="participantDataList"></datalist>
-                        <input type="hidden" id="shiftParticipant">
-                    </div>
-                    <div class="form-group">
-                        <label>Location</label>
-                        <select id="shiftLocation">
-                            <option value="">Select Location</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Duty Type *</label>
-                        <select id="shiftDutyType" required onchange="updateTimeFields()">
-                            <option value="">Select Duty Type</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Pay Rate Override</label>
-                        <select id="shiftPayRate">
-                            <option value="">Use Staff Default</option>
-                        </select>
-                    </div>
-                    <div id="hourWarningText" style="display: none;" class="hour-warning"></div>
-                </form>
-            </div>
-            <footer class="modal-footer">
-                <div class="modal-actions">
-                    <button class="btn btn-outline" onclick="closeModal('addShiftModal')">Cancel</button>
-                    <button class="btn btn-primary" onclick="createShift()">Create Shift</button>
-                </div>
-            </footer>
-        </div>
-    </div>
-
-
-
-    <!-- Public Holiday Modal -->
-    <div id="publicHolidayModal" class="modal-overlay" style="display: none;">
-        <div class="modal large">
-            <header class="modal-header">
-                <h3 class="modal-title">Public Holidays Management</h3>
-                <button class="modal-close" onclick="closeModal('publicHolidayModal')">&times;</button>
-            </header>
-            <div class="modal-content">
-                <div style="margin-bottom: 24px;">
-                    <button class="btn btn-primary btn-sm" onclick="showAddHolidayForm()">Add Holiday</button>
-                </div>
-                
-                <div id="addHolidayForm" class="holiday-form" style="display: none;">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Holiday Date</label>
-                            <input type="date" id="holidayDate">
-                        </div>
-                        <div class="form-group">
-                            <label>Holiday Name</label>
-                            <input type="text" id="holidayName" placeholder="e.g., Christmas Day">
-                        </div>
-                    </div>
-                    <div style="display: flex; gap: 12px;">
-                        <button class="btn btn-success btn-sm" onclick="addHoliday()">Add Holiday</button>
-                        <button class="btn btn-outline btn-sm" onclick="cancelAddHoliday()">Cancel</button>
-                    </div>
-                </div>
-
-                <div>
-                    <h4 style="margin-bottom: 16px; color: var(--text-secondary);">Current Public Holidays</h4>
-                    <div id="holidayList" style="max-height: 300px; overflow-y: auto;">
-                        <div class="loading">
-                            <div class="spinner"></div>
-                            <span>Loading holidays...</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <footer class="modal-footer">
-                <div class="modal-actions">
-                    <button class="btn btn-outline" onclick="closeModal('publicHolidayModal')">Close</button>
-                </div>
-            </footer>
-        </div>
-    </div>
 
     <script>
     
@@ -2278,6 +2651,7 @@ async function verifyDataConnections() {
         console.log(`${test}: ${result}`);
     }
 }
+
 
 // ========================================
 // FORTNIGHT NAVIGATION
@@ -2477,6 +2851,836 @@ async function initializeApp() {
         document.getElementById('userRole').textContent = 'Error';
         showNotification('Failed to initialize: ' + error.message, 'error');
     }
+}
+
+// Vanilla JavaScript CSV Upload Component
+function createCSVUploadInterface() {
+    return `
+        <div style="max-width: 100%; margin: 0 auto; padding: 24px; background: white;">
+            <div style="margin-bottom: 32px;">
+                <h1 style="font-size: 24px; font-weight: bold; color: #111827; margin-bottom: 8px;">Shifts CSV Upload</h1>
+                <p style="color: #6b7280;">
+                    Upload shifts with automatic pay override resolution based on staff-participant assignments
+                </p>
+                <!-- Invalid Rows Details -->
+                <div id="invalidRowsDetails" style="display: none; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 16px; margin-top: 16px;">
+                    <h4 style="font-weight: 500; color: #991b1b; margin-bottom: 12px;">Invalid Rows Details</h4>
+                    <div id="invalidRowsList" style="max-height: 300px; overflow-y: auto; font-size: 14px;">
+                        <!-- Invalid rows will be populated here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Template Download -->
+            <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+                    <div>
+                        <h3 style="font-size: 18px; font-weight: 600; color: #1e40af; margin-bottom: 4px;">CSV Template</h3>
+                        <p style="color: #1d4ed8;">Download the template to ensure proper formatting</p>
+                    </div>
+                    <button onclick="downloadCSVTemplate()" 
+                            style="display: flex; align-items: center; gap: 8px; background: #2563eb; color: white; padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; transition: background-color 0.2s;">
+                        <span>📥</span>
+                        Download Template
+                    </button>
+                </div>
+            </div>
+
+            <!-- Required Fields Info -->
+            <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+                <h3 style="font-size: 18px; font-weight: 600; color: #111827; margin-bottom: 12px;">CSV Requirements</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px;">
+                    <div>
+                        <h4 style="font-weight: 500; color: #374151; margin-bottom: 8px;">Required Fields:</h4>
+                        <ul style="font-size: 14px; color: #6b7280; margin: 0; padding-left: 0; list-style: none;">
+                            <li style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                <div style="width: 8px; height: 8px; background: #ef4444; border-radius: 50%;"></div>
+                                date
+                            </li>
+                            <li style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                <div style="width: 8px; height: 8px; background: #ef4444; border-radius: 50%;"></div>
+                                duty_type_id
+                            </li>
+                            <li style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                <div style="width: 8px; height: 8px; background: #ef4444; border-radius: 50%;"></div>
+                                participant_id
+                            </li>
+                            <li style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                <div style="width: 8px; height: 8px; background: #ef4444; border-radius: 50%;"></div>
+                                location_id
+                            </li>
+                            <li style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                <div style="width: 8px; height: 8px; background: #ef4444; border-radius: 50%;"></div>
+                                created_by
+                            </li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 style="font-weight: 500; color: #374151; margin-bottom: 8px;">Optional Fields:</h4>
+                        <ul style="font-size: 14px; color: #6b7280; margin: 0; padding-left: 0; list-style: none;">
+                            <li style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                <div style="width: 8px; height: 8px; background: #9ca3af; border-radius: 50%;"></div>
+                                staff_id
+                            </li>
+                            <li style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                <div style="width: 8px; height: 8px; background: #9ca3af; border-radius: 50%;"></div>
+                                start_time
+                            </li>
+                            <li style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                <div style="width: 8px; height: 8px; background: #9ca3af; border-radius: 50%;"></div>
+                                end_time
+                            </li>
+                            <li style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                <div style="width: 8px; height: 8px; background: #9ca3af; border-radius: 50%;"></div>
+                                notes
+                            </li>
+                            <li style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                <div style="width: 8px; height: 8px; background: #9ca3af; border-radius: 50%;"></div>
+                                clock_in_required
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                <div style="margin-top: 16px; padding: 12px; background: #dcfce7; border: 1px solid #bbf7d0; border-radius: 6px;">
+                    <p style="font-size: 14px; color: #166534; margin: 0;">
+                        <strong>Note:</strong> The pay_override_id will be automatically determined based on the staff_participant_assignments table. 
+                        Do not include this field in your CSV.
+                    </p>
+                </div>
+                <div style="margin-top: 8px; padding: 12px; background: #dbeafe; border: 1px solid #bfdbfe; border-radius: 6px;">
+                    <p style="font-size: 14px; color: #1e40af; margin: 0;">
+                        <strong>clock_in_required format:</strong> Use true/false, 1/0, or yes/no values.
+                    </p>
+                </div>
+                <div style="margin-top: 8px; padding: 12px; background: #fef3c7; border: 1px solid #fcd34d; border-radius: 6px;">
+                    <p style="font-size: 14px; color: #92400e; margin: 0;">
+                        <strong>Status:</strong> All uploaded shifts will automatically have status set to "confirmed".
+                    </p>
+                </div>
+            </div>
+
+            <!-- File Upload -->
+            <div id="fileUploadArea" style="border: 2px dashed #d1d5db; border-radius: 8px; padding: 32px; margin-bottom: 24px; text-align: center; cursor: pointer;">
+                <input type="file" id="csvFileInput" accept=".csv" style="display: none;" onchange="handleFileSelect(event)">
+                
+                <div id="uploadPrompt">
+                    <div style="font-size: 48px; color: #9ca3af; margin-bottom: 16px;">📁</div>
+                    <p style="font-size: 18px; font-weight: 500; color: #374151; margin-bottom: 8px;">Upload CSV File</p>
+                    <p style="color: #6b7280; margin-bottom: 16px;">Select a CSV file containing shift data</p>
+                    <button onclick="document.getElementById('csvFileInput').click()" 
+                            style="background: #2563eb; color: white; padding: 12px 24px; border-radius: 8px; border: none; cursor: pointer;">
+                        Choose File
+                    </button>
+                </div>
+                
+                <div id="fileSelected" style="display: none;">
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 16px;">
+                        <div style="font-size: 32px; color: #2563eb;">📄</div>
+                        <div style="text-align: left;">
+                            <p id="fileName" style="font-weight: 500; color: #374151; margin: 0;"></p>
+                            <p id="fileSize" style="font-size: 14px; color: #6b7280; margin: 0;"></p>
+                        </div>
+                        <button onclick="clearFile()" style="color: #dc2626; background: none; border: none; cursor: pointer; font-size: 20px;">✕</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Errors -->
+            <div id="errorContainer" style="display: none; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                    <span style="color: #dc2626; font-size: 20px;">⚠️</span>
+                    <h3 style="font-weight: 500; color: #991b1b; margin: 0;">Errors</h3>
+                </div>
+                <ul id="errorList" style="font-size: 14px; color: #991b1b; margin: 0; padding-left: 20px;"></ul>
+            </div>
+
+            <!-- Process Button -->
+            <div id="processButtonContainer" style="display: none;">
+                <button id="processButton" onclick="processCSV()" 
+                        style="width: 100%; background: #059669; color: white; padding: 12px; border-radius: 8px; border: none; cursor: pointer; font-weight: 500;">
+                    Process and Upload Shifts
+                </button>
+            </div>
+
+            <!-- Processing State -->
+            <div id="processingContainer" style="display: none; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 24px; text-align: center;">
+                <div style="font-size: 32px; color: #2563eb; margin-bottom: 16px;">⏳</div>
+                <p style="color: #1e40af; font-weight: 500; margin-bottom: 4px;">Processing shifts and resolving pay overrides...</p>
+                <p style="color: #2563eb; font-size: 14px; margin: 0;">This may take a few moments</p>
+            </div>
+
+            <!-- Results -->
+            <div id="resultsContainer" style="display: none;">
+                <!-- Validation Results -->
+                <div id="validationResults" style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+                    <h3 style="font-size: 18px; font-weight: 600; color: #111827; margin-bottom: 12px;">Validation Results</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px;">
+                        <div style="text-align: center;">
+                            <div id="totalRows" style="font-size: 24px; font-weight: bold; color: #111827;">0</div>
+                            <div style="font-size: 14px; color: #6b7280;">Total Rows</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div id="validRows" style="font-size: 24px; font-weight: bold; color: #059669;">0</div>
+                            <div style="font-size: 14px; color: #6b7280;">Valid</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div id="invalidRows" style="font-size: 24px; font-weight: bold; color: #dc2626;">0</div>
+                            <div style="font-size: 14px; color: #6b7280;">Invalid</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div id="payOverrides" style="font-size: 24px; font-weight: bold; color: #2563eb;">0</div>
+                            <div style="font-size: 14px; color: #6b7280;">Pay Overrides Resolved</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Upload Results -->
+                <div id="uploadResults" style="display: none; background: #ecfdf5; border: 1px solid #bbf7d0; border-radius: 8px; padding: 24px;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
+                        <span style="color: #059669; font-size: 24px;">✅</span>
+                        <h3 style="font-size: 18px; font-weight: 600; color: #065f46; margin: 0;">Upload Complete</h3>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px;">
+                        <div style="text-align: center;">
+                            <div id="totalProcessed" style="font-size: 24px; font-weight: bold; color: #111827;">0</div>
+                            <div style="font-size: 14px; color: #6b7280;">Total Processed</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div id="successful" style="font-size: 24px; font-weight: bold; color: #059669;">0</div>
+                            <div style="font-size: 14px; color: #6b7280;">Successful</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div id="failed" style="font-size: 24px; font-weight: bold; color: #dc2626;">0</div>
+                            <div style="font-size: 14px; color: #6b7280;">Failed</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div id="payOverridesResolved" style="font-size: 24px; font-weight: bold; color: #2563eb;">0</div>
+                            <div style="font-size: 14px; color: #6b7280;">Pay Overrides Auto-Resolved</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Global variables for CSV upload
+let selectedFile = null;
+let validationResults = null;
+
+// Download CSV template
+function downloadCSVTemplate() {
+    const headers = [
+        'date',
+        'start_time',
+        'end_time', 
+        'duty_type_id',
+        'staff_id',
+        'participant_id',
+        'location_id',
+        'created_by',
+        'notes',
+        'clock_in_required'
+    ];
+    
+    const sampleData = [
+        '2024-03-15',
+        '09:00:00',
+        '17:00:00',
+        'duty-type-uuid-here',
+        'staff-uuid-here',
+        'participant-uuid-here', 
+        'location-uuid-here',
+        'creator-uuid-here',
+        'Regular shift',
+        'false'
+    ];
+
+    const csvContent = [
+        headers.join(','),
+        sampleData.join(',')
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'shifts_upload_template.csv';
+    a.click();
+    window.URL.revokeObjectURL(url);
+}
+
+// Handle file selection
+function handleFileSelect(event) {
+    const file = event.target.files[0];
+    if (file && file.type === 'text/csv') {
+        selectedFile = file;
+        showSelectedFile(file);
+        hideErrors();
+        hideResults();
+        showProcessButton();
+    } else {
+        showError(['Please select a valid CSV file']);
+        clearFile();
+    }
+}
+
+// Show selected file info
+function showSelectedFile(file) {
+    document.getElementById('uploadPrompt').style.display = 'none';
+    document.getElementById('fileSelected').style.display = 'block';
+    document.getElementById('fileName').textContent = file.name;
+    document.getElementById('fileSize').textContent = `${(file.size / 1024).toFixed(1)} KB`;
+}
+
+// Clear selected file
+function clearFile() {
+    selectedFile = null;
+    document.getElementById('csvFileInput').value = '';
+    document.getElementById('uploadPrompt').style.display = 'block';
+    document.getElementById('fileSelected').style.display = 'none';
+    hideProcessButton();
+    hideErrors();
+    hideResults();
+}
+
+// Show/hide UI elements
+function showError(errors) {
+    const errorContainer = document.getElementById('errorContainer');
+    const errorList = document.getElementById('errorList');
+    
+    errorList.innerHTML = '';
+    errors.forEach(error => {
+        const li = document.createElement('li');
+        li.textContent = `• ${error}`;
+        errorList.appendChild(li);
+    });
+    
+    errorContainer.style.display = 'block';
+}
+
+function hideErrors() {
+    document.getElementById('errorContainer').style.display = 'none';
+}
+
+function showProcessButton() {
+    document.getElementById('processButtonContainer').style.display = 'block';
+}
+
+function hideProcessButton() {
+    document.getElementById('processButtonContainer').style.display = 'none';
+}
+
+function showProcessing() {
+    document.getElementById('processingContainer').style.display = 'block';
+    hideProcessButton();
+}
+
+function hideProcessing() {
+    document.getElementById('processingContainer').style.display = 'none';
+}
+
+function hideResults() {
+    document.getElementById('resultsContainer').style.display = 'none';
+}
+
+function showResults(results) {
+    document.getElementById('totalRows').textContent = results.totalRows;
+    document.getElementById('validRows').textContent = results.validRows;
+    document.getElementById('invalidRows').textContent = results.invalidRows;
+    document.getElementById('payOverrides').textContent = results.payOverrides;
+    
+    // Show invalid rows details if there are any
+    if (results.invalidRowsData && results.invalidRowsData.length > 0) {
+        const invalidRowsDetails = document.getElementById('invalidRowsDetails');
+        const invalidRowsList = document.getElementById('invalidRowsList');
+        
+        let invalidHTML = '';
+        results.invalidRowsData.forEach(row => {
+            invalidHTML += `
+                <div style="background: white; padding: 12px; margin-bottom: 8px; border-radius: 6px; border-left: 4px solid #dc2626;">
+                    <div style="font-weight: 600; color: #374151; margin-bottom: 4px;">Row ${row.row}</div>
+                    <div style="color: #6b7280; font-size: 12px; margin-bottom: 8px;">
+                        ${Object.entries(row.data).slice(0, 3).map(([key, value]) => `${key}: ${value}`).join(' | ')}
+                    </div>
+                    <ul style="margin: 0; padding-left: 16px; color: #991b1b;">
+                        ${row.errors.map(error => `<li>${error}</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+        });
+        
+        invalidRowsList.innerHTML = invalidHTML;
+        invalidRowsDetails.style.display = 'block';
+    }
+    
+    document.getElementById('resultsContainer').style.display = 'block';
+}
+
+function showUploadResults(results) {
+    document.getElementById('totalProcessed').textContent = results.totalProcessed;
+    document.getElementById('successful').textContent = results.successful;
+    document.getElementById('failed').textContent = results.failed;
+    document.getElementById('payOverridesResolved').textContent = results.payOverridesResolved;
+    
+    // Add additional info about replacements vs inserts
+    const uploadResults = document.getElementById('uploadResults');
+    if (results.replaced || results.inserted) {
+        const additionalInfo = uploadResults.querySelector('.additional-info') || document.createElement('div');
+        additionalInfo.className = 'additional-info';
+        additionalInfo.style.cssText = 'margin-top: 16px; padding: 12px; background: #f3f4f6; border-radius: 6px; font-size: 14px; color: #374151;';
+        additionalInfo.innerHTML = `
+            <strong>Details:</strong><br>
+            • ${results.inserted || 0} new shifts inserted<br>
+            • ${results.replaced || 0} existing shifts replaced
+        `;
+        
+        if (!uploadResults.querySelector('.additional-info')) {
+            uploadResults.appendChild(additionalInfo);
+        }
+    }
+    
+    document.getElementById('uploadResults').style.display = 'block';
+}
+
+// Validation functions
+function isValidDate(dateString) {
+    const regex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!regex.test(dateString)) return false;
+    const date = new Date(dateString);
+    return date instanceof Date && !isNaN(date);
+}
+
+function isValidTime(timeString) {
+    const regex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/;
+    return regex.test(timeString);
+}
+
+function isValidBoolean(value) {
+    const normalizedValue = value.toString().toLowerCase().trim();
+    return ['true', 'false', '1', '0', 'yes', 'no'].includes(normalizedValue);
+}
+
+// Process CSV file
+// Add this fixed version to your mc-manager.html
+async function processCSV() {
+    if (!selectedFile) return;
+
+    showProcessing();
+    hideErrors();
+
+    try {
+        const text = await selectedFile.text();
+        const lines = text.split('\n').filter(line => line.trim());
+        
+        if (lines.length < 2) {
+            showError(['CSV file must contain at least a header row and one data row']);
+            hideProcessing();
+            return;
+        }
+
+        const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+        const csvData = lines.slice(1).map(line => {
+            const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
+            const row = {};
+            headers.forEach((header, index) => {
+                row[header] = values[index] || '';
+            });
+            return row;
+        });
+
+        const requiredColumns = [
+            'date', 'duty_type_id', 'participant_id', 'location_id', 'created_by'
+        ];
+
+        const missingColumns = requiredColumns.filter(col => !headers.includes(col));
+        if (missingColumns.length > 0) {
+            showError([`Missing required columns: ${missingColumns.join(', ')}`]);
+            hideProcessing();
+            return;
+        }
+
+        const results = await validateCSV(csvData);
+        
+        hideProcessing();
+        showResults({
+            totalRows: results.totalRows,
+            validRows: results.validRows.length,
+            invalidRows: results.invalidRows.length,
+            payOverrides: results.payOverrideResolutions.filter(r => r.success).length,
+            invalidRowsData: results.invalidRows
+        });
+
+        // Actually upload the valid data
+        if (results.validRows.length > 0) {
+            setTimeout(async () => {
+                let successful = 0;
+                let failed = 0;
+
+                for (const validRow of results.validRows) {
+    const payOverride = results.payOverrideResolutions.find(p => 
+        p.staffId === validRow.data.staff_id &&
+        p.participantId === validRow.data.participant_id &&
+        p.shiftDate === validRow.data.date
+    );
+
+    // REQUIRE valid pay override - this is the whole point
+    if (!payOverride || !payOverride.success) {
+        console.error('No valid pay override for row:', validRow.row, validRow.data);
+        failed++;
+        continue;
+    }
+
+    try {
+        const insertData = {
+            date: validRow.data.date,
+            duty_type_id: validRow.data.duty_type_id,
+            participant_id: validRow.data.participant_id,
+            location_id: validRow.data.location_id,
+            created_by: validRow.data.created_by,
+            staff_id: validRow.data.staff_id,
+            pay_override_id: payOverride.payRateId, // This is the key field
+            status: 'confirmed',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+
+        // Add optional fields
+        if (validRow.data.start_time) insertData.start_time = validRow.data.start_time;
+        if (validRow.data.end_time) insertData.end_time = validRow.data.end_time;
+        if (validRow.data.notes) insertData.notes = validRow.data.notes;
+
+        const { error } = await supabaseClient
+            .from('shifts')
+            .insert([insertData]);
+
+        if (error) throw error;
+        successful++;
+    } catch (error) {
+        console.error('Insert failed:', error);
+        failed++;
+    }
+}
+
+                showUploadResults({
+                    totalProcessed: results.totalRows,
+                    successful,
+                    failed,
+                    payOverridesResolved: results.payOverrideResolutions.filter(r => r.success).length
+                });
+
+                // Refresh data
+                if (typeof loadShifts === 'function') {
+                    await loadShifts();
+                }
+            }, 1000);
+        }
+
+    } catch (error) {
+        hideProcessing();
+        showError([`Error processing file: ${error.message}`]);
+    }
+}
+// Validate CSV data
+async function validateCSV(csvData) {
+    const results = {
+        totalRows: csvData.length,
+        validRows: [],
+        invalidRows: [],
+        payOverrideResolutions: []
+    };
+
+    const requiredColumns = [
+        'date', 'duty_type_id', 'participant_id', 'location_id', 'created_by'
+    ];
+
+    for (let i = 0; i < csvData.length; i++) {
+        const row = csvData[i];
+        const rowErrors = [];
+        
+        // Check required columns
+        requiredColumns.forEach(col => {
+            if (!row[col] || row[col].trim() === '') {
+                rowErrors.push(`Missing required field: ${col}`);
+            }
+        });
+
+        // Validate date format
+        if (row.date && !isValidDate(row.date)) {
+            rowErrors.push('Invalid date format (use YYYY-MM-DD)');
+        }
+
+        // Validate time format only if provided
+        if (row.start_time && row.start_time.trim() !== '' && !isValidTime(row.start_time)) {
+            rowErrors.push('Invalid start_time format (use HH:MM:SS)');
+        }
+        if (row.end_time && row.end_time.trim() !== '' && !isValidTime(row.end_time)) {
+            rowErrors.push('Invalid end_time format (use HH:MM:SS)');
+        }
+
+        // Validate clock_in_required if provided
+        if (row.clock_in_required && !isValidBoolean(row.clock_in_required)) {
+            rowErrors.push('Invalid clock_in_required value (use true/false)');
+        }
+
+        // Check for existing shifts and handle duplicates (updated for optional times)
+async function checkForDuplicates(csvData) {
+    const duplicateResults = {
+        duplicatesFound: [],
+        newShifts: [],
+        replacements: []
+    };
+
+    for (const row of csvData) {
+        if (!row.date || !row.participant_id) {
+            duplicateResults.newShifts.push(row);
+            continue;
+        }
+
+        try {
+            // Build query for duplicate check
+            let query = supabaseClient
+                .from('shifts')
+                .select('id, date, start_time, end_time, staff_id, participant_id')
+                .eq('date', row.date)
+                .eq('participant_id', row.participant_id)
+                .is('deleted_at', null);
+
+            // Add staff condition only if staff_id is provided
+            if (row.staff_id && row.staff_id.trim() !== '') {
+                query = query.eq('staff_id', row.staff_id);
+            } else {
+                query = query.is('staff_id', null);
+            }
+
+            // Add time conditions only if times are provided
+            if (row.start_time && row.start_time.trim() !== '') {
+                query = query.eq('start_time', row.start_time);
+            } else {
+                query = query.is('start_time', null);
+            }
+            
+            if (row.end_time && row.end_time.trim() !== '') {
+                query = query.eq('end_time', row.end_time);
+            } else {
+                query = query.is('end_time', null);
+            }
+
+            const { data: existingShift, error } = await query.maybeSingle();
+
+            if (error) throw error;
+
+            if (existingShift) {
+                duplicateResults.duplicatesFound.push({
+                    existingId: existingShift.id,
+                    newData: row
+                });
+            } else {
+                duplicateResults.newShifts.push(row);
+            }
+        } catch (error) {
+            console.error('Error checking for duplicate:', error);
+            duplicateResults.newShifts.push(row); // Treat as new if check fails
+        }
+    }
+
+    return duplicateResults;
+}
+
+// Replace existing shift with new data
+async function replaceShift(shiftId, newData, payOverrideId) {
+    try {
+        const updateData = {
+            duty_type_id: newData.duty_type_id,
+            location_id: newData.location_id,
+            created_by: newData.created_by,
+            status: 'confirmed',
+            updated_at: new Date().toISOString()
+        };
+
+        // Add staff_id only if provided
+        if (newData.staff_id && newData.staff_id.trim() !== '') {
+            updateData.staff_id = newData.staff_id;
+        }
+
+        // Add pay_override_id only if we have one
+        if (payOverrideId) {
+            updateData.pay_override_id = payOverrideId;
+        }
+
+        // Add optional fields if present
+        if (newData.notes) updateData.notes = newData.notes;
+        if (newData.clock_in_required) {
+            const normalizedValue = newData.clock_in_required.toString().toLowerCase().trim();
+            updateData.clock_in_required = ['true', '1', 'yes'].includes(normalizedValue);
+        }
+
+        const { error } = await supabaseClient
+            .from('shifts')
+            .update(updateData)
+            .eq('id', shiftId);
+
+        if (error) throw error;
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+// Insert new shift (updated for optional times)
+async function insertShift(shiftData, payOverrideId) {
+    try {
+        const insertData = {
+            date: shiftData.date,
+            duty_type_id: shiftData.duty_type_id,
+            participant_id: shiftData.participant_id,
+            location_id: shiftData.location_id,
+            created_by: shiftData.created_by,
+            status: 'confirmed',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+
+        // Add staff_id only if provided
+        if (shiftData.staff_id && shiftData.staff_id.trim() !== '') {
+            insertData.staff_id = shiftData.staff_id;
+        }
+
+        // Add pay_override_id only if we have one
+        if (payOverrideId) {
+            insertData.pay_override_id = payOverrideId;
+        }
+
+        // Add times only if provided
+        if (shiftData.start_time && shiftData.start_time.trim() !== '') {
+            insertData.start_time = shiftData.start_time;
+        }
+        if (shiftData.end_time && shiftData.end_time.trim() !== '') {
+            insertData.end_time = shiftData.end_time;
+        }
+
+        // Add optional fields if present
+        if (shiftData.notes) insertData.notes = shiftData.notes;
+        if (shiftData.clock_in_required) {
+            const normalizedValue = shiftData.clock_in_required.toString().toLowerCase().trim();
+            insertData.clock_in_required = ['true', '1', 'yes'].includes(normalizedValue);
+        }
+
+        const { error } = await supabaseClient
+            .from('shifts')
+            .insert([insertData]);
+
+        if (error) throw error;
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+        if (row.staff_id && row.participant_id && row.date && rowErrors.length === 0) {
+            const payOverrideResult = await resolvePayOverride(
+                row.staff_id, 
+                row.participant_id, 
+                row.date
+            );
+            results.payOverrideResolutions.push({
+                row: i + 1,
+                ...payOverrideResult
+            });
+            
+            if (!payOverrideResult.success) {
+                rowErrors.push(payOverrideResult.error);
+            }
+        }
+
+        if (rowErrors.length > 0) {
+            results.invalidRows.push({
+                row: i + 1,
+                data: row,
+                errors: rowErrors
+            });
+        } else {
+            results.validRows.push({
+                row: i + 1,
+                data: row
+            });
+        }
+    }
+
+    return results;
+}
+
+// Resolve pay override from database
+// Replace the resolvePayOverride function with this:
+async function resolvePayOverride(staffId, participantId, shiftDate) {
+    try {
+        const { data, error } = await supabaseClient
+            .from('staff_participant_assignments')
+            .select('pay_rate_id, id')
+            .eq('staff_id', staffId)
+            .eq('participant_id', participantId)
+            .lte('start_date', shiftDate)
+            .or(`end_date.is.null,end_date.gte.${shiftDate}`)
+            .eq('is_active', true)
+            .not('pay_rate_id', 'is', null)
+            .limit(1)
+            .maybeSingle();
+
+        if (error) throw error;
+
+        if (!data) {
+            return {
+                staffId,
+                participantId,
+                shiftDate,
+                success: false,
+                error: 'No active assignment found for this staff-participant combination'
+            };
+        }
+
+        return {
+            staffId,
+            participantId,
+            shiftDate,
+            success: true,
+            payRateId: data.pay_rate_id,
+            assignmentId: data.id,
+            error: null
+        };
+
+    } catch (error) {
+        return {
+            staffId,
+            participantId,
+            shiftDate,
+            success: false,
+            error: `Database error: ${error.message}`
+        };
+    }
+}
+function openCSVUploadModal() {
+    const modal = document.getElementById('csvUploadModal');
+    const container = document.getElementById('csvUploadContainer');
+    
+    // Show the modal
+    modal.style.display = 'flex';
+    
+    // Load the vanilla JavaScript CSV upload interface
+    container.innerHTML = createCSVUploadInterface();
+}
+
+function closeCSVUploadModal() {
+    const modal = document.getElementById('csvUploadModal');
+    modal.style.display = 'none';
+    
+    // Clean up
+    const container = document.getElementById('csvUploadContainer');
+    if (container) {
+        container.innerHTML = '';
+    }
+    
+    // Reset global variables
+    selectedFile = null;
+    validationResults = null;
 }
 
 async function saveHoliday() {
@@ -4139,14 +5343,7 @@ async function renderRequests() {
                     background: #c82333;
                 }
                 
-                .btn-primary {
-                    background: #667eea;
-                    color: white;
-                }
-                
-                .btn-primary:hover {
-                    background: #5a67d8;
-                }
+            
             </style>
             
             <!-- Filter Controls -->
@@ -7090,15 +8287,29 @@ async function saveParticipant(event) {
         delete participantData.ndis_number;
     }
     
-    // FIX: Map latitude/longitude form fields to location_lat/location_lng database fields
-    if (participantData.latitude) {
-        participantData.location_lat = parseFloat(participantData.latitude) || null;
-        delete participantData.latitude;
+    // Map form field names to database column names
+const fieldMapping = {
+    'latitude': 'location_lat',
+    'longitude': 'location_lng',
+    'ndis_number': 'ndis_participant_number'
+};
+
+// Apply mapping
+Object.keys(fieldMapping).forEach(formField => {
+    if (participantData.hasOwnProperty(formField)) {
+        const dbField = fieldMapping[formField];
+        participantData[dbField] = participantData[formField];
+        delete participantData[formField];
     }
-    if (participantData.longitude) {
-        participantData.location_lng = parseFloat(participantData.longitude) || null;
-        delete participantData.longitude;
-    }
+});
+
+// Parse numeric values
+if (participantData.location_lat) {
+    participantData.location_lat = parseFloat(participantData.location_lat) || null;
+}
+if (participantData.location_lng) {
+    participantData.location_lng = parseFloat(participantData.location_lng) || null;
+}
     
     // Add geofence radius
     const geofenceRadius = document.getElementById('geofenceRadius').value;
@@ -7535,10 +8746,6 @@ async function saveEmergencyContacts(participantId) {
 
 // ==================== LOCATION FUNCTIONS ====================
 
-// REPLACE YOUR EXISTING FUNCTIONS WITH THESE FIXED VERSIONS
-
-// ==================== GOOGLE MAPS INITIALIZATION FIX ====================
-
 // Load Google Maps Script (FIXED)
 function loadGoogleMapsScript() {
     // Check if already loaded or loading
@@ -7859,48 +9066,71 @@ async function loadParticipantDocuments(participantId) {
     }
 }
 
-// Open participant modal (FIXED)
 async function openParticipantModal(participantId = null) {
     currentParticipantId = participantId;
     const modal = document.getElementById('participantModal');
     const form = document.getElementById('participantForm');
     
-    // Reset form and tabs
-    form.reset();
-    document.getElementById('participantId').value = participantId || '';
-    
-    // Reset to first tab
-    document.querySelectorAll('.tab-btn').forEach((btn, index) => {
-        btn.classList.toggle('active', index === 0);
-    });
-    document.querySelectorAll('.tab-content').forEach((content, index) => {
-        content.style.display = index === 0 ? 'block' : 'none';
-        content.classList.toggle('active', index === 0);
-    });
-    
-    // Clear dynamic content
-    document.getElementById('medicationsTableBody').innerHTML = '';
-    document.getElementById('emergencyContactsList').innerHTML = '';
-    document.getElementById('documentsTableBody').innerHTML = '<tr><td colspan="5" style="text-align: center;">No documents uploaded</td></tr>';
-    
-    // Update title
-    document.getElementById('participantModalTitle').textContent = participantId ? 'Edit Participant' : 'Add Participant';
-    
-    if (participantId) {
-        await loadParticipantData(participantId);
-    }
-    
-    // Show modal
+    // Show modal immediately with loading state
     modal.style.display = 'flex';
     
-    // Initialize autocomplete after modal is visible (only if Google Maps is loaded)
-    if (window.googleMapsReady) {
-        setTimeout(() => {
-            initParticipantAutocomplete();
-        }, 100);
+    // Show loading overlay
+    const modalContent = modal.querySelector('.modal-content');
+    const loadingOverlay = document.createElement('div');
+    loadingOverlay.id = 'modalLoadingOverlay';
+    loadingOverlay.className = 'loading-overlay';
+    loadingOverlay.innerHTML = `
+        <div class="loading">
+            <div class="spinner"></div>
+            <div>Loading participant data...</div>
+        </div>
+    `;
+    modalContent.appendChild(loadingOverlay);
+    
+    try {
+        // Reset form and tabs
+        form.reset();
+        document.getElementById('participantId').value = participantId || '';
+        
+        // Reset to first tab
+        document.querySelectorAll('.tab-btn').forEach((btn, index) => {
+            btn.classList.toggle('active', index === 0);
+        });
+        document.querySelectorAll('.tab-content').forEach((content, index) => {
+            content.style.display = index === 0 ? 'block' : 'none';
+            content.classList.toggle('active', index === 0);
+        });
+        
+        // Clear dynamic content
+        document.getElementById('medicationsTableBody').innerHTML = '';
+        document.getElementById('emergencyContactsList').innerHTML = '';
+        document.getElementById('documentsTableBody').innerHTML = '<tr><td colspan="5" style="text-align: center;">No documents uploaded</td></tr>';
+        
+        // Update title
+        document.getElementById('participantModalTitle').textContent = participantId ? 'Edit Participant' : 'Add Participant';
+        
+        if (participantId) {
+            await loadParticipantData(participantId);
+        }
+        
+        // Initialize autocomplete after modal is visible
+        if (window.googleMapsReady) {
+            setTimeout(() => {
+                initParticipantAutocomplete();
+            }, 100);
+        }
+        
+    } catch (error) {
+        console.error('Error opening participant modal:', error);
+        alert('Failed to load participant data: ' + error.message);
+    } finally {
+        // Remove loading overlay
+        const overlay = document.getElementById('modalLoadingOverlay');
+        if (overlay) {
+            overlay.remove();
+        }
     }
 }
-
 function getCurrentLocation() {
     if (!navigator.geolocation) {
         alert('Geolocation is not supported by your browser');
@@ -8838,6 +10068,8 @@ function renderShiftRow(shift, date) {  // <-- Remove async, back to regular fun
         </tr>
     `;
 }
+
+
 
 // Keep renderTable as it was originally (no async, no await needed)
 function renderTable() {
@@ -11924,148 +13156,314 @@ function updateStaffSelection() {
     }
 }
 
-function updateParticipantSelection() {
+// Helper function to get participant's location
+async function getParticipantLocation(participantId) {
+    if (!participantId) return null;
+    
+    const participant = participants.find(p => p.id === participantId);
+    if (!participant) return null;
+    
+    // Try to find matching location based on participant's address
+    if (participant.location_lat && participant.location_lng) {
+        // Find or create location based on participant's coordinates
+        const location = locations.find(l => 
+            l.latitude === participant.location_lat && 
+            l.longitude === participant.location_lng
+        );
+        
+        if (location) return location.id;
+    }
+    
+    // Fallback: Check for care home match
+    if (participant.address) {
+        const addressLower = participant.address.toLowerCase();
+        
+        if (addressLower.includes('saunders')) {
+            const saundersLocation = locations.find(l => 
+                l.name.toLowerCase().includes('saunders') || 
+                (l.address && l.address.toLowerCase().includes('saunders'))
+            );
+            if (saundersLocation) return saundersLocation.id;
+        }
+        
+        const careHomeLocation = locations.find(l => 
+            l.is_care_home && l.address && 
+            addressLower.includes(l.address.toLowerCase().split(',')[0])
+        );
+        if (careHomeLocation) return careHomeLocation.id;
+    }
+    
+    // Final fallback: Client Home
+    const clientHome = locations.find(l => 
+        l.name.toLowerCase().includes('client home') ||
+        l.id === '00000000-0000-0000-0000-000000000001'
+    );
+    
+    return clientHome ? clientHome.id : null;
+}
+
+// Helper function to get pay rate from staff_participant_assignment
+async function getAssignmentPayRate(staffId, participantId) {
+    if (!staffId || !participantId) return null;
+    
+    try {
+        const { data, error } = await supabaseClient
+            .from('staff_participant_assignments')
+            .select('pay_rate_id')
+            .eq('staff_id', staffId)
+            .eq('participant_id', participantId)
+            .eq('is_active', true)
+            .is('end_date', null)
+            .maybeSingle();
+        
+        if (error) throw error;
+        
+        // Return assignment pay rate if exists, otherwise return staff default
+        if (data && data.pay_rate_id) {
+            return data.pay_rate_id;
+        }
+        
+        // Fallback to staff's default pay rate
+        const selectedStaff = staff.find(s => s.id === staffId);
+        return selectedStaff?.pay_rate_id || null;
+        
+    } catch (error) {
+        console.error('Error fetching assignment pay rate:', error);
+        // Fallback to staff's default pay rate
+        const selectedStaff = staff.find(s => s.id === staffId);
+        return selectedStaff?.pay_rate_id || null;
+    }
+}
+
+// Update clock-in required options based on date
+function updateClockInRequiredOptions() {
+    const dateInput = document.getElementById('shiftDate');
+    const clockInCheckbox = document.getElementById('clockInRequired');
+    const helpText = document.getElementById('clockInHelp');
+    
+    if (!dateInput.value) return;
+    
+    const selectedDate = new Date(dateInput.value);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (selectedDate < today) {
+        // Past date: must be false
+        clockInCheckbox.checked = false;
+        clockInCheckbox.disabled = true;
+        helpText.textContent = 'Clock-in cannot be required for past shifts';
+        helpText.style.color = '#666';
+    } else {
+        // Today or future: can be true or false
+        clockInCheckbox.disabled = false;
+        clockInCheckbox.checked = true; // Default to true for future shifts
+        helpText.textContent = 'Requires staff to clock in/out via mobile app';
+        helpText.style.color = '#666';
+    }
+}
+
+// Update edit modal clock-in options
+function updateEditClockInRequiredOptions() {
+    const dateInput = document.getElementById('editShiftDate');
+    const clockInCheckbox = document.getElementById('editClockInRequired');
+    const helpText = document.getElementById('editClockInHelp');
+    
+    if (!dateInput.value) return;
+    
+    const selectedDate = new Date(dateInput.value);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (selectedDate < today) {
+        // Past date: must be false
+        clockInCheckbox.checked = false;
+        clockInCheckbox.disabled = true;
+        helpText.textContent = 'Clock-in cannot be required for past shifts';
+        helpText.style.color = '#666';
+    } else {
+        // Today or future: can be true or false
+        clockInCheckbox.disabled = false;
+        helpText.textContent = 'Requires staff to clock in/out via mobile app';
+        helpText.style.color = '#666';
+    }
+}
+
+// Updated updateStaffSelection function
+function updateStaffSelection() {
+    const input = document.getElementById('shiftStaffInput');
+    const hiddenInput = document.getElementById('shiftStaff');
+    
+    const inputValue = input.value.replace(' (Care Home)', '');
+    const selectedStaff = staff.find(s => `${s.first_name} ${s.last_name}` === inputValue);
+    
+    if (selectedStaff) {
+        hiddenInput.value = selectedStaff.id;
+        if (typeof updateHourWarning === 'function') {
+            updateHourWarning();
+        }
+        // Update pay rate when both staff and participant are selected
+        updatePayRateForAssignment();
+    } else {
+        hiddenInput.value = '';
+    }
+}
+
+// Updated updateParticipantSelection function
+async function updateParticipantSelection() {
     const input = document.getElementById('shiftParticipantInput');
     const hiddenInput = document.getElementById('shiftParticipant');
-    const locationSelect = document.getElementById('shiftLocation');
+    const locationHidden = document.getElementById('shiftLocation');
+    const locationDisplay = document.getElementById('shiftLocationDisplay');
     
-    // Remove any care home indicator for matching
     const inputValue = input.value.replace(' (Care Home)', '');
     const selectedParticipant = participants.find(p => `${p.first_name} ${p.last_name}` === inputValue);
     
     if (selectedParticipant) {
         hiddenInput.value = selectedParticipant.id;
         
-        // Auto-select location based on participant
-        if (locationSelect && selectedParticipant.address) {
-            const addressLower = selectedParticipant.address.toLowerCase();
-            
-            // Check for Saunders Care Home
-            if (addressLower.includes('saunders')) {
-                const saundersLocation = locations.find(l => 
-                    l.name.toLowerCase().includes('saunders') || 
-                    (l.address && l.address.toLowerCase().includes('saunders'))
-                );
-                if (saundersLocation) {
-                    locationSelect.value = saundersLocation.id;
-                }
-            } 
-            // Check for other care homes
-            else {
-                const careHomeLocation = locations.find(l => 
-                    l.is_care_home && l.address && 
-                    addressLower.includes(l.address.toLowerCase().split(',')[0])
-                );
-                if (careHomeLocation) {
-                    locationSelect.value = careHomeLocation.id;
-                }
-            }
-            
-            // If no care home found, select Client Home
-            if (!locationSelect.value) {
-                const clientHome = locations.find(l => 
-                    l.name.toLowerCase().includes('client home') ||
-                    l.id === '00000000-0000-0000-0000-000000000001'
-                );
-                if (clientHome) {
-                    locationSelect.value = clientHome.id;
-                }
-            }
+        // Auto-populate location
+        const locationId = await getParticipantLocation(selectedParticipant.id);
+        if (locationId) {
+            locationHidden.value = locationId;
+            const location = locations.find(l => l.id === locationId);
+            locationDisplay.value = location ? location.name : 'Location Set';
+        } else {
+            locationDisplay.value = 'No location found';
         }
+        
+        // Update pay rate when both staff and participant are selected
+        await updatePayRateForAssignment();
     } else {
         hiddenInput.value = '';
+        locationHidden.value = '';
+        locationDisplay.value = '';
     }
 }
 
-
+// Updated updateEditStaffSelection function
 function updateEditStaffSelection() {
     const input = document.getElementById('editShiftStaffInput');
     const hiddenInput = document.getElementById('editShiftStaff');
     
-    // Remove any care home indicator for matching
     const inputValue = input.value.replace(' (Care Home)', '');
     const selectedStaff = staff.find(s => `${s.first_name} ${s.last_name}` === inputValue);
     
     hiddenInput.value = selectedStaff ? selectedStaff.id : '';
+    
+    // Update pay rate when both staff and participant are selected
+    updateEditPayRateForAssignment();
 }
 
-function updateEditParticipantSelection() {
+// Updated updateEditParticipantSelection function
+async function updateEditParticipantSelection() {
     const input = document.getElementById('editShiftParticipantInput');
     const hiddenInput = document.getElementById('editShiftParticipant');
-    const locationSelect = document.getElementById('editShiftLocation');
+    const locationHidden = document.getElementById('editShiftLocation');
+    const locationDisplay = document.getElementById('editShiftLocationDisplay');
     
-    // Remove any care home indicator for matching
     const inputValue = input.value.replace(' (Care Home)', '');
     const selectedParticipant = participants.find(p => `${p.first_name} ${p.last_name}` === inputValue);
     
     if (selectedParticipant) {
         hiddenInput.value = selectedParticipant.id;
         
-        // Auto-select location for edit modal too
-        if (locationSelect && selectedParticipant.address) {
-            const addressLower = selectedParticipant.address.toLowerCase();
-            
-            // Same logic as create modal
-            if (addressLower.includes('saunders')) {
-                const saundersLocation = locations.find(l => 
-                    l.name.toLowerCase().includes('saunders') || 
-                    (l.address && l.address.toLowerCase().includes('saunders'))
-                );
-                if (saundersLocation) {
-                    locationSelect.value = saundersLocation.id;
-                }
-            } else {
-                const careHomeLocation = locations.find(l => 
-                    l.is_care_home && l.address && 
-                    addressLower.includes(l.address.toLowerCase().split(',')[0])
-                );
-                if (careHomeLocation) {
-                    locationSelect.value = careHomeLocation.id;
-                } else {
-                    const clientHome = locations.find(l => 
-                        l.name.toLowerCase().includes('client home') ||
-                        l.id === '00000000-0000-0000-0000-000000000001'
-                    );
-                    if (clientHome) {
-                        locationSelect.value = clientHome.id;
-                    }
-                }
-            }
+        // Auto-populate location
+        const locationId = await getParticipantLocation(selectedParticipant.id);
+        if (locationId) {
+            locationHidden.value = locationId;
+            const location = locations.find(l => l.id === locationId);
+            locationDisplay.value = location ? location.name : 'Location Set';
+        } else {
+            locationDisplay.value = 'No location found';
         }
+        
+        // Update pay rate when both staff and participant are selected
+        await updateEditPayRateForAssignment();
     } else {
         hiddenInput.value = '';
+        locationHidden.value = '';
+        locationDisplay.value = '';
     }
 }
 
+// Helper to update pay rate dropdown for add modal
+async function updatePayRateForAssignment() {
+    const staffId = document.getElementById('shiftStaff').value;
+    const participantId = document.getElementById('shiftParticipant').value;
+    const payRateSelect = document.getElementById('shiftPayRate');
+    
+    if (!staffId || !participantId) return;
+    
+    const assignmentPayRateId = await getAssignmentPayRate(staffId, participantId);
+    
+    if (assignmentPayRateId) {
+        // Set the hidden default but allow override
+        payRateSelect.dataset.defaultPayRate = assignmentPayRateId;
+        
+        // Update the placeholder text
+        const payRate = payRates.find(pr => pr.id === assignmentPayRateId);
+        if (payRate) {
+            payRateSelect.options[0].text = `Use Assignment Default ($${payRate.base_rate}/hr)`;
+        }
+    }
+}
+
+// Helper to update pay rate dropdown for edit modal
+async function updateEditPayRateForAssignment() {
+    const staffId = document.getElementById('editShiftStaff').value;
+    const participantId = document.getElementById('editShiftParticipant').value;
+    const payRateSelect = document.getElementById('editShiftPayRate');
+    
+    if (!staffId || !participantId) return;
+    
+    const assignmentPayRateId = await getAssignmentPayRate(staffId, participantId);
+    
+    if (assignmentPayRateId) {
+        payRateSelect.dataset.defaultPayRate = assignmentPayRateId;
+        
+        const payRate = payRates.find(pr => pr.id === assignmentPayRateId);
+        if (payRate) {
+            payRateSelect.options[0].text = `Use Assignment Default ($${payRate.base_rate}/hr)`;
+        }
+    }
+}
+
+// Updated createShift function
 async function createShift() {
     try {
         const date = document.getElementById('shiftDate').value;
         const startTime = document.getElementById('shiftStartTime').value;
         const endTime = document.getElementById('shiftEndTime').value;
         const staffId = document.getElementById('shiftStaff').value;
-        const participantId = document.getElementById('shiftParticipant').value || null;
-        const locationId = document.getElementById('shiftLocation').value || null;
+        const participantId = document.getElementById('shiftParticipant').value;
+        const locationId = document.getElementById('shiftLocation').value;
         const dutyTypeId = document.getElementById('shiftDutyType').value;
-        const payRateId = document.getElementById('shiftPayRate').value;
+        const payRateOverride = document.getElementById('shiftPayRate').value;
+        const clockInRequired = document.getElementById('clockInRequired').checked;
 
         // Basic validation
-        if (!date || !staffId || !dutyTypeId) {
-            showNotification('Please fill required fields (Date, Staff, Duty Type)', 'error');
+        if (!date || !staffId || !participantId || !dutyTypeId) {
+            showNotification('Please fill required fields (Date, Staff, Participant, Duty Type)', 'error');
             return;
         }
 
-        if (!participantId && !locationId) {
-            showNotification('Please select either participant or location', 'error');
+        if (!locationId) {
+            showNotification('Location could not be determined from participant', 'error');
             return;
         }
 
-        // Get the staff member's default pay rate if no override selected
-        const selectedStaff = staff.find(s => s.id === staffId);
-        const effectivePayRateId = payRateId || selectedStaff?.pay_rate_id;
-if (!effectivePayRateId) {
-  showNotification('Missing pay rate. Please select or assign a valid pay rate.', 'error');
-  return;
-}
+        // Get the effective pay rate
+        let effectivePayRateId = payRateOverride;
+        
+        if (!effectivePayRateId) {
+            // Use assignment pay rate or staff default
+            effectivePayRateId = await getAssignmentPayRate(staffId, participantId);
+        }
+
+        if (!effectivePayRateId) {
+            showNotification('Missing pay rate. Please select or assign a valid pay rate.', 'error');
+            return;
+        }
 
         // Calculate duration
         let duration_hours = null;
@@ -12087,7 +13485,8 @@ if (!effectivePayRateId) {
             participant_id: participantId,
             location_id: locationId,
             duty_type_id: dutyTypeId,
-            pay_override_id: effectivePayRateId, // FIXED: Using correct pay rate
+            pay_override_id: effectivePayRateId,
+            clock_in_required: clockInRequired,
             created_by: currentStaffData?.id || currentUser.id,
             status: 'confirmed',
             duration_hours: duration_hours
@@ -12109,6 +13508,113 @@ if (!effectivePayRateId) {
         console.error('Error creating shift:', error);
         showNotification('Failed to create shift: ' + error.message, 'error');
     }
+}
+
+// Updated updateShift function
+async function updateShift() {
+    try {
+        const shiftId = document.getElementById('editShiftId').value;
+        const date = document.getElementById('editShiftDate').value;
+        const startTime = document.getElementById('editShiftStartTime').value;
+        const endTime = document.getElementById('editShiftEndTime').value;
+        const staffId = document.getElementById('editShiftStaff').value;
+        const participantId = document.getElementById('editShiftParticipant').value;
+        const locationId = document.getElementById('editShiftLocation').value;
+        const dutyTypeId = document.getElementById('editShiftDutyType').value;
+        const payRateOverride = document.getElementById('editShiftPayRate').value;
+        const clockInRequired = document.getElementById('editClockInRequired').checked;
+        const status = document.getElementById('editShiftStatus').value;
+        const notes = document.getElementById('editShiftNotes').value;
+
+        // Basic validation
+        if (!date || !staffId || !participantId || !dutyTypeId) {
+            showNotification('Please fill required fields', 'error');
+            return;
+        }
+
+        if (!locationId) {
+            showNotification('Location could not be determined from participant', 'error');
+            return;
+        }
+
+        // Get the effective pay rate
+        let effectivePayRateId = payRateOverride;
+        
+        if (!effectivePayRateId) {
+            effectivePayRateId = await getAssignmentPayRate(staffId, participantId);
+        }
+
+        if (!effectivePayRateId) {
+            showNotification('Missing pay rate. Please select or assign a valid pay rate.', 'error');
+            return;
+        }
+
+        // Calculate duration
+        let duration_hours = null;
+        const selectedDutyType = dutyTypes.find(d => d.id === dutyTypeId);
+        if (selectedDutyType?.name.toLowerCase().includes('sleepover')) {
+            duration_hours = 2;
+        } else if (startTime && endTime) {
+            const start = new Date(`2000-01-01T${startTime}`);
+            let end = new Date(`2000-01-01T${endTime}`);
+            if (end <= start) end.setDate(end.getDate() + 1);
+            duration_hours = (end - start) / (1000 * 60 * 60);
+        }
+
+        const updateData = {
+            date: date,
+            start_time: startTime || null,
+            end_time: endTime || null,
+            staff_id: staffId,
+            participant_id: participantId,
+            location_id: locationId,
+            duty_type_id: dutyTypeId,
+            pay_override_id: effectivePayRateId,
+            clock_in_required: clockInRequired,
+            status: status,
+            notes: notes,
+            duration_hours: duration_hours,
+            updated_at: new Date().toISOString()
+        };
+
+        const { error } = await supabaseClient
+            .from('shifts')
+            .update(updateData)
+            .eq('id', shiftId);
+
+        if (error) throw error;
+
+        showNotification('Shift updated successfully', 'success');
+        closeModal('editShiftModal');
+        await loadShifts();
+
+    } catch (error) {
+        console.error('Error updating shift:', error);
+        showNotification('Failed to update shift: ' + error.message, 'error');
+    }
+}
+
+// Helper function to set "Active Shift" as default when opening add modal
+function openAddShiftModal() {
+    // Reset form
+    document.getElementById('addShiftForm').reset();
+    
+    // Set today's date as default
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('shiftDate').value = today;
+    
+    // Set "Active Shift" as default if it exists
+    const activeShiftDuty = dutyTypes.find(dt => dt.name === 'Active Shift');
+    if (activeShiftDuty) {
+        document.getElementById('shiftDutyType').value = activeShiftDuty.id;
+    }
+    
+    // Set clock-in required to true by default for today/future
+    document.getElementById('clockInRequired').checked = true;
+    updateClockInRequiredOptions();
+    
+    // Open modal
+    document.getElementById('addShiftModal').style.display = 'flex';
 }
 
 // For the shift modal error, add:
@@ -12158,6 +13664,12 @@ function loadParticipantDataList() {
             `<option value="${p.first_name} ${p.last_name}" data-id="${p.id}">`
         ).join('');
     }
+    // After your existing setFieldValue calls, add:
+setFieldValue('planManagerEmail', data.participant_plan_manager_email);
+setFieldValue('fundingType', data.funding_type);
+setFieldValue('supportNeeds', data.support_needs);
+setFieldValue('mobilityRequirements', data.mobility_requirements);
+setFieldValue('communicationNeeds', data.communication_needs);
 }
 
 function loadLocationOptions() {
