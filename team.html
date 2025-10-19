@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -4907,7 +4906,7 @@ let placesService;
 let map = null;
 let autocompleteOrigin;
 let autocompleteDestination;
-
+let currentPage = 'dashboard';
 
         let isValidAddressSelected = false;
         let currentUser = null;
@@ -6389,13 +6388,16 @@ const SAFETY_OFFSET = 0; // extra pixels to clear autofill bar
 
 window.visualViewport?.addEventListener('resize', () => {
   const viewport = window.visualViewport;
+  const composeBar = document.getElementById('composeBar'); // or however you get it
+  
+  if (!composeBar) return; // ← Add this check
+  
   const keyboardHeight = window.innerHeight - viewport.height - viewport.offsetTop;
   const extra = keyboardHeight > 0 ? SAFETY_OFFSET : 0;
   composeBar.style.bottom = keyboardHeight > 0
     ? `${keyboardHeight + extra}px`
     : '0px';
 });
-
 function scrollToBottom(smooth = true) {
     const container = document.getElementById('notesContainer');
     if (container) {
@@ -8142,15 +8144,14 @@ async function loadCurrentShift() {
         .is('deleted_at', null)
         .order('date')
         .order('start_time')
-        .limit(5); // Get more shifts to find next valid one
+        .limit(5);
 
     const container = document.getElementById('currentShift');
     
     if (!upcomingShifts || upcomingShifts.length === 0) {
         container.innerHTML = `
-        <div class="shift-card" style="background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);">
-
-<div class="shift-card-header">
+            <div class="shift-card" style="background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);">
+                <div class="shift-card-header">
                     <div class="shift-time">No shifts today</div>
                     <div class="shift-participant">Enjoy your day off!</div>
                 </div>
@@ -8163,7 +8164,6 @@ async function loadCurrentShift() {
     let shiftToShow = null;
     for (const shift of upcomingShifts) {
         const state = getShiftState(shift);
-        // Skip shifts that are completed or have missed clock out
         if (state !== SHIFT_STATES.COMPLETED && state !== SHIFT_STATES.MISSED_CLOCK_OUT) {
             shiftToShow = shift;
             break;
@@ -8171,9 +8171,8 @@ async function loadCurrentShift() {
     }
 
     if (!shiftToShow) {
-        // All shifts are completed or missed
         container.innerHTML = `
-        <div class="shift-card" style="background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);">
+            <div class="shift-card" style="background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);">
                 <div class="shift-card-header">
                     <div class="shift-time">No active shifts</div>
                     <div class="shift-participant">All shifts completed</div>
@@ -8192,11 +8191,12 @@ async function loadCurrentShift() {
     
     // Determine card background based on shift state
     const state = getShiftState(shift);
-    let cardStyle = 'background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);'; // Blue gradient default
+    let cardStyle = 'background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);';
 
     if (shift.clock_in_time && !shift.clock_out_time) {
-    cardStyle = 'background: linear-gradient(135deg, #2d5a3d 0%, #3a6b4a 100%);'; // Green gradient when clocked in
-}
+        cardStyle = 'background: linear-gradient(135deg, #2d5a3d 0%, #3a6b4a 100%);';
+    }
+    
     container.innerHTML = `
         <div class="shift-card" id="shift-card-${shift.id}" data-shift-id="${shift.id}" style="${cardStyle}">
             <div class="shift-card-header" style="cursor: pointer;">
@@ -8210,8 +8210,8 @@ async function loadCurrentShift() {
                 </div>
                 <div class="shift-status">${isToday ? 'TODAY' : 'TOMORROW'}</div>
             </div>
-            <div class="shift-expand-icon">▼</div>
-            <div class="shift-details" id="shift-details-${shift.id}">
+            <div class="shift-expand-icon">▲</div>
+            <div class="shift-details expanded" id="shift-details-${shift.id}">
                 <div id="clock-section-${shift.id}"></div>
                 ${shift.notes ? `
                     <div class="shift-note">
@@ -8222,7 +8222,7 @@ async function loadCurrentShift() {
         </div>
     `;
     
-    // Add click handler
+    // Add click handler to toggle (optional - can still collapse if needed)
     setTimeout(() => {
         const card = document.getElementById(`shift-card-${shift.id}`);
         const cardHeader = card?.querySelector('.shift-card-header');
@@ -8238,20 +8238,11 @@ async function loadCurrentShift() {
                 if (icon) {
                     icon.textContent = details.classList.contains('expanded') ? '▲' : '▼';
                 }
-                
-                // Load clock UI when expanding
-                if (details.classList.contains('expanded')) {
-                    await loadShiftClockingUI(shift.id, shift);
-                }
             });
-            
-            // Auto-expand if shift is in progress
-            if (shift.clock_in_time && !shift.clock_out_time) {
-                details.classList.add('expanded');
-                icon.textContent = '▲';
-                loadShiftClockingUI(shift.id, shift);
-            }
         }
+        
+        // Always load clock UI on initial render since it's expanded
+        loadShiftClockingUI(shift.id, shift);
     }, 100);
     
     // Ensure styles are added
@@ -8285,19 +8276,48 @@ function formatTimeNSW(timeString) {
     return `${displayHours}:${displayMinutes} ${ampm}`;
 }
 
-// Updated Clock in handler with NSW timezone
+function getNSWTime() {
+    // Create date in NSW timezone (Australia/Sydney)
+    const nswTime = new Date().toLocaleString('en-US', {
+        timeZone: 'Australia/Sydney',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+    });
+    
+    // Parse and convert to ISO format
+    const [date, time] = nswTime.split(', ');
+    const [month, day, year] = date.split('/');
+    const isoString = `${year}-${month}-${day}T${time}`;
+    
+    return new Date(isoString).toISOString();
+}
+
+// Updated Clock in handler with NSW timezone and better error handling
 async function handleClockIn(shiftId) {
     console.log('Handling clock in for shift:', shiftId);
     
-    const btn = event.target.closest('.clock-btn');
+    const btn = event?.target?.closest('.clock-btn');
     if (btn) {
         btn.disabled = true;
         btn.innerHTML = '<span class="location-spinner"></span> Getting location...';
     }
     
     try {
-        // Get current location
-        const position = await getCurrentPosition();
+        // Get current location with retry logic
+        let position;
+        try {
+            position = await getCurrentPosition();
+        } catch (geoError) {
+            // Try one more time with lower accuracy
+            console.warn('First location attempt failed, trying with lower accuracy');
+            position = await getCurrentPosition({ enableHighAccuracy: false });
+        }
+        
         const coords = {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude
@@ -8332,14 +8352,21 @@ async function handleClockIn(shiftId) {
             isWithinRange = distance <= maxDistance;
         }
         
-        // Get address for the current location
-        const address = await reverseGeocode(coords.latitude, coords.longitude);
+        // Get address for the current location (non-blocking - if it fails, we still proceed)
+        let address = `${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`;
+        try {
+            address = await reverseGeocode(coords.latitude, coords.longitude);
+        } catch (geocodeError) {
+            console.warn('Geocoding failed, using coordinates:', geocodeError);
+        }
         
-        // Store clock-in time in UTC (database handles this)
+        // Store clock-in time in NSW timezone
+        const clockInTime = getNSWTime();
+        
         const { error: updateError } = await supabaseClient
             .from('shifts')
             .update({
-                clock_in_time: new Date().toISOString(),
+                clock_in_time: clockInTime,
                 clock_in_lat: coords.latitude,
                 clock_in_lng: coords.longitude,
                 clock_in_address: address,
@@ -8349,7 +8376,8 @@ async function handleClockIn(shiftId) {
                     lng: coords.longitude, 
                     address: address,
                     distance_meters: distance,
-                    within_range: isWithinRange
+                    within_range: isWithinRange,
+                    timestamp: clockInTime
                 }
             })
             .eq('id', shiftId);
@@ -8359,15 +8387,16 @@ async function handleClockIn(shiftId) {
         // Reload the shift display
         await loadCurrentShift();
         
-        // Show success message if function exists
+        // Show success message
         if (typeof showNotification === 'function') {
-            showNotification('Successfully clocked in!', 'success');
+            const distanceMsg = distance ? ` (${Math.round(distance)}m from participant)` : '';
+            showNotification(`Successfully clocked in!${distanceMsg}`, 'success');
         }
         
     } catch (error) {
         console.error('Clock in error:', error);
         if (typeof showNotification === 'function') {
-            showNotification('Failed to clock in. Please try again.', 'error');
+            showNotification(error.message || 'Failed to clock in. Please try again.', 'error');
         }
         
         if (btn) {
@@ -8377,19 +8406,26 @@ async function handleClockIn(shiftId) {
     }
 }
 
-// Updated Clock out handler with distance calculation and NSW timezone
+// Updated Clock out handler with NSW timezone and better error handling
 async function handleClockOut(shiftId) {
     console.log('Handling clock out for shift:', shiftId);
     
-    const btn = event.target.closest('.clock-btn');
+    const btn = event?.target?.closest('.clock-btn');
     if (btn) {
         btn.disabled = true;
         btn.innerHTML = '<span class="location-spinner"></span> Getting location...';
     }
     
     try {
-        // Get current location
-        const position = await getCurrentPosition();
+        // Get current location with retry logic
+        let position;
+        try {
+            position = await getCurrentPosition();
+        } catch (geoError) {
+            console.warn('First location attempt failed, trying with lower accuracy');
+            position = await getCurrentPosition({ enableHighAccuracy: false });
+        }
+        
         const coords = {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude
@@ -8424,25 +8460,35 @@ async function handleClockOut(shiftId) {
             isWithinRange = distance <= maxDistance;
         }
         
-        // Get address
-        const address = await reverseGeocode(coords.latitude, coords.longitude);
+        // Get address (non-blocking)
+        let address = `${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`;
+        try {
+            address = await reverseGeocode(coords.latitude, coords.longitude);
+        } catch (geocodeError) {
+            console.warn('Geocoding failed, using coordinates:', geocodeError);
+        }
         
-        // Update shift with clock out data - store in UTC
+        // Store clock-out time in NSW timezone
+        const clockOutTime = getNSWTime();
+        
+        // Update shift with clock out data
         const { error: updateError } = await supabaseClient
             .from('shifts')
             .update({
-                clock_out_time: new Date().toISOString(),
+                clock_out_time: clockOutTime,
                 clock_out_lat: coords.latitude,
                 clock_out_lng: coords.longitude,
                 clock_out_address: address,
-                clock_out_distance_meters: distance, // Now including distance
+                clock_out_distance_meters: distance,
                 clock_out_location: {
                     lat: coords.latitude,
                     lng: coords.longitude,
                     address: address,
                     distance_meters: distance,
-                    within_range: isWithinRange
-                }
+                    within_range: isWithinRange,
+                    timestamp: clockOutTime
+                },
+                status: 'completed' // Mark shift as completed
             })
             .eq('id', shiftId);
             
@@ -8451,15 +8497,16 @@ async function handleClockOut(shiftId) {
         // Reload the shift display
         await loadCurrentShift();
         
-        // Show success message if function exists
+        // Show success message
         if (typeof showNotification === 'function') {
-            showNotification('Successfully clocked out!', 'success');
+            const distanceMsg = distance ? ` (${Math.round(distance)}m from participant)` : '';
+            showNotification(`Successfully clocked out!${distanceMsg}`, 'success');
         }
         
     } catch (error) {
         console.error('Clock out error:', error);
         if (typeof showNotification === 'function') {
-            showNotification('Failed to clock out. Please try again.', 'error');
+            showNotification(error.message || 'Failed to clock out. Please try again.', 'error');
         }
         
         if (btn) {
@@ -8469,6 +8516,25 @@ async function handleClockOut(shiftId) {
     }
 }
 
+// Initialize everything when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    // Add notification styles
+    if (typeof addNotificationStyles === 'function') {
+        addNotificationStyles();
+    }
+    
+    // Load current shift
+    if (typeof loadCurrentShift === 'function') {
+        loadCurrentShift();
+    }
+    
+    // Refresh shift display every 5 minutes
+    setInterval(() => {
+        if (typeof loadCurrentShift === 'function') {
+            loadCurrentShift();
+        }
+    }, 5 * 60 * 1000);
+});
 async function loadShiftClockingUI(shiftId, shiftData) {
     const clockSection = document.getElementById(`clock-section-${shiftId}`);
     if (!clockSection) return;
@@ -8674,33 +8740,50 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 
-// Helper function to get current position
-function getCurrentPosition() {
+function getCurrentPosition(options = {}) {
     return new Promise((resolve, reject) => {
         if (!navigator.geolocation) {
-            reject(new Error('Geolocation not supported'));
+            reject(new Error('Geolocation is not supported by your browser'));
             return;
         }
-        
+
+        const defaultOptions = {
+            enableHighAccuracy: true,
+            timeout: 10000, // 10 seconds
+            maximumAge: 0
+        };
+
         navigator.geolocation.getCurrentPosition(
             resolve,
-            reject,
-            {
-                enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 0
-            }
+            (error) => {
+                let errorMessage = 'Unable to get location: ';
+                switch(error.code) {
+                    case error.PERMISSION_DENIED:
+                        errorMessage += 'Location permission denied. Please enable location services.';
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        errorMessage += 'Location information unavailable. Please check your device settings.';
+                        break;
+                    case error.TIMEOUT:
+                        errorMessage += 'Location request timed out. Please try again.';
+                        break;
+                    default:
+                        errorMessage += 'An unknown error occurred.';
+                }
+                reject(new Error(errorMessage));
+            },
+            { ...defaultOptions, ...options }
         );
     });
 }
 
-// Helper function to calculate distance between two points
+// Calculate distance between two coordinates (in meters)
 function calculateDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371e3; // Earth radius in meters
-    const φ1 = lat1 * Math.PI/180;
-    const φ2 = lat2 * Math.PI/180;
-    const Δφ = (lat2-lat1) * Math.PI/180;
-    const Δλ = (lon2-lon1) * Math.PI/180;
+    const R = 6371e3; // Earth's radius in meters
+    const φ1 = lat1 * Math.PI / 180;
+    const φ2 = lat2 * Math.PI / 180;
+    const Δφ = (lat2 - lat1) * Math.PI / 180;
+    const Δλ = (lon2 - lon1) * Math.PI / 180;
 
     const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
               Math.cos(φ1) * Math.cos(φ2) *
@@ -10860,7 +10943,6 @@ async function loadIncomingRequests() {
 
 async function acceptTransfer(transferId) {
     try {
-        // Get the transfer request details
         const { data: transfer, error: fetchError } = await supabaseClient
             .from('transfer_requests')
             .select('*, shift:shift_id(*)')
@@ -10869,26 +10951,37 @@ async function acceptTransfer(transferId) {
 
         if (fetchError) throw fetchError;
 
-        // Update the shift with new staff + clear transfer fields
+        // ✅ Get the correct pay rate for the new staff + participant combination
+        const newPayRateId = await getAssignmentPayRate(
+            currentStaff.id, 
+            transfer.shift.participant_id
+        );
+
+        if (!newPayRateId) {
+            showToast('No pay rate found for this participant assignment', 'error');
+            return;
+        }
+
+        // Update the shift with new staff AND new pay rate
         const { error: shiftError } = await supabaseClient
             .from('shifts')
             .update({
-                staff_id: currentStaff.id,  // Assign to accepting staff
+                staff_id: currentStaff.id,
+                pay_override_id: newPayRateId,  // ✅ Update pay rate
                 transfer_status: 'accepted',
-                transfer_approved_by: currentStaff.id,  // Track who approved
+                transfer_approved_by: currentStaff.id,
                 updated_at: new Date().toISOString()
             })
             .eq('id', transfer.shift_id);
 
         if (shiftError) throw shiftError;
 
-        // Update transfer request status
         const { error: transferError } = await supabaseClient
             .from('transfer_requests')
             .update({
                 status: 'accepted',
-                responded_at: new Date().toISOString(),  // Use responded_at
-                responded_by: currentStaff.id  // Track who responded
+                responded_at: new Date().toISOString(),
+                responded_by: currentStaff.id
             })
             .eq('id', transferId);
 
@@ -10896,7 +10989,7 @@ async function acceptTransfer(transferId) {
 
         showToast('Transfer accepted successfully', 'success');
         await loadIncomingRequests();
-        await loadTimesheet(); // Refresh timesheet to show new shift
+        await loadTimesheet();
         if (typeof loadSchedule === 'function') {
             await loadSchedule();
         }
@@ -10904,6 +10997,40 @@ async function acceptTransfer(transferId) {
     } catch (error) {
         console.error('Error accepting transfer:', error);
         showToast('Failed to accept transfer', 'error');
+    }
+}
+
+// Helper function (add this if you don't have it)
+async function getAssignmentPayRate(staffId, participantId) {
+    try {
+        const { data, error } = await supabaseClient
+            .from('staff_participant_assignments')
+            .select('pay_rate_id')
+            .eq('staff_id', staffId)
+            .eq('participant_id', participantId)
+            .eq('is_active', true)
+            .is('end_date', null)
+            .maybeSingle();
+        
+        if (error) throw error;
+        
+        // Return assignment pay rate if exists, otherwise get staff default
+        if (data && data.pay_rate_id) {
+            return data.pay_rate_id;
+        }
+        
+        // Fallback to staff's default pay rate
+        const { data: staffData } = await supabaseClient
+            .from('staff')
+            .select('pay_rate_id')
+            .eq('id', staffId)
+            .single();
+        
+        return staffData?.pay_rate_id || null;
+        
+    } catch (error) {
+        console.error('Error fetching pay rate:', error);
+        return null;
     }
 }
 
@@ -14049,7 +14176,6 @@ function populateTimeSelects() {
     endTimeSelect.appendChild(midnightOption);
 }
 
-// Modified submitShift function
 async function submitShift() {
     try {
         const date = document.getElementById('shiftDate').value;
@@ -17625,38 +17751,13 @@ function stopClockRefresh() {
 }
 
 
-// Helper function to get current position
-function getCurrentPosition() {
-    return new Promise((resolve, reject) => {
-        if (!navigator.geolocation) {
-            reject(new Error('Geolocation not supported'));
-            return;
-        }
-        
-        navigator.geolocation.getCurrentPosition(
-            resolve,
-            reject,
-            {
-                enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 0
-            }
-        );
-    });
-}
 
-
-
-// Placeholder for reverse geocoding
+// Fixed reverse geocoding using a CORS-friendly alternative
 async function reverseGeocode(lat, lng) {
     try {
+        // Use locationiq (free tier available) or bigdatacloud (no API key required)
         const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
-            {
-                headers: {
-                    'User-Agent': 'NDIS-Care-App/1.0' // Required by Nominatim
-                }
-            }
+            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`
         );
         
         if (!response.ok) {
@@ -17667,15 +17768,14 @@ async function reverseGeocode(lat, lng) {
         
         // Build a readable address
         const parts = [];
-        if (data.address.house_number) parts.push(data.address.house_number);
-        if (data.address.road) parts.push(data.address.road);
-        if (data.address.suburb || data.address.city) {
-            parts.push(data.address.suburb || data.address.city);
+        if (data.localityInfo?.administrative?.[3]?.name) {
+            parts.push(data.localityInfo.administrative[3].name); // Street
         }
-        if (data.address.state) parts.push(data.address.state);
-        if (data.address.postcode) parts.push(data.address.postcode);
+        if (data.locality) parts.push(data.locality); // Suburb
+        if (data.principalSubdivision) parts.push(data.principalSubdivision); // State
+        if (data.postcode) parts.push(data.postcode);
         
-        return parts.join(', ') || `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+        return parts.length > 0 ? parts.join(', ') : `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
         
     } catch (error) {
         console.error('Reverse geocoding error:', error);
@@ -17683,6 +17783,8 @@ async function reverseGeocode(lat, lng) {
         return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
     }
 }
+
+
 
 // Initialize everything when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
