@@ -10327,99 +10327,124 @@ async function loadMyRequests() {
                     </button>
                 </div>`;
         
-        if (transport.data?.length > 0) {
-            // Calculate totals
-            const totalAmount = transport.data.reduce((sum, claim) => sum + (claim.total_claim || 0), 0);
-            const totalKm = transport.data.reduce((sum, claim) => sum + (claim.total_km || 0), 0);
-            
-            // Summary stats
-            html += `
-                <div style="
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-                    gap: 10px;
-                    margin-bottom: 10px;
-                    padding: 10px;
-                    background: #f0f4f8;
-                    border-radius: 8px;
-                    font-size: 12px;
-                ">
-                    <div style="text-align: center;">
-                        <div style="color: #666; margin-bottom: 4px;">Total Claims</div>
-                        <div style="font-weight: bold; color: #333;">${transport.data.length}</div>
-                    </div>
-                    <div style="text-align: center;">
-                        <div style="color: #666; margin-bottom: 4px;">Total KM</div>
-                        <div style="font-weight: bold; color: #333;">${totalKm.toFixed(0)} km</div>
-                    </div>
-                    <div style="text-align: center;">
-                        <div style="color: #666; margin-bottom: 4px;">Total Amount</div>
-                        <div style="font-weight: bold; color: #4CAF50;">$${totalAmount.toFixed(2)}</div>
-                    </div>
-                </div>`;
-            
-            // Claims list
-            transport.data.forEach(claim => {
-                let statusColor = '#666';
-                let statusBg = '#f0f0f0';
-                if (claim.status === 'approved') {
-                    statusColor = '#28a745';
-                    statusBg = '#d4edda';
-                } else if (claim.status === 'pending') {
-                    statusColor = '#ff9800';
-                    statusBg = '#fff3cd';
-                } else if (claim.status === 'rejected') {
-                    statusColor = '#dc3545';
-                    statusBg = '#f8d7da';
-                }
-                
-                const participantName = claim.shift?.participants ? 
-                    `${claim.shift.participants.first_name} ${claim.shift.participants.last_name}` : 
-                    'Not linked to shift';
-                
-                html += `
-                    <div class="shift-list-item" style="border-left: 3px solid ${statusColor};">
-                        <div class="shift-info">
-                            <div class="shift-date-time">
-                                ${formatDateShort(claim.date)}
-                                <span style="margin-left: 8px; font-size: 14px; color: #4CAF50; font-weight: 600;">$${claim.total_claim?.toFixed(2) || '0.00'}</span>
-                            </div>
-                            <div class="shift-client">
-                                ${claim.total_km || 0}km claimed${claim.shift?.participants ? ` - ${participantName}` : ''}
-                            </div>
-                            <div class="shift-location">
-                                <span class="status-badge" style="
-                                    background: ${statusBg};
-                                    color: ${statusColor};
-                                    padding: 4px 8px;
-                                    border-radius: 4px;
-                                    font-size: 11px;
-                                    font-weight: 600;
-                                    text-transform: capitalize;
-                                ">${claim.status || 'submitted'}</span>
-                                ${claim.evidence_url ? 
-                                    `<span style="margin-left: 8px; font-size: 11px; color: #666;">
-                                        <i class="fas fa-paperclip"></i> Evidence
-                                    </span>` : ''}
-                            </div>
-                        </div>
-                    </div>`;
-            });
-        } else {
-            html += `
-                <div style="
-                    text-align: center;
-                    padding: 20px;
-                    color: #999;
-                    font-size: 14px;
-                ">
-                    ${staffClaimFilter === 'all' ? 'No transport claims found' : 
-                      staffClaimFilter === 'pending' ? 'No pending claims' :
-                      staffClaimFilter === 'approved' ? 'No approved claims' :
-                      'No rejected claims'}
-                </div>`;
+                if (transport.data?.length > 0) {
+    // Calculate totals
+    const totalAmount = transport.data.reduce((sum, claim) => sum + (claim.total_claim || 0), 0);
+    const totalKm = transport.data.reduce((sum, claim) => sum + (claim.kilometres || 0), 0);
+    
+    // Summary stats
+    html += `
+        <div style="
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 10px;
+            margin-bottom: 10px;
+            padding: 10px;
+            background: #f0f4f8;
+            border-radius: 8px;
+            font-size: 12px;
+        ">
+            <div style="text-align: center;">
+                <div style="color: #666; margin-bottom: 4px;">Total Claims</div>
+                <div style="font-weight: bold; color: #333;">${transport.data.length}</div>
+            </div>
+            <div style="text-align: center;">
+                <div style="color: #666; margin-bottom: 4px;">Total KM</div>
+                <div style="font-weight: bold; color: #333;">${totalKm.toFixed(0)} km</div>
+            </div>
+            <div style="text-align: center;">
+                <div style="color: #666; margin-bottom: 4px;">Total Amount</div>
+                <div style="font-weight: bold; color: #4CAF50;">${totalAmount.toFixed(2)}</div>
+            </div>
+        </div>`;
+    
+    // Claims list
+    transport.data.forEach(claim => {
+        let statusColor = '#666';
+        let statusBg = '#f0f0f0';
+        if (claim.status === 'approved') {
+            statusColor = '#28a745';
+            statusBg = '#d4edda';
+        } else if (claim.status === 'pending') {
+            statusColor = '#ff9800';
+            statusBg = '#fff3cd';
+        } else if (claim.status === 'rejected') {
+            statusColor = '#dc3545';
+            statusBg = '#f8d7da';
         }
-        html += '</div>';
+        
+        const participantName = claim.shift?.participants ? 
+            `${claim.shift.participants.first_name} ${claim.shift.participants.last_name}` : 
+            'Not linked to shift';
+        
+        // BUILD ROUTE DISPLAY
+        const hasRoute = claim.route_origin || claim.route_destination;
+        const routeHtml = hasRoute ? `
+            <div style="font-size: 12px; color: #666; margin-top: 6px; line-height: 1.5;">
+                ${claim.route_origin ? `
+                    <div style="margin-bottom: 3px;">
+                        <i class="fas fa-map-marker-alt" style="color: #28a745; width: 14px;"></i> 
+                        <span style="margin-left: 4px;">${claim.route_origin}</span>
+                    </div>
+                ` : ''}
+                ${claim.route_destination ? `
+                    <div>
+                        <i class="fas fa-flag-checkered" style="color: #dc3545; width: 14px;"></i> 
+                        <span style="margin-left: 4px;">${claim.route_destination}</span>
+                    </div>
+                ` : ''}
+            </div>
+        ` : '';
+        
+        html += `
+            <div class="shift-list-item" style="border-left: 3px solid ${statusColor};">
+                <div class="shift-info">
+                    <div class="shift-date-time">
+                        ${formatDateShort(claim.date)}
+                        <span style="margin-left: 8px; font-size: 14px; color: #4CAF50; font-weight: 600;">${claim.total_claim?.toFixed(2) || '0.00'}</span>
+                    </div>
+                    <div class="shift-client">
+                        ${claim.kilometres || 0}km claimed${claim.shift?.participants ? ` - ${participantName}` : ''}
+                    </div>
+                    ${routeHtml}
+                    ${claim.reason ? `
+                        <div style="font-size: 12px; color: #888; margin-top: 6px; font-style: italic;">
+                            "${claim.reason}"
+                        </div>
+                    ` : ''}
+                    <div class="shift-location" style="margin-top: 8px;">
+                        <span class="status-badge" style="
+                            background: ${statusBg};
+                            color: ${statusColor};
+                            padding: 4px 8px;
+                            border-radius: 4px;
+                            font-size: 11px;
+                            font-weight: 600;
+                            text-transform: capitalize;
+                        ">${claim.status || 'submitted'}</span>
+                        ${claim.evidence_url ? 
+                            `<span style="margin-left: 8px; font-size: 11px; color: #666;">
+                                <i class="fas fa-paperclip"></i> Evidence
+                            </span>` : ''}
+                    </div>
+                </div>
+            </div>`;
+    });
+} else {
+    html += `
+        <div style="
+            text-align: center;
+            padding: 20px;
+            color: #999;
+            font-size: 14px;
+        ">
+            ${staffClaimFilter === 'all' ? 'No transport claims found' : 
+              staffClaimFilter === 'pending' ? 'No pending claims' :
+              staffClaimFilter === 'approved' ? 'No approved claims' :
+              'No rejected claims'}
+        </div>`;
+}
+html += '</div>';
         
         // ==========================================
         // SHIFT ADJUSTMENT REQUESTS SECTION
