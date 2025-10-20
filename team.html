@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -12497,20 +12498,55 @@ function selectQuickRoute(routeId, routeData) {
 
         // Proceed to route options
         async function proceedToRouteOptions() {
-    const origin = document.getElementById('routeOrigin').value;
-    const destination = document.getElementById('routeDestination').value;
+    const originInput = document.getElementById('routeOrigin');
+    const destinationInput = document.getElementById('routeDestination');
     
-    console.log('Proceeding to route options:', { origin, destination });
+    const origin = originInput?.value;
+    const destination = destinationInput?.value;
     
+    console.log('Validation check:', {
+        origin,
+        destination,
+        originSelected: originInput?.dataset.addressSelected,
+        destSelected: destinationInput?.dataset.addressSelected,
+        windowOrigin: window.selectedOrigin,
+        windowDest: window.selectedDestination
+    });
+    
+    // Check if inputs are filled
     if (!origin || !destination) {
         showToast('Please enter both pickup and destination addresses', 'warning');
         return;
     }
     
-    if (!window.selectedOrigin || !window.selectedDestination) {
-        showToast('Please select addresses from the dropdown suggestions', 'warning');
+    // Check if addresses were selected from dropdown
+    if (originInput?.dataset.addressSelected !== 'true') {
+        originInput?.classList.add('address-invalid');
+        showToast('Please select the origin address from the dropdown suggestions', 'warning');
+        originInput?.focus();
         return;
     }
+    
+    if (destinationInput?.dataset.addressSelected !== 'true') {
+        destinationInput?.classList.add('address-invalid');
+        showToast('Please select the destination address from the dropdown suggestions', 'warning');
+        destinationInput?.focus();
+        return;
+    }
+    
+    // Double-check that window objects exist
+    if (!window.selectedOrigin || !window.selectedDestination) {
+        console.error('Address data missing despite validation!');
+        showToast('Address selection error. Please try selecting the addresses again.', 'error');
+        
+        // Reset validation
+        if (originInput) originInput.dataset.addressSelected = 'false';
+        if (destinationInput) destinationInput.dataset.addressSelected = 'false';
+        return;
+    }
+    
+    // All validation passed!
+    console.log('✅ Validation passed, proceeding to route options');
     
     // Move to step 2
     updateTransportStep(2);
@@ -12588,12 +12624,29 @@ function selectQuickRoute(routeId, routeData) {
         // Navigate steps
         function nextTransportStep() {
     if (transportState.currentStep === 1) {
-        // Validate that addresses are selected
-        const origin = document.getElementById('routeOrigin').value;
-        const destination = document.getElementById('routeDestination').value;
+        const originInput = document.getElementById('routeOrigin');
+        const destinationInput = document.getElementById('routeDestination');
+        
+        const origin = originInput?.value;
+        const destination = destinationInput?.value;
         
         if (!origin || !destination) {
             showToast('Please enter both pickup and destination addresses', 'warning');
+            return;
+        }
+        
+        // Validate that addresses were selected from dropdown
+        if (originInput?.dataset.addressSelected !== 'true') {
+            originInput?.classList.add('address-invalid');
+            showToast('Please select the origin address from the dropdown suggestions', 'warning');
+            originInput?.focus();
+            return;
+        }
+        
+        if (destinationInput?.dataset.addressSelected !== 'true') {
+            destinationInput?.classList.add('address-invalid');
+            showToast('Please select the destination address from the dropdown suggestions', 'warning');
+            destinationInput?.focus();
             return;
         }
         
@@ -12619,6 +12672,45 @@ function selectQuickRoute(routeId, routeData) {
         updateTransportStep(3);
     }
 }
+
+function addAddressValidationStyles() {
+    if (document.getElementById('address-validation-styles')) return;
+    
+    const style = document.createElement('style');
+    style.id = 'address-validation-styles';
+    style.textContent = `
+        .address-validated {
+            border-color: #4CAF50 !important;
+            background-color: #f1f8f4 !important;
+        }
+        
+        .address-validated:focus {
+            outline: 2px solid #4CAF50 !important;
+            outline-offset: 2px;
+        }
+        
+        .address-invalid {
+            border-color: #f44336 !important;
+            background-color: #fff5f5 !important;
+            animation: shake 0.3s;
+        }
+        
+        .address-invalid:focus {
+            outline: 2px solid #f44336 !important;
+            outline-offset: 2px;
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+document.addEventListener('DOMContentLoaded', addAddressValidationStyles);
+
 
 
         function previousTransportStep() {
@@ -12836,6 +12928,9 @@ function setupAddressAutocomplete(inputElement, isOrigin = true) {
         fields: ['place_id', 'formatted_address', 'geometry']
     });
     
+    // Store reference to track if selection was made
+    inputElement.dataset.addressSelected = 'false';
+    
     autocomplete.addListener('place_changed', () => {
         const place = autocomplete.getPlace();
         
@@ -12843,8 +12938,14 @@ function setupAddressAutocomplete(inputElement, isOrigin = true) {
         
         if (!place.geometry) {
             console.warn('Place has no geometry');
+            inputElement.dataset.addressSelected = 'false';
             return;
         }
+        
+        // Mark as selected
+        inputElement.dataset.addressSelected = 'true';
+        inputElement.classList.add('address-validated');
+        inputElement.classList.remove('address-invalid');
         
         // Store the selected place data
         if (isOrigin) {
@@ -12854,7 +12955,7 @@ function setupAddressAutocomplete(inputElement, isOrigin = true) {
                 lat: place.geometry.location.lat(),
                 lng: place.geometry.location.lng()
             };
-            console.log('Origin set:', window.selectedOrigin);
+            console.log('✅ Origin set:', window.selectedOrigin);
         } else {
             window.selectedDestination = {
                 address: place.formatted_address,
@@ -12862,61 +12963,34 @@ function setupAddressAutocomplete(inputElement, isOrigin = true) {
                 lat: place.geometry.location.lat(),
                 lng: place.geometry.location.lng()
             };
-            console.log('Destination set:', window.selectedDestination);
+            console.log('✅ Destination set:', window.selectedDestination);
         }
         
-        // Force close the dropdown
-        inputElement.blur();
+        // Close dropdown
         setTimeout(() => {
-            inputElement.focus();
             inputElement.blur();
-        }, 100);
-        
-        // If both locations selected, enable the next button or auto-calculate
-        if (window.selectedOrigin && window.selectedDestination) {
-            console.log('Both locations selected, ready to calculate routes');
-            // You might want to enable a "Calculate Routes" button here
-            // or call calculateRoutes() directly if in step 2
-        }
-    });
-    
-    // Fix 2: Handle Enter key to close dropdown
-    inputElement.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            // Allow Google to process the selection first
-            setTimeout(() => {
-                this.blur();
-            }, 100);
-        }
-    });
-    
-    // Fix 3: Handle clicks on autocomplete suggestions
-    // This uses MutationObserver to detect when user clicks on dropdown
-    let observer = new MutationObserver(() => {
-        const pacContainer = document.querySelector('.pac-container');
-        if (pacContainer) {
-            pacContainer.addEventListener('mousedown', (e) => {
-                // Prevent default to allow selection
-                e.stopPropagation();
-                
-                // Close dropdown after selection
-                setTimeout(() => {
-                    inputElement.blur();
-                    // Hide all pac-containers
-                    document.querySelectorAll('.pac-container').forEach(container => {
-                        container.style.display = 'none';
-                    });
-                }, 300);
+            document.querySelectorAll('.pac-container').forEach(container => {
+                container.style.display = 'none';
             });
-            
-            // Disconnect observer once we've attached the listener
-            observer.disconnect();
-        }
+        }, 100);
     });
     
-    // Start observing
-    observer.observe(document.body, { childList: true, subtree: true });
+    // Reset validation when user starts typing again
+    inputElement.addEventListener('input', function() {
+        if (this.dataset.addressSelected === 'true') {
+            this.dataset.addressSelected = 'false';
+            this.classList.remove('address-validated');
+            
+            // Clear stored data
+            if (isOrigin) {
+                window.selectedOrigin = null;
+                console.log('❌ Origin cleared (user is typing)');
+            } else {
+                window.selectedDestination = null;
+                console.log('❌ Destination cleared (user is typing)');
+            }
+        }
+    });
     
     return autocomplete;
 }
