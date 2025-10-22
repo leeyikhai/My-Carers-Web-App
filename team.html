@@ -14296,18 +14296,22 @@ function formatTimeDisplay(timeStr) {
 async function checkShiftConflicts(date, startTime, endTime, dutyTypeName) {
     try {
         // Get all shifts for this staff on this date - using your exact working syntax
-        const { data: existingShifts, error } = await supabaseClient
+        const { data: allShifts, error } = await supabaseClient
             .from('shifts')
             .select('*, duty_type:duty_type_id(name)')
             .eq('staff_id', currentStaff.id)
             .eq('date', date)
-            .is('deleted_at', null)
-            .not('status', 'in', '(denied,rejected)'); // Ignore denied/rejected shifts - they can resubmit
+            .is('deleted_at', null);
         
         if (error) {
             console.error('Error checking conflicts:', error);
             return null;
         }
+        
+        // Filter out denied/rejected shifts in JavaScript
+        const existingShifts = allShifts ? allShifts.filter(shift => 
+            shift.status !== 'denied' && shift.status !== 'rejected'
+        ) : [];
         
         const isSleepover = dutyTypeName.includes('sleepover');
         
@@ -14318,14 +14322,14 @@ async function checkShiftConflicts(date, startTime, endTime, dutyTypeName) {
                 // Get participant name
                 let participantName = 'Unknown Participant';
                 if (shift.participant_id) {
-                    const { data: participant } = await supabaseClient
+                    const { data: participant, error: participantError } = await supabaseClient
                         .from('participants')
-                        .select('name')
+                        .select('first_name, last_name')
                         .eq('id', shift.participant_id)
                         .single();
                     
                     if (participant) {
-                        participantName = participant.name;
+                        participantName = `${participant.first_name} ${participant.last_name}`;
                     }
                 }
                 
@@ -14366,7 +14370,7 @@ async function checkShiftConflicts(date, startTime, endTime, dutyTypeName) {
                         if (!(newEnd <= existingStart || newStart >= existingEnd)) {
                             return {
                                 hasConflict: true,
-                                message: `You are already rostered for a conflicting shift with ${participantName} on ${formattedDate}`,
+                                message: `You're already rostered with ${participantName} on ${formattedDate} (${existingTimeStr})`,
                                 time: existingTimeStr
                             };
                         }
@@ -14381,16 +14385,16 @@ async function checkShiftConflicts(date, startTime, endTime, dutyTypeName) {
                     if (shift.start_time === startTime + ':00' && shift.end_time === endTime + ':00') {
                         return {
                             hasConflict: true,
-                            message: `You have already submitted a shift request with ${participantName} on ${formattedDate} at this exact time`,
-                            time: existingTimeStr
+                            message: `You already submitted this exact shift with ${participantName} on ${formattedDate}`,
+                            time: ''
                         };
                     }
                     
                     // Different time - suggest using adjustment
                     return {
                         hasConflict: true,
-                        message: `You already have a pending shift request with ${participantName} on ${formattedDate} at ${existingTimeStr}. To change the time, please use the Adjust Shift option instead`,
-                        time: existingTimeStr
+                        message: `You have a pending request with ${participantName} on ${formattedDate} (${existingTimeStr}). Use Adjust Shift to change the time`,
+                        time: ''
                     };
                 }
                 
@@ -14489,7 +14493,7 @@ async function submitShift() {
         
         if (conflict && conflict.hasConflict) {
             // Show detailed conflict message
-            const conflictMessage = `${conflict.message} (${conflict.time}). If the start or end time is incorrect, please use the Adjust Shift option instead.`;
+            const conflictMessage = conflict.message;
             
             // Use the more detailed showNotification if available, otherwise use showToast
             if (typeof showNotification === 'function') {
