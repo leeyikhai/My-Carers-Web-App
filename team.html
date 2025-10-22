@@ -14302,7 +14302,7 @@ async function checkShiftConflicts(date, startTime, endTime, dutyTypeName) {
             .eq('staff_id', currentStaff.id)
             .eq('date', date)
             .is('deleted_at', null)
-            .not('status', 'in', ['denied', 'rejected']); // Ignore denied/rejected shifts - they can resubmit
+            .not('status', 'in', '(denied,rejected)'); // Ignore denied/rejected shifts - they can resubmit
         
         if (error) {
             console.error('Error checking conflicts:', error);
