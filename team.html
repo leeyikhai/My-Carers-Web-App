@@ -8633,7 +8633,7 @@ async function loadShiftClockingUI(shiftId, shiftData) {
         clockSection.innerHTML = `
             <div class="clock-message">
                 <i class="fa-solid fa-hourglass-half"></i>
-                <span>You can clock in ${timeUntilCanClock} minutes before shift start</span>
+                <span>${timeUntilCanClock} minutes before your shift starts</span>
             </div>
         `;
     } else {
@@ -14275,6 +14275,168 @@ function populateTimeSelects() {
     endTimeSelect.appendChild(midnightOption);
 }
 
+// Helper function to parse time strings to minutes for comparison
+function parseTimeToMinutes(timeStr) {
+    if (!timeStr) return null;
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return hours * 60 + minutes;
+}
+
+// Helper function to format time for display
+function formatTimeDisplay(timeStr) {
+    if (!timeStr) return '';
+    const [hours, minutes] = timeStr.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+    return `${displayHour}:${minutes} ${ampm}`;
+}
+
+// Check for shift conflicts when submitting
+async function checkShiftConflicts(date, startTime, endTime, dutyTypeName) {
+    try {
+        // Get all shifts for this staff on this date - using your exact working syntax
+        const { data: existingShifts, error } = await supabaseClient
+            .from('shifts')
+            .select('*, duty_type:duty_type_id(name)')
+            .eq('staff_id', currentStaff.id)
+            .eq('date', date)
+            .is('deleted_at', null)
+            .not('status', 'in', ['denied', 'rejected']); // Ignore denied/rejected shifts - they can resubmit
+        
+        if (error) {
+            console.error('Error checking conflicts:', error);
+            return null;
+        }
+        
+        const isSleepover = dutyTypeName.includes('sleepover');
+        
+        if (existingShifts && existingShifts.length > 0) {
+            for (const shift of existingShifts) {
+                const existingIsSleepover = shift.duty_type?.name?.toLowerCase().includes('sleepover');
+                
+                // Get participant name
+                let participantName = 'Unknown Participant';
+                if (shift.participant_id) {
+                    const { data: participant } = await supabaseClient
+                        .from('participants')
+                        .select('name')
+                        .eq('id', shift.participant_id)
+                        .single();
+                    
+                    if (participant) {
+                        participantName = participant.name;
+                    }
+                }
+                
+                // Format date nicely (e.g., "Wednesday 22 Oct")
+                const dateObj = new Date(date);
+                const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+                const dayNum = dateObj.getDate();
+                const monthName = dateObj.toLocaleDateString('en-US', { month: 'short' });
+                const formattedDate = `${dayName} ${dayNum} ${monthName}`;
+                
+                // Format existing shift time
+                const existingTimeStr = existingIsSleepover ? 'Sleepover Shift' : 
+                    `${formatTimeDisplay(shift.start_time)} - ${formatTimeDisplay(shift.end_time)}`;
+                
+                // Check based on status
+                if (shift.status === 'confirmed') {
+                    // This is a manager-rostered shift
+                    if (isSleepover || existingIsSleepover) {
+                        return {
+                            hasConflict: true,
+                            message: `You are already rostered for a ${existingIsSleepover ? 'sleepover' : 'shift'} with ${participantName} on ${formattedDate}`,
+                            time: existingTimeStr
+                        };
+                    }
+                    
+                    // Check time overlap for confirmed shifts
+                    if (startTime && endTime && shift.start_time && shift.end_time) {
+                        const newStart = new Date(`2000-01-01T${startTime}`);
+                        const newEnd = new Date(`2000-01-01T${endTime}`);
+                        const existingStart = new Date(`2000-01-01T${shift.start_time}`);
+                        const existingEnd = new Date(`2000-01-01T${shift.end_time}`);
+                        
+                        // Handle overnight shifts
+                        if (newEnd <= newStart) newEnd.setDate(newEnd.getDate() + 1);
+                        if (existingEnd <= existingStart) existingEnd.setDate(existingEnd.getDate() + 1);
+                        
+                        // Check for overlap
+                        if (!(newEnd <= existingStart || newStart >= existingEnd)) {
+                            return {
+                                hasConflict: true,
+                                message: `You are already rostered for a conflicting shift with ${participantName} on ${formattedDate}`,
+                                time: existingTimeStr
+                            };
+                        }
+                    }
+                }
+                
+                else if (shift.status === 'pending') {
+                    // They already submitted a request that's waiting
+                    const newTimeStr = `${formatTimeDisplay(startTime)} - ${formatTimeDisplay(endTime)}`;
+                    
+                    // Check if it's the exact same time
+                    if (shift.start_time === startTime + ':00' && shift.end_time === endTime + ':00') {
+                        return {
+                            hasConflict: true,
+                            message: `You have already submitted a shift request with ${participantName} on ${formattedDate} at this exact time`,
+                            time: existingTimeStr
+                        };
+                    }
+                    
+                    // Different time - suggest using adjustment
+                    return {
+                        hasConflict: true,
+                        message: `You already have a pending shift request with ${participantName} on ${formattedDate} at ${existingTimeStr}. To change the time, please use the Adjust Shift option instead`,
+                        time: existingTimeStr
+                    };
+                }
+                
+                else if (shift.status === 'approved') {
+                    // Their previous request was approved
+                    if (isSleepover || existingIsSleepover) {
+                        return {
+                            hasConflict: true,
+                            message: `You already have an approved ${existingIsSleepover ? 'sleepover' : 'shift'} request with ${participantName} on ${formattedDate}`,
+                            time: existingTimeStr
+                        };
+                    }
+                    
+                    // Check time overlap for approved shifts
+                    if (startTime && endTime && shift.start_time && shift.end_time) {
+                        const newStart = new Date(`2000-01-01T${startTime}`);
+                        const newEnd = new Date(`2000-01-01T${endTime}`);
+                        const existingStart = new Date(`2000-01-01T${shift.start_time}`);
+                        const existingEnd = new Date(`2000-01-01T${shift.end_time}`);
+                        
+                        // Handle overnight shifts
+                        if (newEnd <= newStart) newEnd.setDate(newEnd.getDate() + 1);
+                        if (existingEnd <= existingStart) existingEnd.setDate(existingEnd.getDate() + 1);
+                        
+                        // Check for overlap
+                        if (!(newEnd <= existingStart || newStart >= existingEnd)) {
+                            return {
+                                hasConflict: true,
+                                message: `You already have an approved shift with ${participantName} on ${formattedDate} that conflicts with this time`,
+                                time: existingTimeStr
+                            };
+                        }
+                    }
+                }
+            }
+        }
+        
+        return null; // No conflict
+        
+    } catch (error) {
+        console.error('Error checking shift conflicts:', error);
+        return null;
+    }
+}
+
+// Updated submitShift function
 async function submitShift() {
     try {
         const date = document.getElementById('shiftDate').value;
@@ -14320,6 +14482,22 @@ async function submitShift() {
                 showToast('End time must be after start time', 'error');
                 return;
             }
+        }
+        
+        // Check for existing shifts that would conflict
+        const conflict = await checkShiftConflicts(date, startTime, endTime, dutyTypeName);
+        
+        if (conflict && conflict.hasConflict) {
+            // Show detailed conflict message
+            const conflictMessage = `${conflict.message} (${conflict.time}). If the start or end time is incorrect, please use the Adjust Shift option instead.`;
+            
+            // Use the more detailed showNotification if available, otherwise use showToast
+            if (typeof showNotification === 'function') {
+                showNotification(conflictMessage, 'error');
+            } else {
+                showToast(conflictMessage, 'error');
+            }
+            return;
         }
         
         // Get location from stored assignment
@@ -14378,7 +14556,6 @@ async function submitShift() {
         showToast('Failed to submit shift', 'error');
     }
 }
-
 // Toggle time fields based on duty type
 function toggleTimeFields() {
     const dutyTypeSelect = document.getElementById('shiftDutyType');
