@@ -1438,6 +1438,7 @@ body.loading {
     padding: 0;
     display: flex;
     flex-direction: column;
+    padding: 20px;
 }
 
 #notesView {
@@ -14231,7 +14232,7 @@ function initializeDatePicker() {
     dateInput.value = today.toISOString().split('T')[0];
 }
 
-// Generate time options in 30-minute increments
+// Generate time options in 30-minute increments with improved UX
 function populateTimeSelects() {
     const startTimeSelect = document.getElementById('shiftStartTime');
     const endTimeSelect = document.getElementById('shiftEndTime');
@@ -14241,6 +14242,13 @@ function populateTimeSelects() {
     // Clear existing options
     startTimeSelect.innerHTML = '<option value="">Select start time</option>';
     endTimeSelect.innerHTML = '<option value="">Select end time</option>';
+    
+    // Create optgroups for better organization based on your shift types
+    const timeGroups = {
+        'night': { label: 'Active Night Shift (12AM - 6AM)', options: [] },
+        'day': { label: 'Day Time (6AM - 8PM)', options: [] },
+        'evening': { label: 'Evening Shift (8PM - 12AM)', options: [] }
+    };
     
     // Generate time options from 00:00 to 23:30 in 30-minute increments
     for (let hour = 0; hour < 24; hour++) {
@@ -14259,19 +14267,123 @@ function populateTimeSelects() {
                 displayHour = hour - 12;
                 period = 'PM';
             }
-            const displayText = `${displayHour}:${minuteStr} ${period}`;
             
-            // Add options to both selects
-            const startOption = new Option(displayText, timeValue);
-            const endOption = new Option(displayText, timeValue);
+            let displayText = `${displayHour}:${minuteStr} ${period}`;
             
-            startTimeSelect.appendChild(startOption);
-            endTimeSelect.appendChild(endOption);
+            // Determine which group this time belongs to
+            let groupKey;
+            if (hour >= 0 && hour < 6) groupKey = 'night';
+            else if (hour >= 6 && hour < 20) groupKey = 'day';
+            else groupKey = 'evening';
+            
+            timeGroups[groupKey].options.push({ text: displayText, value: timeValue });
         }
     }
     
-    // Add 11:59 PM as the last option for end time only (for shifts ending at midnight)
-    const midnightOption = new Option('11:59 PM', '23:59');
+    // Add grouped options to start time select
+    Object.values(timeGroups).forEach(group => {
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = group.label;
+        group.options.forEach(opt => {
+            optgroup.appendChild(new Option(opt.text, opt.value));
+        });
+        startTimeSelect.appendChild(optgroup);
+    });
+    
+    // Initially disable end time until start time is selected
+    endTimeSelect.disabled = true;
+    
+    // Add event listener to start time to update end time options
+    startTimeSelect.addEventListener('change', function() {
+        updateEndTimeOptions();
+    });
+}
+
+// New function to update end time options based on selected start time
+function updateEndTimeOptions() {
+    const startTimeSelect = document.getElementById('shiftStartTime');
+    const endTimeSelect = document.getElementById('shiftEndTime');
+    
+    if (!startTimeSelect || !endTimeSelect) return;
+    
+    const startValue = startTimeSelect.value;
+    
+    // Clear end time options
+    endTimeSelect.innerHTML = '<option value="">Select end time</option>';
+    
+    if (!startValue) {
+        endTimeSelect.disabled = true;
+        return;
+    }
+    
+    // Enable end time select
+    endTimeSelect.disabled = false;
+    
+    // Parse start time
+    const [startHour, startMinute] = startValue.split(':').map(Number);
+    const startTotalMinutes = startHour * 60 + startMinute;
+    
+    // Calculate minimum end time (30 minutes after start)
+    let minEndHour = startHour;
+    let minEndMinute = startMinute + 30;
+    if (minEndMinute >= 60) {
+        minEndMinute -= 60;
+        minEndHour++;
+    }
+    
+    // Generate end time options starting from 30 minutes after start time
+    for (let hour = minEndHour; hour < 24; hour++) {
+        for (let minute = 0; minute < 60; minute += 30) {
+            // Skip times before minimum end time
+            if (hour === minEndHour && minute < minEndMinute) continue;
+            
+            const hourStr = hour.toString().padStart(2, '0');
+            const minuteStr = minute.toString().padStart(2, '0');
+            const timeValue = `${hourStr}:${minuteStr}`;
+            
+            let displayHour = hour;
+            let period = 'AM';
+            if (hour === 0) {
+                displayHour = 12;
+            } else if (hour === 12) {
+                period = 'PM';
+            } else if (hour > 12) {
+                displayHour = hour - 12;
+                period = 'PM';
+            }
+            
+            let displayText = `${displayHour}:${minuteStr} ${period}`;
+            
+            // Calculate duration for display
+            const endTotalMinutes = hour * 60 + minute;
+            const durationMinutes = endTotalMinutes - startTotalMinutes;
+            const durationHours = Math.floor(durationMinutes / 60);
+            const durationMins = durationMinutes % 60;
+            
+            // Add duration info for common shift lengths
+            if (durationMins === 0 && [2, 4, 6, 8, 10, 12].includes(durationHours)) {
+                displayText += ` (${durationHours}hr shift)`;
+            } else if (durationHours === 0 && durationMins === 30) {
+                displayText += ' (30min shift)';
+            }
+            
+            const option = new Option(displayText, timeValue);
+            endTimeSelect.appendChild(option);
+        }
+    }
+    
+    // Add 11:59 PM as the last option
+    const midnightMinutes = 23 * 60 + 59;
+    const durationToMidnight = midnightMinutes - startTotalMinutes;
+    const hoursToMidnight = Math.floor(durationToMidnight / 60);
+    const minsToMidnight = durationToMidnight % 60;
+    
+    let midnightText = '11:59 PM';
+    if (hoursToMidnight > 0 || minsToMidnight > 0) {
+        midnightText += ` (${hoursToMidnight}hr ${minsToMidnight}min shift)`;
+    }
+    
+    const midnightOption = new Option(midnightText, '23:59');
     endTimeSelect.appendChild(midnightOption);
 }
 
@@ -14280,6 +14392,161 @@ function parseTimeToMinutes(timeStr) {
     if (!timeStr) return null;
     const [hours, minutes] = timeStr.split(':').map(Number);
     return hours * 60 + minutes;
+}
+
+// For adjust shift form - separate function to handle its dropdowns
+function populateAdjustTimeSelects() {
+    const startTimeSelect = document.getElementById('adjustStartTime');
+    const endTimeSelect = document.getElementById('adjustEndTime');
+    
+    if (!startTimeSelect || !endTimeSelect) return;
+    
+    // Clear existing options
+    startTimeSelect.innerHTML = '<option value="">Select start time</option>';
+    endTimeSelect.innerHTML = '<option value="">Select end time</option>';
+    
+    // Create optgroups for better organization
+    const timeGroups = {
+        'night': { label: 'Active Night Shift (12AM - 6AM)', options: [] },
+        'day': { label: 'Day Time (6AM - 8PM)', options: [] },
+        'evening': { label: 'Evening Shift (8PM - 12AM)', options: [] }
+    };
+    
+    // Generate time options from 00:00 to 23:30 in 30-minute increments
+    for (let hour = 0; hour < 24; hour++) {
+        for (let minute = 0; minute < 60; minute += 30) {
+            const hourStr = hour.toString().padStart(2, '0');
+            const minuteStr = minute.toString().padStart(2, '0');
+            const timeValue = `${hourStr}:${minuteStr}`;
+            
+            let displayHour = hour;
+            let period = 'AM';
+            if (hour === 0) {
+                displayHour = 12;
+            } else if (hour === 12) {
+                period = 'PM';
+            } else if (hour > 12) {
+                displayHour = hour - 12;
+                period = 'PM';
+            }
+            
+            let displayText = `${displayHour}:${minuteStr} ${period}`;
+            
+            // Determine which group this time belongs to
+            let groupKey;
+            if (hour >= 0 && hour < 6) groupKey = 'night';
+            else if (hour >= 6 && hour < 20) groupKey = 'day';
+            else groupKey = 'evening';
+            
+            timeGroups[groupKey].options.push({ text: displayText, value: timeValue });
+        }
+    }
+    
+    // Add grouped options to start time select
+    Object.values(timeGroups).forEach(group => {
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = group.label;
+        group.options.forEach(opt => {
+            optgroup.appendChild(new Option(opt.text, opt.value));
+        });
+        startTimeSelect.appendChild(optgroup);
+    });
+    
+    // Initially disable end time until start time is selected
+    endTimeSelect.disabled = true;
+    
+    // Add event listener to start time to update end time options
+    startTimeSelect.addEventListener('change', function() {
+        updateAdjustEndTimeOptions();
+    });
+}
+
+// Update end time options for adjust form
+function updateAdjustEndTimeOptions() {
+    const startTimeSelect = document.getElementById('adjustStartTime');
+    const endTimeSelect = document.getElementById('adjustEndTime');
+    
+    if (!startTimeSelect || !endTimeSelect) return;
+    
+    const startValue = startTimeSelect.value;
+    
+    // Clear end time options
+    endTimeSelect.innerHTML = '<option value="">Select end time</option>';
+    
+    if (!startValue) {
+        endTimeSelect.disabled = true;
+        return;
+    }
+    
+    // Enable end time select
+    endTimeSelect.disabled = false;
+    
+    // Parse start time
+    const [startHour, startMinute] = startValue.split(':').map(Number);
+    const startTotalMinutes = startHour * 60 + startMinute;
+    
+    // Calculate minimum end time (30 minutes after start)
+    let minEndHour = startHour;
+    let minEndMinute = startMinute + 30;
+    if (minEndMinute >= 60) {
+        minEndMinute -= 60;
+        minEndHour++;
+    }
+    
+    // Generate end time options starting from 30 minutes after start time
+    for (let hour = minEndHour; hour < 24; hour++) {
+        for (let minute = 0; minute < 60; minute += 30) {
+            // Skip times before minimum end time
+            if (hour === minEndHour && minute < minEndMinute) continue;
+            
+            const hourStr = hour.toString().padStart(2, '0');
+            const minuteStr = minute.toString().padStart(2, '0');
+            const timeValue = `${hourStr}:${minuteStr}`;
+            
+            let displayHour = hour;
+            let period = 'AM';
+            if (hour === 0) {
+                displayHour = 12;
+            } else if (hour === 12) {
+                period = 'PM';
+            } else if (hour > 12) {
+                displayHour = hour - 12;
+                period = 'PM';
+            }
+            
+            let displayText = `${displayHour}:${minuteStr} ${period}`;
+            
+            // Calculate duration for display
+            const endTotalMinutes = hour * 60 + minute;
+            const durationMinutes = endTotalMinutes - startTotalMinutes;
+            const durationHours = Math.floor(durationMinutes / 60);
+            const durationMins = durationMinutes % 60;
+            
+            // Add duration info for common shift lengths
+            if (durationMins === 0 && [2, 4, 6, 8, 10, 12].includes(durationHours)) {
+                displayText += ` (${durationHours}hr shift)`;
+            } else if (durationHours === 0 && durationMins === 30) {
+                displayText += ' (30min shift)';
+            }
+            
+            const option = new Option(displayText, timeValue);
+            endTimeSelect.appendChild(option);
+        }
+    }
+    
+    // Add 11:59 PM as the last option
+    const midnightMinutes = 23 * 60 + 59;
+    const durationToMidnight = midnightMinutes - startTotalMinutes;
+    const hoursToMidnight = Math.floor(durationToMidnight / 60);
+    const minsToMidnight = durationToMidnight % 60;
+    
+    let midnightText = '11:59 PM';
+    if (hoursToMidnight > 0 || minsToMidnight > 0) {
+        midnightText += ` (${hoursToMidnight}hr ${minsToMidnight}min shift)`;
+    }
+    
+    const midnightOption = new Option(midnightText, '23:59:59');
+    endTimeSelect.appendChild(midnightOption);
 }
 
 // Helper function to format time for display
