@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>MC Manager - Complete System</title>
+    <title>MC Manager/title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   
         <script>
@@ -1498,7 +1498,7 @@ label.required::after {
                 <button onclick="switchView('assignments')" id="assignmentsViewBtn">Assignments</button> <!-- ADD THIS -->
                 <button onclick="switchView('templates')" data-view="templates" id="templatesViewBtn">Templates</button>
                 <button onclick="switchView('conflicts')" id="conflictsViewBtn" class="btn btn-danger btn-sm">Conflicts</button>
-                <button onclick="switchView('summary')" id="summaryViewBtn">Summary</button>
+                <button onclick="switchView('summary')" id="summaryViewBtn">Logs</button>
                 <button onclick="switchView('timesheet')" id="timesheetViewBtn">Timesheet</button>
                 <button onclick="switchView('notes')" id="notesViewBtn">Notes</button>
                 <button onclick="switchView('availability')" id="availabilityViewBtn">Availability</button>
@@ -1855,6 +1855,12 @@ label.required::after {
                         <option value="">Select Duty Type</option>
                     </select>
                 </div>
+                <select id="editShiftStatus">
+                    <option value="pending">Pending</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                </select>
                 <div class="form-group">
                     <label>Pay Rate Override</label>
                     <select id="editShiftPayRate">
@@ -1944,7 +1950,7 @@ label.required::after {
                 <div class="form-group">
                     <label>Duty Type *</label>
                     <select id="shiftDutyType" required onchange="updateTimeFields()">
-                        <option value="">Select Duty Type</option>
+                        <option value="">Active Shift</option>
                         <option value="active_shift_default" selected>Active Shift</option>
                     </select>
                 </div>
@@ -2549,7 +2555,8 @@ label.required::after {
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdxY2hoc2F5cXh0dGV3dGhjc2FoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2OTA0ODksImV4cCI6MjA3MjI2NjQ4OX0.iAGhrDZaHkpLwjJY07o-73l2OiePB2x1ZnnTEfUBd_M';
         const { createClient } = supabase;
         const supabaseClient = createClient(supabaseUrl, supabaseKey);
-
+        
+        
         let requestViewMode = 'staff';
         let publicHolidays = new Map();
         let rosterTemplates = [];
@@ -2796,6 +2803,27 @@ async function initializeApp() {
         console.log('User authenticated:', currentUser.email);
         console.log('User role detected:', currentUserRole);
         
+        // =======================================
+        // ROLE-BASED ACCESS CONTROL
+        // =======================================
+        // Redirect staff members to team.html
+        if (currentUserRole === 'staff') {
+            console.log('Staff member detected - redirecting to team.html');
+            window.location.href = 'team.html';
+            return;
+        }
+        
+        // Only managers, admins, and coordinators can access mc-manager.html
+        const allowedRoles = ['manager', 'admin', 'coordinator'];
+        if (!allowedRoles.includes(currentUserRole)) {
+            console.log('Unauthorized role detected - redirecting to team.html');
+            showNotification('Access denied. Redirecting to team portal...', 'error');
+            setTimeout(() => {
+                window.location.href = 'team.html';
+            }, 2000);
+            return;
+        }
+        
         // Get staff record if linked
         if (currentUser.id) {
             const { data: staffData, error: staffError } = await supabaseClient
@@ -2809,7 +2837,7 @@ async function initializeApp() {
             }
             
             currentStaffData = staffData;
-            currentManagerStaff = staffData; // ADD THIS LINE - Set global for approval functions
+            currentManagerStaff = staffData; // Set global for approval functions
             console.log('Current staff data loaded:', currentStaffData);
         }
 
@@ -2836,13 +2864,22 @@ async function initializeApp() {
         // Load all data - make sure these functions exist
         await loadInitialData();
         
-        // ADD THIS LINE - Load duty types for template dropdowns
+        // Load duty types for template dropdowns
         await loadDutyTypes();
         
         await loadPublicHolidays();
         
         await loadShifts();
-
+        
+        // =======================================
+        // INITIALIZE ROSTER ENHANCEMENTS
+        // =======================================
+        createRosterSummaryContainer();
+        addRosterStyles();
+        updateTableHeaders();
+        initializeShiftModalEnhancements();
+        
+        console.log('=== ROSTER ENHANCEMENTS INITIALIZED ===');
         console.log('=== INITIALIZATION COMPLETE ===');
 
     } catch (error) {
@@ -2852,7 +2889,6 @@ async function initializeApp() {
         showNotification('Failed to initialize: ' + error.message, 'error');
     }
 }
-
 // Vanilla JavaScript CSV Upload Component
 function createCSVUploadInterface() {
     return `
@@ -4307,14 +4343,11 @@ window.toggleAssignmentAccordion = function(index) {
     }
 };
 
-// Switch view mode
 function switchAssignmentView(mode) {
     assignmentViewMode = mode;
     renderAssignments();
 }
 
-// Show edit assignment modal
-// Show edit assignment modal
 async function showEditAssignmentModal(staffId, participantId) {
     try {
         const assignment = window.assignmentData.assignments.find(a => 
@@ -4905,7 +4938,6 @@ function generateRateSummary(shifts, assignmentMap, payRateMap) {
     return html;
 }
 
-// Edit shift rate override
 async function editShiftRate(shiftId) {
     try {
         // Get shift details
@@ -5084,7 +5116,7 @@ async function refreshAfterChange() {
     } else if (currentView === 'notes') {
         await renderNotes();
     } else if (currentView === 'summary') {
-        await renderSummary();
+        await renderclockinlogs();
     } else if (currentView === 'table') {
         renderTable();
     } else {
@@ -5093,8 +5125,8 @@ async function refreshAfterChange() {
 }
 
 async function renderRequests() {
-    const requestsContent = document.getElementById('requestsContent');
-    if (!requestsContent) return;
+    const requestsContent = document.getElementById('requestsView');
+if (!requestsContent) return;
     
     try {
         // Show loading state
@@ -5587,6 +5619,7 @@ async function loadTransportClaims() {
                                 <tr>
                                     <th style="padding: 12px;">Date</th>
                                     <th style="padding: 12px;">Staff</th>
+                                    <th style="padding: 12px;">Route</th>
                                     <th style="padding: 12px;">KM</th>
                                     <th style="padding: 12px;">Amount</th>
                                     <th style="padding: 12px;">Evidence</th>
@@ -5597,6 +5630,12 @@ async function loadTransportClaims() {
                             <tbody>
                                 ${group.claims.map(claim => {
                                     const staff = claim.staff;
+                                    const routeDisplay = (claim.route_origin || claim.route_destination) 
+                                        ? `<div style="font-size: 0.9em;">
+                                            ${claim.route_origin ? `<div><i class="fas fa-map-marker-alt" style="color: #28a745;"></i> ${claim.route_origin}</div>` : ''}
+                                            ${claim.route_destination ? `<div style="margin-top: 2px;"><i class="fas fa-flag-checkered" style="color: #dc3545;"></i> ${claim.route_destination}</div>` : ''}
+                                           </div>`
+                                        : '<span style="color: #999;">Not specified</span>';
                                     
                                     return `
                                         <tr style="border-bottom: 1px solid #f0f0f0;">
@@ -5605,6 +5644,7 @@ async function loadTransportClaims() {
                                                 ${staff ? `${staff.first_name} ${staff.last_name}` : 'Unknown'}
                                                 ${staff?.staff_code ? `<br><small style="color: #666;">${staff.staff_code}</small>` : ''}
                                             </td>
+                                            <td style="padding: 12px; max-width: 250px;">${routeDisplay}</td>
                                             <td style="padding: 12px;">${claim.kilometres || 0} km</td>
                                             <td style="padding: 12px; color: #4CAF50; font-weight: 600;">$${(claim.total_claim || 0).toFixed(2)}</td>
                                             <td style="padding: 12px;">
@@ -5653,6 +5693,7 @@ async function loadTransportClaims() {
                             <th>Date</th>
                             <th>Staff</th>
                             <th>Participant</th>
+                            <th>Route</th>
                             <th>KM</th>
                             <th>Amount</th>
                             <th>Evidence</th>
@@ -5666,7 +5707,7 @@ async function loadTransportClaims() {
             if (claims.length === 0) {
                 html += `
                     <tr>
-                        <td colspan="8" style="text-align: center; padding: 40px; color: #999;">
+                        <td colspan="9" style="text-align: center; padding: 40px; color: #999;">
                             No ${currentRequestStatus === 'all' ? '' : currentRequestStatus} transport claims found
                         </td>
                     </tr>
@@ -5675,6 +5716,12 @@ async function loadTransportClaims() {
                 claims.forEach(claim => {
                     const staff = claim.staff;
                     const participant = claim.shift?.participants;
+                    const routeDisplay = (claim.route_origin || claim.route_destination) 
+                        ? `<div style="font-size: 0.85em; line-height: 1.3;">
+                            ${claim.route_origin ? `<div><i class="fas fa-map-marker-alt" style="color: #28a745;"></i> ${claim.route_origin}</div>` : ''}
+                            ${claim.route_destination ? `<div style="margin-top: 3px;"><i class="fas fa-flag-checkered" style="color: #dc3545;"></i> ${claim.route_destination}</div>` : ''}
+                           </div>`
+                        : '<span style="color: #999;">Not specified</span>';
                     
                     html += `
                         <tr>
@@ -5684,6 +5731,7 @@ async function loadTransportClaims() {
                                 ${staff?.staff_code ? `<br><small style="color: #666;">${staff.staff_code}</small>` : ''}
                             </td>
                             <td>${participant ? `${participant.first_name} ${participant.last_name}` : 'N/A'}</td>
+                            <td style="max-width: 200px;">${routeDisplay}</td>
                             <td>${claim.kilometres || 0} km</td>
                             <td style="color: #4CAF50; font-weight: 600;">$${(claim.total_claim || 0).toFixed(2)}</td>
                             <td>
@@ -5730,6 +5778,7 @@ async function loadTransportClaims() {
         container.innerHTML = `<div class="alert alert-danger">Failed to load transport claims: ${error.message}</div>`;
     }
 }
+
 async function loadLeaveRequests() {
     const container = document.getElementById('requestsTableContainer');
     if (!container) return;
@@ -7090,15 +7139,20 @@ async function loadShifts() {
             .gte('date', '2025-07-01')
             .lte('date', '2025-07-31');
         
-        // Load ALL shifts
-        let query = supabaseClient
+            let query = supabaseClient
     .from('shifts')
-    .select('*')
+    .select(`
+        *,
+        staff:staff_id(*),
+        participants:participant_id(*),
+        locations:location_id(*),
+        duty_types:duty_type_id(*),
+        pay_rates:pay_override_id(*)
+    `)
     .is('deleted_at', null)
     .order('date', { ascending: false })
     .order('start_time', { ascending: true })
-    .limit(50000);  // Explicitly set high limit
-
+    .limit(50000);
 
         const { data: basicShifts, error } = await query;
         
@@ -8000,7 +8054,7 @@ function renderCurrentView() {
             renderRequests();
             break;
         case 'summary':
-            renderSummary();
+            renderclockinlogs();
             break;
         case 'timesheet':
             renderTimesheet();
@@ -8069,7 +8123,7 @@ function switchView(view) {
             renderRequests();
             break;
         case 'summary':
-            renderSummary();
+            renderclockinlogs();
             break;
         case 'timesheet':
             renderTimesheet();
@@ -9475,10 +9529,693 @@ function formatLogType(type) {
     return types[type] || type;
 }
 
-//UPDATE SHIFT
+// ========================================
+// ENHANCED SHIFT MODAL FUNCTIONS
+// ========================================
+
+// Add styles for the schedule cards
+function addShiftModalStyles() {
+    const styles = `
+        <style>
+            /* Fix modal scrolling */
+            .modal-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 9999;
+                overflow-y: auto;
+                padding: 20px;
+            }
+            
+            .modal.large.with-sidebar {
+                max-width: 1200px;
+                width: 90%;
+                max-height: 90vh;
+                overflow: visible;
+                display: flex;
+                flex-direction: column;
+            }
+            
+            .modal.large.with-sidebar .modal-content {
+                overflow-y: auto;
+                max-height: calc(90vh - 200px);
+            }
+            
+            .modal-body-wrapper {
+                display: flex;
+                gap: 20px;
+                flex: 1;
+                min-height: 0;
+            }
+            
+            .modal-main-content {
+                flex: 1;
+                min-width: 0;
+            }
+            
+            .modal-sidebar {
+                width: 400px;
+                max-height: 100%;
+                overflow-y: auto;
+                background: #f8f9fa;
+                border-radius: 8px;
+                padding: 20px;
+                flex-shrink: 0;
+            }
+            
+            .schedule-card {
+                background: white;
+                border-radius: 8px;
+                padding: 16px;
+                margin-bottom: 16px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            
+            .schedule-card-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 16px;
+                padding-bottom: 12px;
+                border-bottom: 2px solid #e9ecef;
+            }
+            
+            .schedule-card-title {
+                font-size: 16px;
+                font-weight: 600;
+                color: #333;
+            }
+            
+            .hours-summary {
+                display: grid;
+                grid-template-columns: 1fr 1fr 1fr;
+                gap: 12px;
+                margin-bottom: 16px;
+                padding: 12px;
+                background: #f8f9fa;
+                border-radius: 6px;
+            }
+            
+            .hours-stat {
+                text-align: center;
+            }
+            
+            .hours-stat-value {
+                font-size: 20px;
+                font-weight: 700;
+                color: #1976d2;
+            }
+            
+            .hours-stat-label {
+                font-size: 11px;
+                color: #666;
+                text-transform: uppercase;
+            }
+            
+            .shift-list {
+                max-height: 300px;
+                overflow-y: auto;
+            }
+            
+            .shift-item {
+                padding: 12px;
+                margin-bottom: 8px;
+                border: 1px solid #e9ecef;
+                border-radius: 6px;
+                background: white;
+                transition: all 0.2s;
+            }
+            
+            .shift-item:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            }
+            
+            .shift-item.overlap {
+                border-color: #dc3545;
+                background: #fff5f5;
+            }
+            
+            .shift-item-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 4px;
+            }
+            
+            .shift-time {
+                font-weight: 600;
+                color: #333;
+            }
+            
+            .shift-hours {
+                background: #e3f2fd;
+                color: #1976d2;
+                padding: 2px 8px;
+                border-radius: 4px;
+                font-size: 12px;
+                font-weight: 600;
+            }
+            
+            .shift-details {
+                font-size: 13px;
+                color: #666;
+            }
+            
+            .overlap-warning {
+                background: #fff3cd;
+                border: 1px solid #ffeaa7;
+                border-radius: 6px;
+                padding: 12px;
+                margin-bottom: 12px;
+                font-size: 13px;
+            }
+            
+            .overlap-warning-icon {
+                color: #f39c12;
+                margin-right: 8px;
+            }
+            
+            .ratio-indicator {
+                background: #d1ecf1;
+                border: 1px solid #bee5eb;
+                border-radius: 6px;
+                padding: 8px 12px;
+                margin-top: 12px;
+                font-size: 13px;
+                color: #0c5460;
+            }
+            
+            .no-shifts-message {
+                text-align: center;
+                padding: 40px 20px;
+                color: #999;
+                font-size: 14px;
+            }
+        </style>
+    `;
+    
+    if (!document.querySelector('#shiftModalStyles')) {
+        const styleElement = document.createElement('div');
+        styleElement.id = 'shiftModalStyles';
+        styleElement.innerHTML = styles;
+        document.body.appendChild(styleElement);
+    }
+}
+
+// Initialize modal enhancements
+function initializeShiftModalEnhancements() {
+    addShiftModalStyles();
+    
+    // Wait for DOM to be ready
+    setTimeout(() => {
+        enhanceAddShiftModal();
+        enhanceEditShiftModal();
+    }, 100);
+}
+
+// Enhance Add Shift Modal
+function enhanceAddShiftModal() {
+    const modal = document.querySelector('#addShiftModal .modal');
+    if (!modal) return;
+    
+    modal.classList.add('with-sidebar');
+    
+    // Get the modal header, content, and footer
+    const modalHeader = modal.querySelector('.modal-header');
+    const modalContent = modal.querySelector('.modal-content');
+    const modalFooter = modal.querySelector('.modal-footer');
+    
+    // Create wrapper for body content
+    const bodyWrapper = document.createElement('div');
+    bodyWrapper.className = 'modal-body-wrapper';
+    
+    // Create main content wrapper
+    const mainContent = document.createElement('div');
+    mainContent.className = 'modal-main-content';
+    
+    // Move form to main content
+    const form = modalContent.querySelector('#addShiftForm');
+    if (form) {
+        mainContent.appendChild(form);
+    }
+    
+    // Create sidebar
+    const sidebar = document.createElement('div');
+    sidebar.className = 'modal-sidebar';
+    sidebar.id = 'addShiftSidebar';
+    sidebar.innerHTML = '<div class="no-shifts-message">Select staff and participant to view schedules</div>';
+    
+    // Clear modal content and rebuild structure
+    modalContent.innerHTML = '';
+    bodyWrapper.appendChild(mainContent);
+    bodyWrapper.appendChild(sidebar);
+    modalContent.appendChild(bodyWrapper);
+}
+
+// Enhance Edit Shift Modal
+function enhanceEditShiftModal() {
+    const modal = document.querySelector('#editShiftModal .modal');
+    if (!modal) return;
+    
+    modal.classList.add('with-sidebar');
+    
+    // Get the modal header, content, and footer
+    const modalHeader = modal.querySelector('.modal-header');
+    const modalContent = modal.querySelector('.modal-content');
+    const modalFooter = modal.querySelector('.modal-footer');
+    
+    // Create wrapper for body content
+    const bodyWrapper = document.createElement('div');
+    bodyWrapper.className = 'modal-body-wrapper';
+    
+    // Create main content wrapper
+    const mainContent = document.createElement('div');
+    mainContent.className = 'modal-main-content';
+    
+    // Move form to main content
+    const form = modalContent.querySelector('#editShiftForm');
+    if (form) {
+        mainContent.appendChild(form);
+    }
+    
+    // Create sidebar
+    const sidebar = document.createElement('div');
+    sidebar.className = 'modal-sidebar';
+    sidebar.id = 'editShiftSidebar';
+    sidebar.innerHTML = '<div class="no-shifts-message">Select staff and participant to view schedules</div>';
+    
+    // Clear modal content and rebuild structure
+    modalContent.innerHTML = '';
+    bodyWrapper.appendChild(mainContent);
+    bodyWrapper.appendChild(sidebar);
+    modalContent.appendChild(bodyWrapper);
+}
+
+// Update staff selection in Add modal
+const originalUpdateStaffSelection = window.updateStaffSelection;
+window.updateStaffSelection = async function() {
+    if (originalUpdateStaffSelection) {
+        await originalUpdateStaffSelection.apply(this, arguments);
+    }
+    updateModalScheduleCards('add');
+};
+
+// Update participant selection in Add modal
+const originalUpdateParticipantSelection = window.updateParticipantSelection;
+window.updateParticipantSelection = async function() {
+    if (originalUpdateParticipantSelection) {
+        await originalUpdateParticipantSelection.apply(this, arguments);
+    }
+    updateModalScheduleCards('add');
+};
+
+// Update staff selection in Edit modal
+const originalUpdateEditStaffSelection = window.updateEditStaffSelection;
+window.updateEditStaffSelection = async function() {
+    if (originalUpdateEditStaffSelection) {
+        await originalUpdateEditStaffSelection.apply(this, arguments);
+    }
+    updateModalScheduleCards('edit');
+};
+
+// Update participant selection in Edit modal
+const originalUpdateEditParticipantSelection = window.updateEditParticipantSelection;
+window.updateEditParticipantSelection = async function() {
+    if (originalUpdateEditParticipantSelection) {
+        await originalUpdateEditParticipantSelection.apply(this, arguments);
+    }
+    updateModalScheduleCards('edit');
+};
+
+async function updateModalScheduleCards(modalType) {
+    const isEdit = modalType === 'edit';
+    const staffId = document.getElementById(isEdit ? 'editShiftStaff' : 'shiftStaff').value;
+    const participantId = document.getElementById(isEdit ? 'editShiftParticipant' : 'shiftParticipant').value;
+    const shiftDate = document.getElementById(isEdit ? 'editShiftDate' : 'shiftDate').value;
+    const sidebar = document.getElementById(isEdit ? 'editShiftSidebar' : 'addShiftSidebar');
+    
+    if (!sidebar) return;
+    
+    // Need both staff and participant selected
+    if (!staffId || !participantId) {
+        sidebar.innerHTML = '<div class="no-shifts-message">Select both staff and participant to view schedules</div>';
+        return;
+    }
+    
+    // Use the shift date to determine the pay period
+    let startDate, endDate;
+    if (shiftDate) {
+        // Get the pay period for the selected shift date
+        const selectedDate = new Date(shiftDate);
+        const payPeriodStart = getPayPeriodStart(selectedDate);
+        const payPeriodEnd = new Date(payPeriodStart);
+        payPeriodEnd.setDate(payPeriodEnd.getDate() + 13);
+        
+        startDate = payPeriodStart.toISOString().split('T')[0];
+        endDate = payPeriodEnd.toISOString().split('T')[0];
+    } else {
+        // Fallback to current pay period if no date selected
+        const today = new Date();
+        const payPeriodStart = getPayPeriodStart(today);
+        const payPeriodEnd = new Date(payPeriodStart);
+        payPeriodEnd.setDate(payPeriodEnd.getDate() + 13);
+        
+        startDate = payPeriodStart.toISOString().split('T')[0];
+        endDate = payPeriodEnd.toISOString().split('T')[0];
+    }
+    
+    try {
+        // Load staff schedule
+        const staffCard = await createStaffScheduleCard(staffId, startDate, endDate, shiftDate);
+        
+        // Load participant schedule
+        const participantCard = await createParticipantScheduleCard(participantId, startDate, endDate, shiftDate);
+        
+        // Check for overlaps and conflicts
+        const startTime = document.getElementById(isEdit ? 'editShiftStartTime' : 'shiftStartTime').value;
+        const endTime = document.getElementById(isEdit ? 'editShiftEndTime' : 'shiftEndTime').value;
+        const excludeShiftId = isEdit ? document.getElementById('editShiftId').value : null;
+        
+        let overlapWarning = '';
+        if (shiftDate && startTime && endTime) {
+            const conflicts = await checkShiftConflicts(staffId, participantId, shiftDate, startTime, endTime, null, excludeShiftId);
+            
+            if (conflicts.overlaps.length > 0) {
+                overlapWarning = `
+                    <div class="overlap-warning">
+                        <i class="fa-solid fa-exclamation-triangle overlap-warning-icon"></i>
+                        <strong>Staff Overlap Detected:</strong> ${conflicts.overlaps[0].message}
+                    </div>
+                `;
+            }
+            
+            if (conflicts.participantOverlaps && conflicts.participantOverlaps.count > 0) {
+                overlapWarning += `
+                    <div class="ratio-indicator">
+                        <i class="fa-solid fa-users"></i>
+                        <strong>${conflicts.participantOverlaps.ratio} Ratio:</strong> 
+                        ${conflicts.participantOverlaps.message}
+                    </div>
+                `;
+            }
+        }
+        
+        sidebar.innerHTML = overlapWarning + staffCard + participantCard;
+        
+        // Highlight overlapping shifts
+        if (shiftDate && startTime && endTime) {
+            highlightOverlappingShifts(shiftDate, startTime, endTime);
+        }
+        
+    } catch (error) {
+        console.error('Error loading schedule cards:', error);
+        sidebar.innerHTML = '<div class="error">Failed to load schedules</div>';
+    }
+}
+
+async function createStaffScheduleCard(staffId, startDate, endDate, selectedDate) {
+    // Check if staff data is available
+    if (!window.staff || !Array.isArray(window.staff)) {
+        console.error('Staff data not available');
+        return '<div class="error">Staff data not loaded</div>';
+    }
+    
+    const staff = window.staff.find(s => s.id === staffId);
+    if (!staff) return '';
+    
+    // Get staff shifts for period
+    const { data: shifts, error } = await supabaseClient
+        .from('shifts')
+        .select(`
+            *,
+            participants:participant_id(first_name, last_name, ndis_participant_number),
+            locations:location_id(name)
+        `)
+        .eq('staff_id', staffId)
+        .gte('date', startDate)
+        .lte('date', endDate)
+        .is('deleted_at', null)
+        .order('date', { ascending: true })
+        .order('start_time', { ascending: true });
+    
+    if (error) throw error;
+    
+    // Calculate hours
+    let totalHours = 0;
+    shifts.forEach(shift => {
+        const hours = calculateShiftHours(shift);
+        totalHours += hours.total;
+    });
+    
+    const hourLimit = staff.limits || 76;
+    const remainingHours = Math.max(0, hourLimit - totalHours);
+    
+    // Group shifts by date
+    const shiftsByDate = {};
+    shifts.forEach(shift => {
+        const date = shift.date.split('T')[0];
+        if (!shiftsByDate[date]) shiftsByDate[date] = [];
+        shiftsByDate[date].push(shift);
+    });
+    
+    // Build shift list HTML
+    let shiftsHtml = '';
+    Object.keys(shiftsByDate).sort().forEach(date => {
+        const dayShifts = shiftsByDate[date];
+        const isSelectedDate = date === selectedDate;
+        
+        shiftsHtml += `
+            <div class="shift-day ${isSelectedDate ? 'selected-date' : ''}">
+                <div style="font-weight: 600; color: #666; font-size: 12px; margin-bottom: 8px;">
+                    ${formatDateShort(date)}
+                </div>
+        `;
+        
+        dayShifts.forEach(shift => {
+            const participant = shift.participants || {};
+            const hours = calculateShiftHours(shift);
+            
+            shiftsHtml += `
+                <div class="shift-item ${isSelectedDate ? 'same-day' : ''}" data-date="${date}" data-start="${shift.start_time}" data-end="${shift.end_time}">
+                    <div class="shift-item-header">
+                        <span class="shift-time">
+                            ${shift.start_time && shift.end_time ? 
+                                `${formatTime12Hour(shift.start_time)} - ${formatTime12Hour(shift.end_time)}` : 
+                                '<i class="fa-solid fa-bed"></i> Sleepover'}
+                        </span>
+                        <span class="shift-hours">${hours.total.toFixed(1)}h</span>
+                    </div>
+                    <div class="shift-details">
+                        <i class="fa-solid fa-user"></i> ${participant.first_name || ''} ${participant.last_name || ''}
+                    </div>
+                </div>
+            `;
+        });
+        
+        shiftsHtml += '</div>';
+    });
+    
+    return `
+        <div class="schedule-card">
+            <div class="schedule-card-header">
+                <span class="schedule-card-title">
+                    <i class="fa-solid fa-user-nurse"></i> ${staff.first_name} ${staff.last_name}
+                </span>
+                <span style="font-size: 12px; color: #666;">
+                    ${formatDateShort(startDate)} - ${formatDateShort(endDate)}
+                </span>
+            </div>
+            
+            <div class="hours-summary">
+                <div class="hours-stat">
+                    <div class="hours-stat-value">${totalHours.toFixed(1)}</div>
+                    <div class="hours-stat-label">Hours Rostered</div>
+                </div>
+                <div class="hours-stat">
+                    <div class="hours-stat-value">${hourLimit}</div>
+                    <div class="hours-stat-label">Hour Limit</div>
+                </div>
+                <div class="hours-stat">
+                    <div class="hours-stat-value" style="color: ${remainingHours < 10 ? '#dc3545' : '#28a745'};">
+                        ${remainingHours.toFixed(1)}
+                    </div>
+                    <div class="hours-stat-label">Remaining</div>
+                </div>
+            </div>
+            
+            <div class="shift-list">
+                ${shiftsHtml || '<div class="no-shifts-message">No shifts in this period</div>'}
+            </div>
+        </div>
+    `;
+}
+
+// Create participant schedule card
+async function createParticipantScheduleCard(participantId, startDate, endDate, selectedDate) {
+    // Check if participants data is available
+    if (!window.participants || !Array.isArray(window.participants)) {
+        console.error('Participants data not available');
+        return '<div class="error">Participants data not loaded</div>';
+    }
+    
+    const participant = window.participants.find(p => p.id === participantId);
+    if (!participant) return '';
+    
+    // Get participant shifts for period
+    const { data: shifts, error } = await supabaseClient
+        .from('shifts')
+        .select(`
+            *,
+            staff:staff_id(first_name, last_name, staff_code),
+            locations:location_id(name)
+        `)
+        .eq('participant_id', participantId)
+        .gte('date', startDate)
+        .lte('date', endDate)
+        .is('deleted_at', null)
+        .order('date', { ascending: true })
+        .order('start_time', { ascending: true });
+    
+    if (error) throw error;
+    
+    // Calculate hours
+    let totalHours = 0;
+    let totalShifts = shifts.length;
+    
+    shifts.forEach(shift => {
+        const hours = calculateShiftHours(shift);
+        totalHours += hours.total;
+    });
+    
+    // Group shifts by date
+    const shiftsByDate = {};
+    shifts.forEach(shift => {
+        const date = shift.date.split('T')[0];
+        if (!shiftsByDate[date]) shiftsByDate[date] = [];
+        shiftsByDate[date].push(shift);
+    });
+    
+    // Build shift list HTML
+    let shiftsHtml = '';
+    Object.keys(shiftsByDate).sort().forEach(date => {
+        const dayShifts = shiftsByDate[date];
+        const isSelectedDate = date === selectedDate;
+        
+        shiftsHtml += `
+            <div class="shift-day ${isSelectedDate ? 'selected-date' : ''}">
+                <div style="font-weight: 600; color: #666; font-size: 12px; margin-bottom: 8px;">
+                    ${formatDateShort(date)} ${dayShifts.length > 1 ? `<span style="color: #17a2b8;">(${dayShifts.length} staff)</span>` : ''}
+                </div>
+        `;
+        
+        dayShifts.forEach(shift => {
+            const staffMember = shift.staff || {};
+            const hours = calculateShiftHours(shift);
+            
+            shiftsHtml += `
+                <div class="shift-item ${isSelectedDate ? 'same-day' : ''}" data-date="${date}" data-start="${shift.start_time}" data-end="${shift.end_time}">
+                    <div class="shift-item-header">
+                        <span class="shift-time">
+                            ${shift.start_time && shift.end_time ? 
+                                `${formatTime12Hour(shift.start_time)} - ${formatTime12Hour(shift.end_time)}` : 
+                                '<i class="fa-solid fa-bed"></i> Sleepover'}
+                        </span>
+                        <span class="shift-hours">${hours.total.toFixed(1)}h</span>
+                    </div>
+                    <div class="shift-details">
+                        <i class="fa-solid fa-user"></i> ${staffMember.first_name || ''} ${staffMember.last_name || ''}
+                        ${staffMember.staff_code ? `<span style="color: #999; font-size: 11px;">(${staffMember.staff_code})</span>` : ''}
+                    </div>
+                </div>
+            `;
+        });
+        
+        shiftsHtml += '</div>';
+    });
+    
+    return `
+        <div class="schedule-card">
+            <div class="schedule-card-header">
+                <span class="schedule-card-title">
+                    <i class="fa-solid fa-user"></i> ${participant.first_name} ${participant.last_name}
+                </span>
+                <span style="font-size: 12px; color: #666;">
+                    ${participant.ndis_participant_number || 'No NDIS #'}
+                </span>
+            </div>
+            
+            <div class="hours-summary">
+                <div class="hours-stat">
+                    <div class="hours-stat-value">${totalShifts}</div>
+                    <div class="hours-stat-label">Total Shifts</div>
+                </div>
+                <div class="hours-stat">
+                    <div class="hours-stat-value">${totalHours.toFixed(1)}</div>
+                    <div class="hours-stat-label">Total Hours</div>
+                </div>
+                <div class="hours-stat">
+                    <div class="hours-stat-value">${(totalHours / totalShifts || 0).toFixed(1)}</div>
+                    <div class="hours-stat-label">Avg Hours/Shift</div>
+                </div>
+            </div>
+            
+            <div class="shift-list">
+                ${shiftsHtml || '<div class="no-shifts-message">No shifts in this period</div>'}
+            </div>
+        </div>
+    `;
+}
+
+// Highlight overlapping shifts
+function highlightOverlappingShifts(date, startTime, endTime) {
+    const shiftItems = document.querySelectorAll(`.shift-item[data-date="${date}"]`);
+    
+    if (!startTime || !endTime) return;
+    
+    const newStart = new Date(`2000-01-01T${startTime}`);
+    const newEnd = new Date(`2000-01-01T${endTime}`);
+    if (newEnd <= newStart) newEnd.setDate(newEnd.getDate() + 1);
+    
+    shiftItems.forEach(item => {
+        const existingStart = item.dataset.start;
+        const existingEnd = item.dataset.end;
+        
+        if (!existingStart || !existingEnd) return;
+        
+        const shiftStart = new Date(`2000-01-01T${existingStart}`);
+        const shiftEnd = new Date(`2000-01-01T${existingEnd}`);
+        if (shiftEnd <= shiftStart) shiftEnd.setDate(shiftEnd.getDate() + 1);
+        
+        // Check for overlap
+        if (!(newEnd <= shiftStart || newStart >= shiftEnd)) {
+            item.classList.add('overlap');
+        } else {
+            item.classList.remove('overlap');
+        }
+    });
+}
+
+// Get pay period start
+function getPayPeriodStart(date) {
+    const referenceDate = new Date('2024-01-01'); // A known Monday
+    const daysSinceReference = Math.floor((date - referenceDate) / (1000 * 60 * 60 * 24));
+    const payPeriodsSinceReference = Math.floor(daysSinceReference / 14);
+    const currentPeriodStart = new Date(referenceDate);
+    currentPeriodStart.setDate(currentPeriodStart.getDate() + (payPeriodsSinceReference * 14));
+    return currentPeriodStart;
+}
+
+
 async function updateShift() {
     try {
-        const shiftId = parseInt(document.getElementById('editShiftId').value);
+        const shiftId = document.getElementById('editShiftId').value; // Remove parseInt
         const date = document.getElementById('editShiftDate').value;
         const startTime = document.getElementById('editShiftStartTime').value;
         const endTime = document.getElementById('editShiftEndTime').value;
@@ -9487,6 +10224,7 @@ async function updateShift() {
         const locationId = document.getElementById('editShiftLocation').value || null;
         const dutyTypeId = document.getElementById('editShiftDutyType').value;
         const payRateId = document.getElementById('editShiftPayRate').value;
+        const clockInRequired = document.getElementById('editClockInRequired').checked; // Add this
         const status = document.getElementById('editShiftStatus').value;
         const notes = document.getElementById('editShiftNotes').value;
 
@@ -9495,39 +10233,52 @@ async function updateShift() {
             return;
         }
 
+        // Calculate duration FIRST
+        let duration_hours = null;
+        const selectedDutyType = dutyTypes.find(d => d.id === dutyTypeId);
+        if (selectedDutyType?.name.toLowerCase().includes('sleepover')) {
+            duration_hours = 2;
+        } else if (startTime && endTime) {
+            const start = new Date(`2000-01-01T${startTime}`);
+            let end = new Date(`2000-01-01T${endTime}`);
+            if (end <= start) end.setDate(end.getDate() + 1);
+            duration_hours = (end - start) / (1000 * 60 * 60);
+        }
+
+        // Handle pay rate
+        let effectivePayRateId = payRateId;
+        if (!effectivePayRateId) {
+            // Try to get assignment pay rate
+            effectivePayRateId = await getAssignmentPayRate(staffId, participantId);
+            
+            if (!effectivePayRateId) {
+                // Fall back to staff default
+                const selectedStaff = staff.find(s => s.id === staffId);
+                effectivePayRateId = selectedStaff?.pay_rate_id;
+            }
+        }
+
+        if (!effectivePayRateId) {
+            showNotification('Missing pay rate. Please select or assign a valid pay rate.', 'error');
+            return;
+        }
+
+        // NOW create updateData with all values defined
         const updateData = {
-            date,
+            date: date,
             start_time: startTime || null,
             end_time: endTime || null,
             staff_id: staffId,
             participant_id: participantId,
             location_id: locationId,
             duty_type_id: dutyTypeId,
-            status: status,
+            pay_override_id: effectivePayRateId,
+            clock_in_required: clockInRequired,
+            status: status || 'pending',
             notes: notes || null,
+            duration_hours: duration_hours,
             updated_at: new Date().toISOString()
         };
-
-        // Handle pay override - explicitly set it based on the selection
-        if (payRateId && payRateId !== '') {
-            // User selected a specific pay rate override
-            updateData.pay_override_id = payRateId;
-        } else {
-            // User selected "Use Staff Default" - get staff's default rate
-            const selectedStaff = staff.find(s => s.id === staffId);
-            updateData.pay_override_id = selectedStaff?.pay_rate_id || '00000000-0000-0000-0000-000000000002';
-        }
-
-        // Calculate new duration
-        const selectedDutyType = dutyTypes.find(d => d.id === dutyTypeId);
-        if (selectedDutyType?.name.toLowerCase().includes('sleepover')) {
-            updateData.duration_hours = 2;
-        } else if (startTime && endTime) {
-            const start = new Date(`2000-01-01T${startTime}`);
-            let end = new Date(`2000-01-01T${endTime}`);
-            if (end <= start) end.setDate(end.getDate() + 1);
-            updateData.duration_hours = (end - start) / (1000 * 60 * 60);
-        }
 
         console.log('Updating shift with data:', updateData);
 
@@ -10004,15 +10755,435 @@ async function denyAdjustment(requestId) {
 }
 
 
-function renderShiftRow(shift, date) {  // <-- Remove async, back to regular function
-    const staff = shift.staff || {};
-    const participant = shift.participant || {};
-    const location = shift.location || {};
-    const dutyType = shift.duty_type || {};
+// ============================================
+// COMPLETE ROSTER REPLACEMENT CODE
+// ============================================
+// 1. Add this to your page initialization (DOMContentLoaded or similar)
+// 2. Replace your existing renderTable() function
+// 3. Replace your existing renderShiftRow() function
+// 4. Add all the new functions below
+
+// INITIALIZATION - Add to your DOMContentLoaded
+document.addEventListener('DOMContentLoaded', function() {
+    createRosterSummaryContainer();
+    addRosterStyles();
+});
+
+// ADD ROSTER STYLES
+function addRosterStyles() {
+    const styles = `
+        <style>
+            .roster-summary-container {
+                background: white;
+                border-radius: 12px;
+                padding: 24px;
+                margin-bottom: 24px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            }
+            .roster-summary-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 20px;
+            }
+            .roster-summary-title {
+                font-size: 20px;
+                font-weight: 600;
+                color: #333;
+            }
+            .roster-summary-period {
+                font-size: 14px;
+                color: #666;
+            }
+            .roster-stats-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                gap: 16px;
+            }
+            .roster-stat-card {
+                background: #f8f9fa;
+                padding: 16px;
+                border-radius: 8px;
+                text-align: center;
+                border: 1px solid #e9ecef;
+                transition: all 0.2s;
+            }
+            .roster-stat-card:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            }
+            .roster-stat-card.highlight-primary {
+                background: #e3f2fd;
+                border-color: #1976d2;
+            }
+            .roster-stat-value {
+                font-size: 24px;
+                font-weight: 700;
+                color: #1976d2;
+                margin-bottom: 4px;
+            }
+            .roster-stat-label {
+                font-size: 12px;
+                color: #666;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            .roster-day-header {
+                background: #f8f9fa;
+                font-weight: 600;
+            }
+            .roster-day-header td {
+                padding: 12px 16px !important;
+                border-bottom: 2px solid #dee2e6;
+            }
+            .roster-day-stats {
+                font-weight: 400;
+                font-size: 14px;
+                color: #666;
+            }
+            .shift-row:hover {
+                background-color: #f8f9fa !important;
+            }
+            .shift-row td {
+                vertical-align: middle;
+                padding: 12px 8px;
+            }
+            .roster-participant-header {
+                background: #e9ecef;
+                font-weight: 600;
+            }
+            .roster-participant-header td {
+                padding: 12px 16px !important;
+                border-bottom: 2px solid #dee2e6;
+            }
+            .roster-participant-stats {
+                float: right;
+                font-weight: 400;
+                font-size: 14px;
+                color: #666;
+            }
+            .actions-cell {
+                white-space: nowrap;
+            }
+            .time-cell {
+                white-space: nowrap;
+            }
+            .participant-badge {
+                display: inline-block;
+                padding: 4px 8px;
+                border-radius: 4px;
+                font-size: 12px;
+                color: white;
+                font-weight: 500;
+            }
+            .location-badge {
+                display: inline-block;
+                padding: 4px 8px;
+                border-radius: 4px;
+                font-size: 12px;
+                background: #e9ecef;
+                color: #495057;
+            }
+        </style>
+    `;
     
-    // REMOVE THE PROBLEMATIC QUERY - just set leave indicator to empty
-    let leaveIndicator = '';
-    // Removed the try-catch block with the staff_availability query that was causing 406
+    if (!document.querySelector('#rosterEnhancementStyles')) {
+        const styleElement = document.createElement('div');
+        styleElement.id = 'rosterEnhancementStyles';
+        styleElement.innerHTML = styles;
+        document.body.appendChild(styleElement);
+    }
+}
+
+// CREATE ROSTER SUMMARY CONTAINER
+function createRosterSummaryContainer() {
+    const summaryHtml = `
+        <div class="roster-summary-container">
+            <div class="roster-summary-header">
+                <h3 class="roster-summary-title">Shift Summary</h3>
+                <div class="roster-summary-period" id="summaryPeriod"></div>
+            </div>
+            <div id="shiftSummaryGrid" class="roster-stats-grid">
+                <!-- Summary stats will be populated here -->
+            </div>
+        </div>
+    `;
+    
+    const rosterView = document.getElementById('rosterView');
+    if (rosterView) {
+        const tableContainer = rosterView.querySelector('.table-container');
+        if (tableContainer) {
+            tableContainer.insertAdjacentHTML('beforebegin', summaryHtml);
+        }
+    }
+}
+
+// UPDATE ROSTER SUMMARY
+function updateRosterSummary() {
+    const summaryGrid = document.getElementById('shiftSummaryGrid');
+    const summaryPeriod = document.getElementById('summaryPeriod');
+    
+    if (!summaryGrid || !filteredShifts) return;
+    
+    const filters = window.currentFilters || {};
+    let periodText = 'All Shifts';
+    if (filters.startDate && filters.endDate) {
+        periodText = `${formatDateShort(filters.startDate)} - ${formatDateShort(filters.endDate)}`;
+    } else if (filters.startDate) {
+        periodText = `From ${formatDateShort(filters.startDate)}`;
+    } else if (filters.endDate) {
+        periodText = `Until ${formatDateShort(filters.endDate)}`;
+    }
+    
+    if (filters.participantId && participantFilterValue) {
+        const participant = participants.find(p => p.id === participantFilterValue);
+        if (participant) {
+            periodText += ` • ${participant.first_name} ${participant.last_name}`;
+        }
+    }
+    
+    if (summaryPeriod) {
+        summaryPeriod.textContent = periodText;
+    }
+    
+    const stats = calculateShiftSummaryStats(filteredShifts);
+    
+    summaryGrid.innerHTML = `
+        <div class="roster-stat-card">
+            <div class="roster-stat-value">${stats.totalShifts}</div>
+            <div class="roster-stat-label">Total Shifts</div>
+        </div>
+        <div class="roster-stat-card">
+            <div class="roster-stat-value">${stats.totalHours.toFixed(1)}h</div>
+            <div class="roster-stat-label">Total Hours</div>
+        </div>
+        <div class="roster-stat-card">
+            <div class="roster-stat-value">${stats.regularShifts}</div>
+            <div class="roster-stat-label">Regular Shifts</div>
+        </div>
+        <div class="roster-stat-card">
+            <div class="roster-stat-value">${stats.sleepoverShifts}</div>
+            <div class="roster-stat-label">Sleepovers</div>
+        </div>
+        <div class="roster-stat-card ${stats.publicHolidayShifts > 0 ? 'highlight-primary' : ''}">
+            <div class="roster-stat-value">${stats.publicHolidayShifts}</div>
+            <div class="roster-stat-label">Public Holidays</div>
+        </div>
+        <div class="roster-stat-card">
+            <div class="roster-stat-value">${stats.uniqueStaff}</div>
+            <div class="roster-stat-label">Staff Members</div>
+        </div>
+        <div class="roster-stat-card">
+            <div class="roster-stat-value">${stats.uniqueParticipants}</div>
+            <div class="roster-stat-label">Participants</div>
+        </div>
+        <div class="roster-stat-card">
+            <div class="roster-stat-value">$${stats.estimatedCost.toFixed(2)}</div>
+            <div class="roster-stat-label">Estimated Cost</div>
+        </div>
+    `;
+}
+
+// CALCULATE SHIFT SUMMARY STATS
+function calculateShiftSummaryStats(shifts) {
+    const stats = {
+        totalShifts: shifts.length,
+        totalHours: 0,
+        regularShifts: 0,
+        sleepoverShifts: 0,
+        publicHolidayShifts: 0,
+        uniqueStaff: new Set(),
+        uniqueParticipants: new Set(),
+        estimatedCost: 0,
+        byStatus: {
+            scheduled: 0,
+            confirmed: 0,
+            completed: 0,
+            no_show: 0,
+            cancelled: 0
+        }
+    };
+    
+    const holidayDates = new Set();
+    if (window.publicHolidays) {
+        window.publicHolidays.forEach((holiday, date) => {
+            holidayDates.add(date);
+        });
+    }
+    
+    shifts.forEach(shift => {
+        const hours = calculateShiftHours(shift);
+        stats.totalHours += hours.total || 0;
+        
+        if (!shift.start_time && !shift.end_time) {
+            stats.sleepoverShifts++;
+        } else {
+            stats.regularShifts++;
+        }
+        
+        const shiftDate = shift.date.split('T')[0];
+        if (holidayDates.has(shiftDate) || shift.is_public_holiday) {
+            stats.publicHolidayShifts++;
+        }
+        
+        if (shift.staff_id) stats.uniqueStaff.add(shift.staff_id);
+        if (shift.participant_id) stats.uniqueParticipants.add(shift.participant_id);
+        
+        if (shift.status && stats.byStatus[shift.status] !== undefined) {
+            stats.byStatus[shift.status]++;
+        }
+        
+        if (shift.pay_rates) {
+            const baseRate = shift.pay_rates.hourly_pay_rate || 30;
+            let rate = baseRate;
+            
+            if (holidayDates.has(shiftDate) || shift.is_public_holiday) {
+                rate = shift.pay_rates.public_holiday || baseRate * 1.5;
+            } else if (new Date(shift.date).getDay() === 0) {
+                rate = shift.pay_rates.sunday || baseRate * 1.25;
+            } else if (new Date(shift.date).getDay() === 6) {
+                rate = shift.pay_rates.saturday || baseRate * 1.25;
+            }
+            
+            stats.estimatedCost += hours.total * rate;
+        }
+    });
+    
+    stats.uniqueStaff = stats.uniqueStaff.size;
+    stats.uniqueParticipants = stats.uniqueParticipants.size;
+    
+    return stats;
+}
+
+function renderTable() {
+    const tbody = document.getElementById('shiftsTableBody');
+    
+    if (!tbody) {
+        console.error('shiftsTableBody element not found');
+        return;
+    }
+    
+    updateRosterSummary();
+    
+    if (filteredShifts.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="10" class="empty-state">
+                    <h3>No shifts found</h3>
+                    <p>Try adjusting your date range or filters</p>
+                    <button class="btn btn-outline btn-sm" onclick="clearAllFilters()">Clear Filters</button>
+                    <button class="btn btn-primary btn-sm" onclick="showAddShiftModal()" style="margin-left: 12px;">Add Shift</button>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    const viewMode = window.currentViewMode || 'date';
+    
+    if (viewMode === 'date') {
+        renderRosterByDate(tbody);
+    } else {
+        renderRosterByParticipant(tbody);
+    }
+}
+
+// RENDER ROSTER BY DATE
+function renderRosterByDate(tbody) {
+    const groupedShifts = groupShiftsByDate(filteredShifts);
+    let html = '';
+    
+    const holidayDates = window.publicHolidays || new Map();
+    
+    Object.keys(groupedShifts).sort().forEach(date => {
+        const dayShifts = groupedShifts[date];
+        const dayStats = calculateDayStats(dayShifts);
+        const dateKey = date.split('T')[0];
+        const isHoliday = holidayDates.has(dateKey);
+        const holiday = isHoliday ? holidayDates.get(dateKey) : null;
+        
+        html += `
+            <tr class="roster-day-header" style="${isHoliday ? 'background: linear-gradient(135deg, #1976d2, #42a5f5); color: white;' : ''}">
+                <td colspan="10">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            ${formatDateLong(date)}
+                            ${isHoliday ? `<span style="background: rgba(255,255,255,0.9); color: #1976d2; padding: 2px 8px; border-radius: 4px; font-size: 11px; margin-left: 8px;">${holiday.name}</span>` : ''}
+                        </div>
+                        <div class="roster-day-stats">
+                            ${dayStats.shifts} shifts | ${formatHours(dayStats.totalHours)}h | $${dayStats.totalPay.toFixed(2)}
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        `;
+        
+        dayShifts.forEach(shift => {
+            html += renderShiftRow(shift, date);
+        });
+    });
+    
+    tbody.innerHTML = html;
+}
+
+// RENDER ROSTER BY PARTICIPANT
+function renderRosterByParticipant(tbody) {
+    const grouped = {};
+    
+    filteredShifts.forEach(shift => {
+        const key = shift.participant_id || 'unassigned';
+        if (!grouped[key]) {
+            grouped[key] = {
+                participant: shift.participants,
+                shifts: []
+            };
+        }
+        grouped[key].shifts.push(shift);
+    });
+    
+    let html = '';
+    
+    Object.values(grouped).forEach(group => {
+        const totalHours = group.shifts.reduce((sum, s) => {
+            const hours = calculateShiftHours(s);
+            return sum + (hours.total || 0);
+        }, 0);
+        
+        const name = group.participant ? 
+            `${group.participant.first_name} ${group.participant.last_name}` : 
+            'Unassigned';
+        
+        html += `
+            <tr class="roster-participant-header">
+                <td colspan="10">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <strong>${name}</strong>
+                            ${group.participant?.ndis_participant_number ? 
+                                `<span style="color: #666; margin-left: 8px;">${group.participant.ndis_participant_number}</span>` : ''}
+                        </div>
+                        <div class="roster-participant-stats">
+                            ${group.shifts.length} shifts | ${totalHours.toFixed(1)}h
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        `;
+        
+        group.shifts.sort((a, b) => a.date.localeCompare(b.date)).forEach(shift => {
+            html += renderShiftRow(shift);
+        });
+    });
+    
+    tbody.innerHTML = html;
+}
+
+function renderShiftRow(shift, date) {
+    const staff = shift.staff || {};
+    const participant = shift.participants || shift.participant || {};
+    const location = shift.locations || shift.location || {};
+    const dutyType = shift.duty_types || shift.duty_type || {};
+    const payRate = shift.pay_rates || {};
     
     // Get participant color
     const participantColor = getParticipantColor(shift.participant_id);
@@ -10023,32 +11194,83 @@ function renderShiftRow(shift, date) {  // <-- Remove async, back to regular fun
             participant.address.toLowerCase().includes(address)
         );
     
-    // Client display with colored badge
+    // Client display with proper name
     const clientDisplay = participant.first_name ? 
-        `<span class="participant-badge" style="background: ${participantColor};">
+        `<span class="participant-badge" style="background: ${participantColor}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500;">
             ${participant.first_name} ${participant.last_name}
-            ${isCareHomeResident ? ' 🏠' : ''}
+            ${isCareHomeResident ? ' <i class="fa-solid fa-house"></i>' : ''}
         </span>` : 
-        (location.name ? `<span class="location-badge">${location.name}</span>` : 'TBA');
+        '<span style="color: #dc3545;"><i class="fa-solid fa-user-slash"></i> Unassigned</span>';
     
-    // Time display
-    const timeDisplay = shift.start_time && shift.end_time ? 
-        `${formatTime12Hour(shift.start_time)} - ${formatTime12Hour(shift.end_time)}` : 
-        (shift.duty_type?.name?.toLowerCase().includes('sleepover') ? 'Sleepover' : '-');
+    // Time display with sleepover badge
+    let timeDisplay = '';
+    if (shift.start_time && shift.end_time) {
+        timeDisplay = `${formatTime12Hour(shift.start_time)} - ${formatTime12Hour(shift.end_time)}`;
+    } else if (!shift.start_time && !shift.end_time) {
+        timeDisplay = '<span style="background: #6c757d; color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px;"><i class="fa-solid fa-bed"></i> Sleepover</span>';
+    } else if (shift.start_time && !shift.end_time) {
+        timeDisplay = `${formatTime12Hour(shift.start_time)} - End`;
+    } else {
+        timeDisplay = `Start - ${formatTime12Hour(shift.end_time)}`;
+    }
     
-    // Hours and pay with proper styling
-    const hours = shift.calculated_hours?.total || 0;
-    const pay = shift.calculated_pay || 0;
+    // Check if public holiday
+    const isPublicHoliday = checkIfPublicHoliday(shift.date) || shift.is_public_holiday;
+    if (isPublicHoliday) {
+        timeDisplay += ' <span style="background: #17a2b8; color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 4px;"><i class="fa-solid fa-calendar-check"></i> PH</span>';
+    }
     
-    // Determine if shift can be edited (based on role and status)
-    const canEdit = currentUserRole !== 'staff' && shift.status !== 'completed';
+    // Calculate hours
+    const hours = calculateShiftHours(shift);
+    const hoursDisplay = `<strong>${hours.total.toFixed(1)}h</strong>`;
+    let hoursDetail = '';
+    if (hours.publicHoliday > 0) {
+        hoursDetail = '<br><span style="color: #17a2b8; font-size: 11px;"><i class="fa-solid fa-dollar-sign"></i> PH Rate</span>';
+    } else if (hours.sleepover > 0) {
+        hoursDetail = '<br><span style="color: #6c757d; font-size: 11px;"><i class="fa-solid fa-bed"></i> Sleepover</span>';
+    }
     
-    // Status badge
-    let statusClass = 'badge-secondary';
-    if (shift.status === 'confirmed') statusClass = 'badge-success';
-    else if (shift.status === 'pending') statusClass = 'badge-warning';
-    else if (shift.status === 'completed') statusClass = 'badge-info';
-    else if (shift.status === 'cancelled') statusClass = 'badge-danger';
+    let payRateLabel = '';
+if (payRate.category && payRate.level && payRate.pay_point) {
+    const hourlyRate = payRate.hourly_pay_rate || payRate.base_rate || 0;
+    payRateLabel = `<span style="color: #666; font-size: 11px;">
+        ${payRate.category} L${payRate.level} P${payRate.pay_point} - <strong style="color: #28a745;">$${hourlyRate}/hr</strong>
+    </span>`;
+} else {
+    // Get the default pay rate from staff
+    const staffPayRate = staff.pay_rate_id ? window.payRates?.find(pr => pr.id === staff.pay_rate_id) : null;
+    if (staffPayRate) {
+        const hourlyRate = staffPayRate.hourly_pay_rate || staffPayRate.base_rate || 0;
+        payRateLabel = `<span style="color: #666; font-size: 11px;">
+            ${staffPayRate.category} L${staffPayRate.level} P${staffPayRate.pay_point} - <strong style="color: #28a745;">$${hourlyRate}/hr</strong>
+        </span>`;
+    } else {
+        payRateLabel = '<span style="color: #999; font-size: 11px;">No Rate Assigned</span>';
+    }
+}
+    
+    // Status badge with icons
+    const statusBadge = getStatusBadge(shift.status);
+    
+    // Clock status with icons
+    let clockDisplay = '';
+    if (shift.clock_in_required) {
+        const clockStatus = getClockStatus(shift);
+        const clockBadge = getClockStatusBadge(clockStatus);
+        const locationBadge = getLocationDistanceBadge(shift);
+        clockDisplay = `${clockBadge}${locationBadge ? '<br>' + locationBadge : ''}`;
+    } else {
+        clockDisplay = '<span style="color: #999; font-size: 11px;"><i class="fa-solid fa-ban"></i> Not Required</span>';
+    }
+    
+    // Staff display
+    const staffDisplay = staff.first_name ? 
+        `${staff.first_name} ${staff.last_name}
+        ${staff.staff_code ? `<br><span style="color: #666; font-size: 11px;"><i class="fa-solid fa-id-badge"></i> ${staff.staff_code}</span>` : ''}` :
+        '<span style="color: #dc3545;"><i class="fa-solid fa-user-slash"></i> Unassigned</span>';
+    
+    // Location display
+    const locationDisplay = `<i class="fa-solid fa-location-dot" style="color: #dc3545;"></i> ${location.name || participant.address || 'Client Home'}`;
     
     const shiftActions = renderShiftActions(shift);
     
@@ -10056,73 +11278,208 @@ function renderShiftRow(shift, date) {  // <-- Remove async, back to regular fun
         <tr class="shift-row" data-shift-id="${shift.id}">
             <td>${formatDate(shift.date)}</td>
             <td class="time-cell">${timeDisplay}</td>
+            <td>${staffDisplay}</td>
             <td>
-                ${staff.first_name || ''} ${staff.last_name || ''}
-                ${leaveIndicator}
+                ${clientDisplay}
+                ${participant.ndis_participant_number ? 
+                    `<br><span style="color: #666; font-size: 11px;"><i class="fa-solid fa-id-card"></i> ${participant.ndis_participant_number}</span>` : ''}
             </td>
-            <td>${clientDisplay}</td>
-            <td>${location.name || participant.address || '-'}</td>
-            <td>${dutyType.name || '-'}</td>
-            <td><span class="badge ${statusClass}">${shift.status || 'pending'}</span></td>
+            <td>${locationDisplay}</td>
+            <td>${payRateLabel}</td>
+            <td style="text-align: center;">
+                ${hoursDisplay}${hoursDetail}
+            </td>
+            <td>${statusBadge}</td>
+            <td>${clockDisplay}</td>
             <td class="actions-cell">${shiftActions}</td>
         </tr>
     `;
 }
 
-
-
-// Keep renderTable as it was originally (no async, no await needed)
-function renderTable() {
-    const tbody = document.getElementById('shiftsTableBody');
+// GET CLOCK STATUS
+function getClockStatus(shift) {
+    if (!shift.clock_in_required) return 'not_required';
     
-    if (!tbody) {
-        console.error('shiftsTableBody element not found');
-        return;
+    const now = new Date();
+    const shiftDate = new Date(shift.date);
+    const shiftStart = new Date(`${shift.date.split('T')[0]}T${shift.start_time}`);
+    const shiftEnd = shift.end_time ? new Date(`${shift.date.split('T')[0]}T${shift.end_time}`) : null;
+    
+    if (now < shiftStart) return 'upcoming';
+    
+    if (!shift.clock_in_time) {
+        if (now > shiftStart) return 'missing_clock_in';
+        return 'awaiting_clock_in';
     }
     
-    if (filteredShifts.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="8" class="empty-state">
-                    <h3>No shifts found</h3>
-                    <p>Try adjusting your date range or filters</p>
-                    <button class="btn btn-outline btn-sm" onclick="clearAllFilters()">Clear Filters</button>
-                    <button class="btn btn-primary btn-sm" onclick="showAddShiftModal()" style="margin-left: 12px;">Add Shift</button>
-                </td>
-            </tr>
-        `;
-        return;
-    }
-
-    // Group shifts by date
-    const groupedShifts = groupShiftsByDate(filteredShifts);
+    const clockInTime = new Date(shift.clock_in_time);
+    const clockInDiff = (clockInTime - shiftStart) / 60000;
     
-    let html = '';
+    const isLateClockIn = clockInDiff > 5;
+    const isEarlyClockIn = clockInDiff < -15;
     
-    Object.keys(groupedShifts).sort().forEach(date => {
-        const dayShifts = groupedShifts[date];
-        const dayStats = calculateDayStats(dayShifts);
+    if (shiftEnd && now > shiftEnd) {
+        if (!shift.clock_out_time) return 'missing_clock_out';
         
-        // Day header
-        html += `
-            <tr class="day-header">
-                <td colspan="8">
-                    ${formatDateLong(date)} 
-                    <span class="day-stats">
-                        ${dayStats.shifts} shifts | ${formatHours(dayStats.totalHours)}h | $${dayStats.totalPay.toFixed(2)}
-                    </span>
-                </td>
-            </tr>
-        `;
+        const clockOutTime = new Date(shift.clock_out_time);
+        const clockOutDiff = (clockOutTime - shiftEnd) / 60000;
         
-        for (const shift of dayShifts) {
-            html += renderShiftRow(shift, date);  // No await needed anymore
+        const isLateClockOut = clockOutDiff > 5;
+        const isEarlyClockOut = clockOutDiff < -5;
+        
+        if (isLateClockIn || isEarlyClockIn || isLateClockOut || isEarlyClockOut) {
+            return 'completed_with_issues';
         }
-    });
-
-    tbody.innerHTML = html;
+        
+        return 'completed_on_time';
+    }
+    
+    if (isLateClockIn) return 'in_progress_late';
+    if (isEarlyClockIn) return 'in_progress_early';
+    return 'in_progress';
 }
 
+// GET CLOCK STATUS BADGE
+function getClockStatusBadge(status) {
+    const badges = {
+        'not_required': '<span style="color: #999;"><i class="fa-solid fa-ban"></i></span>',
+        'upcoming': '<span style="background: #6c757d; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px;"><i class="fa-solid fa-hourglass-start"></i> Upcoming</span>',
+        'awaiting_clock_in': '<span style="background: #ffc107; color: #212529; padding: 4px 8px; border-radius: 4px; font-size: 11px;"><i class="fa-solid fa-clock"></i> Awaiting</span>',
+        'missing_clock_in': '<span style="background: #dc3545; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px;"><i class="fa-solid fa-exclamation-triangle"></i> No Clock In</span>',
+        'in_progress': '<span style="background: #28a745; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px;"><i class="fa-solid fa-play"></i> Active</span>',
+        'in_progress_late': '<span style="background: #fd7e14; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px;"><i class="fa-solid fa-exclamation"></i> Late Start</span>',
+        'in_progress_early': '<span style="background: #17a2b8; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px;"><i class="fa-solid fa-forward"></i> Early Start</span>',
+        'missing_clock_out': '<span style="background: #dc3545; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px;"><i class="fa-solid fa-exclamation-triangle"></i> No Clock Out</span>',
+        'completed_on_time': '<span style="background: #28a745; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px;"><i class="fa-solid fa-check-circle"></i> Complete</span>',
+        'completed_with_issues': '<span style="background: #fd7e14; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px;"><i class="fa-solid fa-exclamation-circle"></i> Issues</span>'
+    };
+    
+    return badges[status] || '<span style="color: #999;"><i class="fa-solid fa-question"></i></span>';
+}
+
+// GET STATUS BADGE
+function getStatusBadge(status) {
+    const badges = {
+        'confirmed': '<span style="background: #007bff; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px;"><i class="fa-solid fa-check"></i> Confirmed</span>',
+        'approved': '<span style="background: #28a745; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px;"><i class="fa-solid fa-check-double"></i> Completed</span>',
+        'pending': '<span style="background: #ffc107; color: #212529; padding: 4px 8px; border-radius: 4px; font-size: 11px;"><i class="fa-solid fa-clock"></i> Pending</span>',
+        'denied': '<span style="background: #dc3545; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px;"><i class="fa-solid fa-user-xmark"></i> No Show</span>',
+        'rejected': '<span style="background: #dc3545; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px;"><i class="fa-solid fa-times-circle"></i> Rejected</span>'
+    };
+    
+    return badges[status] || `<span style="background: #6c757d; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px;"><i class="fa-solid fa-question"></i> ${status || 'Unknown'}</span>`;
+}
+
+// GET LOCATION DISTANCE BADGE
+function getLocationDistanceBadge(shift) {
+    let html = '';
+    
+    if (shift.clock_in_distance_meters !== null) {
+        const distance = Math.round(shift.clock_in_distance_meters);
+        let badge = '';
+        
+        if (distance <= 100) {
+            badge = `<span style="background: #28a745; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px;" title="Clock in: ${distance}m">
+                        <i class="fa-solid fa-location-check"></i> ${distance}m
+                    </span>`;
+        } else if (distance <= 500) {
+            badge = `<span style="background: #ffc107; color: #212529; padding: 2px 6px; border-radius: 4px; font-size: 10px;" title="Clock in: ${distance}m">
+                        <i class="fa-solid fa-location-dot"></i> ${distance}m
+                    </span>`;
+        } else {
+            badge = `<span style="background: #dc3545; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px;" title="Clock in: ${distance}m">
+                        <i class="fa-solid fa-location-crosshairs"></i> ${distance}m
+                    </span>`;
+        }
+        
+        html += badge;
+    }
+    
+    if (shift.clock_out_distance_meters !== null) {
+        const distance = Math.round(shift.clock_out_distance_meters);
+        let badge = '';
+        
+        if (distance <= 100) {
+            badge = `<span style="background: #28a745; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; margin-left: 4px;" title="Clock out: ${distance}m">
+                        <i class="fa-solid fa-location-check"></i> ${distance}m
+                    </span>`;
+        } else if (distance <= 500) {
+            badge = `<span style="background: #ffc107; color: #212529; padding: 2px 6px; border-radius: 4px; font-size: 10px; margin-left: 4px;" title="Clock out: ${distance}m">
+                        <i class="fa-solid fa-location-dot"></i> ${distance}m
+                    </span>`;
+        } else {
+            badge = `<span style="background: #dc3545; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; margin-left: 4px;" title="Clock out: ${distance}m">
+                        <i class="fa-solid fa-location-crosshairs"></i> ${distance}m
+                    </span>`;
+        }
+        
+        html += badge;
+    }
+    
+    return html;
+}
+
+// CHECK IF PUBLIC HOLIDAY
+function checkIfPublicHoliday(date) {
+    if (!window.publicHolidays) return false;
+    const dateKey = date.split('T')[0];
+    return window.publicHolidays.has(dateKey);
+}
+
+// CALCULATE SHIFT HOURS
+function calculateShiftHours(shift) {
+    const result = {
+        regular: 0,
+        publicHoliday: 0,
+        sleepover: 0,
+        total: 0
+    };
+    
+    if (!shift.start_time && !shift.end_time) {
+        result.sleepover = 8;
+        result.total = 8;
+    } else if (shift.start_time && shift.end_time) {
+        const start = new Date(`2000-01-01T${shift.start_time}`);
+        const end = new Date(`2000-01-01T${shift.end_time}`);
+        let hours = (end - start) / (1000 * 60 * 60);
+        
+        if (hours < 0) hours += 24;
+        
+        if (checkIfPublicHoliday(shift.date) || shift.is_public_holiday) {
+            result.publicHoliday = hours;
+        } else {
+            result.regular = hours;
+        }
+        
+        result.total = hours;
+    }
+    
+    return result;
+}
+
+// UPDATE TABLE HEADERS - Call this function to update your table headers
+function updateTableHeaders() {
+    const table = document.querySelector('#shiftsTableBody').closest('table');
+    if (table) {
+        const thead = table.querySelector('thead');
+        if (thead) {
+            thead.innerHTML = `
+                <tr>
+                    <th>Date</th>
+                    <th>Time</th>
+                    <th>Staff</th>
+                    <th>Client</th>
+                    <th>Location</th>
+                    <th>Pay Rate</th>
+                    <th style="text-align: center;">Hours</th>
+                    <th>Status</th>
+                    <th>Clock Status</th>
+                    <th>Actions</th>
+                </tr>
+            `;
+        }
+    }
+}
 
 async function renderAvailability() {
     const availabilityContent = document.getElementById('availabilityContent');
@@ -10490,7 +11847,6 @@ function renderShiftActions(shift) {
     // Admin/Manager can edit any shift
     if (currentUserRole === 'admin' || currentUserRole === 'manager') {
         actions.push(`<button class="btn btn-outline btn-sm" onclick="editShift(${shift.id})">Edit</button>`);
-        actions.push(`<button class="btn btn-danger btn-sm" onclick="deleteShiftConfirm(${shift.id})">Delete</button>`);
     }
     
     // All users can add notes - Updated to call showAddNoteModal directly
@@ -10699,107 +12055,7 @@ function renderShiftActions(shift) {
     return select._searchableDropdown;
 }
 
-async function populateEditModalDropdowns(shift = null) {
-    try {
-        // Ensure reference data is loaded
-        if (!participants.length || !staff.length) {
-            await loadReferenceData();
-        }
-        
-        // Staff dropdown
-        const staffSelect = document.getElementById('editStaff');
-        if (staffSelect) {
-            staffSelect.innerHTML = '<option value="">Select Staff</option>';
-            staff.forEach(s => {
-                const option = document.createElement('option');
-                option.value = s.id;
-                option.textContent = `${s.first_name} ${s.last_name}`;
-                if (shift && shift.staff_id === s.id) {
-                    option.selected = true;
-                }
-                staffSelect.appendChild(option);
-            });
-            
-            // Make it searchable
-            createSearchableDropdown('editStaff', {
-                placeholder: 'Type to search staff...'
-            });
-        }
-        
-        // Participant dropdown
-        const participantSelect = document.getElementById('editParticipant');
-        if (participantSelect) {
-            participantSelect.innerHTML = '<option value="">Select Client</option>';
-            participants.forEach(p => {
-                const option = document.createElement('option');
-                option.value = p.id;
-                option.textContent = `${p.first_name} ${p.last_name}`;
-                if (shift && shift.participant_id === p.id) {
-                    option.selected = true;
-                }
-                participantSelect.appendChild(option);
-            });
-            
-            // Make it searchable
-            createSearchableDropdown('editParticipant', {
-                placeholder: 'Type to search client...'
-            });
-        }
-        
-        // Location dropdown
-        const locationSelect = document.getElementById('editLocation');
-        if (locationSelect) {
-            locationSelect.innerHTML = '<option value="">Select Location</option>';
-            
-            // Add default Client Home option
-            const clientHome = document.createElement('option');
-            clientHome.value = '00000000-0000-0000-0000-000000000001';
-            clientHome.textContent = 'Client Home';
-            locationSelect.appendChild(clientHome);
-            
-            locations.forEach(l => {
-                if (l.id !== '00000000-0000-0000-0000-000000000001') {
-                    const option = document.createElement('option');
-                    option.value = l.id;
-                    option.textContent = l.name;
-                    if (shift && shift.location_id === l.id) {
-                        option.selected = true;
-                    }
-                    locationSelect.appendChild(option);
-                }
-            });
-            
-            // Make it searchable
-            createSearchableDropdown('editLocation', {
-                placeholder: 'Type to search location...'
-            });
-        }
-        
-        // Duty Type dropdown
-        const dutyTypeSelect = document.getElementById('editDutyType');
-        if (dutyTypeSelect) {
-            dutyTypeSelect.innerHTML = '<option value="">Select Duty Type</option>';
-            dutyTypes.forEach(dt => {
-                const option = document.createElement('option');
-                option.value = dt.id;
-                option.textContent = dt.name;
-                if (shift && shift.duty_type_id === dt.id) {
-                    option.selected = true;
-                }
-                dutyTypeSelect.appendChild(option);
-            });
-            
-            // Make it searchable
-            createSearchableDropdown('editDutyType', {
-                placeholder: 'Type to search duty type...'
-            });
-        }
-        
-    } catch (error) {
-        console.error('Error populating modal dropdowns:', error);
-        showToast('Failed to load dropdown options', 'error');
-    }
-}
+
 
 
 // ==========================================
@@ -11128,43 +12384,67 @@ async function updateTemplate(templateId) {
     }
 }
 
+// ==========================================
+// FIXED EDIT TEMPLATE FUNCTION - Replace your existing editTemplate function
+// ==========================================
+
 async function editTemplate(templateId) {
     const template = rosterTemplates.find(t => t.id === templateId);
     if (!template) return;
     
-    openCreateTemplateModal(() => {
-  populateTemplateFields(template);
-});    
-    setTimeout(() => {
+    console.log('Editing template:', template);
+    
+    openCreateTemplateModal();
+    
+    setTimeout(async () => {
         document.getElementById('templateName').value = template.name;
         document.getElementById('templateParticipant').value = template.participant_id || '';
         document.getElementById('templateDescription').value = template.description || '';
         
-        // Trigger participant change to update staff dropdowns
-        onTemplateParticipantChange(template.participant_id);
+        for (let day = 1; day <= 7; day++) {
+            const container = document.getElementById(`day_${day}_shifts`);
+            if (container) container.innerHTML = '';
+        }
         
-        // Populate existing shifts
-        template.roster_template_shifts.forEach(shift => {
+        for (const shift of template.roster_template_shifts) {
             const uiDay = dbDayToUiDay(shift.day_of_week);
-            addShiftToDay(uiDay);
+            
+            await addShiftToDay(uiDay);
+            
+            // CRITICAL FIX: Wait for dropdowns to populate
+            await new Promise(resolve => setTimeout(resolve, 100));
             
             const dayContainer = document.getElementById(`day_${uiDay}_shifts`);
             const lastShift = dayContainer.lastElementChild;
+            
             if (lastShift) {
-                lastShift.querySelector('[data-field="start_time"]').value = shift.start_time || '';
-                lastShift.querySelector('[data-field="end_time"]').value = shift.end_time || '';
-                lastShift.querySelector('[data-field="staff_id"]').value = shift.staff_id || '';
-                lastShift.querySelector('[data-field="duty_type_id"]').value = shift.duty_type_id || '';
-                lastShift.querySelector('[data-field="location_id"]').value = shift.location_id || '';
-                lastShift.querySelector('[data-field="notes"]').value = shift.notes || '';
+                const startTimeInput = lastShift.querySelector('[data-field="start_time"]');
+                const endTimeInput = lastShift.querySelector('[data-field="end_time"]');
+                const staffSelect = lastShift.querySelector('[data-field="staff_id"]');
+                const dutySelect = lastShift.querySelector('[data-field="duty_type_id"]');
+                const locationSelect = lastShift.querySelector('[data-field="location_id"]');
+                const notesInput = lastShift.querySelector('[data-field="notes"]');
+                const clockInCheckbox = lastShift.querySelector('[data-field="clock_in_required"]');
+                
+                if (startTimeInput) startTimeInput.value = shift.start_time || '';
+                if (endTimeInput) endTimeInput.value = shift.end_time || '';
+                if (staffSelect) staffSelect.value = shift.staff_id || '';
+                if (dutySelect) dutySelect.value = shift.duty_type_id || '';
+                if (locationSelect) locationSelect.value = shift.location_id || '';
+                if (notesInput) notesInput.value = shift.notes || '';  // FIX: Added notes
+                if (clockInCheckbox) clockInCheckbox.checked = shift.clock_in_required || false;  // FIX: Added clock-in
             }
-        });
+        }
         
         const saveBtn = document.querySelector('.modal-footer .btn-primary');
-        saveBtn.textContent = 'Update Template';
-        saveBtn.onclick = () => updateTemplate(templateId);
-    }, 100);
+        if (saveBtn) {
+            saveBtn.textContent = 'Update Template';
+            saveBtn.onclick = () => updateTemplate(templateId);
+        }
+    }, 150);
 }
+
+
 
 async function deleteTemplate(templateId) {
     if (!confirm('Are you sure you want to delete this template? This cannot be undone.')) {
@@ -11813,7 +13093,14 @@ async function addShiftToDay(dayNumber) {
                 </button>
             </div>
             
-            <div style="margin-top: 12px;">
+            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 12px; margin-top: 12px;">
+                <div class="form-group" style="margin: 0;">
+                    <label style="display: flex; align-items: center; gap: 6px; font-size: 0.85em;">
+                        <input type="checkbox" data-field="clock_in_required" style="width: 16px; height: 16px;">
+                        Clock-in Required
+                    </label>
+                </div>
+                
                 <div class="form-group" style="margin: 0;">
                     <label style="font-size: 0.85em; margin-bottom: 4px;">Notes (Optional)</label>
                     <input type="text" data-field="notes" class="form-control" 
@@ -11835,11 +13122,18 @@ async function addShiftToDay(dayNumber) {
     await populateLocationDropdown(locationDropdown, participantId);
 }
 
+
+
 async function onTemplateParticipantChange(participantId) {
     const allStaffDropdowns = document.querySelectorAll('[data-field="staff_id"]');
-    allStaffDropdowns.forEach(dropdown => {
-        updateStaffDropdownForParticipant(dropdown, participantId);
-    });
+    for (const dropdown of allStaffDropdowns) {
+        await updateStaffDropdownForParticipant(dropdown, participantId);
+    }
+    
+    const allLocationDropdowns = document.querySelectorAll('[data-field="location_id"]');
+    for (const dropdown of allLocationDropdowns) {
+        await populateLocationDropdown(dropdown, participantId);
+    }
     
     if (participantId) {
         const locationCheck = await validateParticipantLocation(participantId);
@@ -12036,6 +13330,7 @@ async function processTemplateShifts(config) {
     
     const validShifts = [];
     const conflicts = [];
+    const skippedUnassigned = []; // Track skipped unassigned shifts
     const currentDate = new Date(startDate);
     
     while (currentDate <= endDate) {
@@ -12061,6 +13356,17 @@ async function processTemplateShifts(config) {
         );
         
         for (const templateShift of dayShifts) {
+            // CRITICAL FIX: Skip shifts without staff assigned
+            if (!templateShift.staff_id || templateShift.staff_id === '') {
+                console.log(`Skipping unassigned shift on ${dateStr}`);
+                skippedUnassigned.push({
+                    date: dateStr,
+                    reason: 'No staff assigned',
+                    shift: templateShift
+                });
+                continue; // Skip to next shift
+            }
+            
             const shiftData = await buildShiftFromTemplate({
                 templateShift,
                 dateStr,
@@ -12070,9 +13376,8 @@ async function processTemplateShifts(config) {
                 clockInSetting // Pass the setting
             });
             
-            // Only check conflicts if staff is actually assigned
-            if (templateShift.staff_id && templateShift.staff_id !== '' && 
-                templateShift.start_time && templateShift.end_time) {
+            // Check conflicts for assigned shifts with times
+            if (templateShift.start_time && templateShift.end_time) {
                 const conflictCheck = await checkShiftConflicts(
                     templateShift.staff_id,
                     participant.id,
@@ -12099,7 +13404,12 @@ async function processTemplateShifts(config) {
         currentDate.setDate(currentDate.getDate() + 1);
     }
     
-    return { validShifts, conflicts };
+    // Log summary if any unassigned shifts were skipped
+    if (skippedUnassigned.length > 0) {
+        console.log(`Skipped ${skippedUnassigned.length} unassigned shifts`);
+    }
+    
+    return { validShifts, conflicts, skippedUnassigned };
 }
 
 async function buildShiftFromTemplate(config) {
@@ -12127,20 +13437,17 @@ async function buildShiftFromTemplate(config) {
     }
     
     // Fix: Ensure staff_id is either a valid UUID or null, never the default UUID
-    const staffId = templateShift.staff_id && templateShift.staff_id !== '' 
-        ? templateShift.staff_id 
-        : null;
-    
-    // Get pay rate based on the actual staff selected
-    let payRateId = null;
-    if (staffId && staffAssignments[staffId]) {
-        payRateId = staffAssignments[staffId].pay_rate_id;
-    }
-    // Only use default pay rate if we have a staff member but no specific rate
-    if (staffId && !payRateId) {
-        payRateId = systemDefaults.pay_rate_id;
-    }
-    
+const staffId = templateShift.staff_id && templateShift.staff_id !== '' 
+    ? templateShift.staff_id 
+    : null;
+
+// Get pay rate - ALWAYS required, never null
+let payRateId = systemDefaults.pay_rate_id; // Default first
+
+if (staffId && staffAssignments[staffId]) {
+    // Use assignment-specific pay rate if available
+    payRateId = staffAssignments[staffId].pay_rate_id || systemDefaults.pay_rate_id;
+}
     const locationId = templateShift.location_id || 
                       participant.location_id || 
                       systemDefaults.location_id;
@@ -12955,8 +14262,6 @@ window.toggleAllResidents = function(checkbox) {
     residentCheckboxes.forEach(cb => cb.checked = checkbox.checked);
     applyCareHomeFilter();
 }
-// FIX FOR MC-MANAGER.HTML MODAL DROPDOWNS
-// Replace the existing populateModalDropdowns function with this corrected version
 
 function populateModalDropdowns() {
     console.log('Populating modal dropdowns with data:', {
@@ -13019,13 +14324,13 @@ function populateModalDropdowns() {
                 }
             });
             
-            // Add all participants to datalist (care home indicator in the display)
+            // Add all participants to datalist (NO care home indicator in the value)
             participants.forEach(p => {
                 const option = document.createElement('option');
-                const isCareHome = careHomeParticipants.includes(p);
-                const label = isCareHome ? ' (Care Home)' : '';
-                option.value = `${p.first_name} ${p.last_name}${label}`;
+                // Don't add (Care Home) to the value - it breaks the name matching
+                option.value = `${p.first_name} ${p.last_name}`;
                 option.setAttribute('data-id', p.id);
+                option.setAttribute('data-is-care-home', careHomeParticipants.includes(p) ? 'true' : 'false');
                 datalist.appendChild(option);
             });
             
@@ -13036,6 +14341,8 @@ function populateModalDropdowns() {
     });
 
     // ===== POPULATE LOCATION DROPDOWNS (regular selects) =====
+    // Note: These are not used in the current modal setup since location is auto-populated
+    // But keeping for backwards compatibility
     const locationSelects = [
         document.getElementById('shiftLocation'),
         document.getElementById('editShiftLocation')
@@ -13071,73 +14378,56 @@ function populateModalDropdowns() {
         }
     });
 
-    // ===== POPULATE DUTY TYPE DROPDOWNS (regular selects) =====
     const dutyTypeSelects = [
-        document.getElementById('shiftDutyType'),
-        document.getElementById('editShiftDutyType')
-    ];
-    
-    dutyTypeSelects.forEach(select => {
-        if (select) {
-            select.innerHTML = '<option value="">Select Duty Type</option>';
-            dutyTypes.forEach(dt => {
-                select.innerHTML += `<option value="${dt.id}">${dt.name}</option>`;
-            });
-            console.log(`Populated duty type select with ${dutyTypes.length} duty types`);
-        }
-    });
+    document.getElementById('shiftDutyType'),
+    document.getElementById('editShiftDutyType')
+];
 
-    // ===== POPULATE PAY RATE DROPDOWNS (if they exist) =====
-    const payRateSelects = [
-        document.getElementById('shiftPayRate'),
-        document.getElementById('editShiftPayRate')
-    ];
-    
-    payRateSelects.forEach(select => {
-        if (select && payRates) {
-            select.innerHTML = '<option value="">Use Staff Default</option>';
+dutyTypeSelects.forEach(select => {
+    if (select) {
+        select.innerHTML = '<option value="">Select Duty Type</option>';
+        
+        // Add all duty types from database
+        dutyTypes.forEach(dt => {
+            select.innerHTML += `<option value="${dt.id}">${dt.name}</option>`;
+        });
+        
+        // For the add modal, set Active Shift as default
+        if (select.id === 'shiftDutyType') {
+            // Find the Active Shift duty type and select it
+            const activeShiftType = dutyTypes.find(dt => 
+                dt.name.toLowerCase().includes('active') || 
+                dt.name === 'Active Shift'
+            );
             
-            // Group pay rates by category for better organization
-            const groupedRates = {};
-            payRates.forEach(pr => {
-                const category = pr.category || 'Other';
-                if (!groupedRates[category]) {
-                    groupedRates[category] = [];
-                }
-                groupedRates[category].push(pr);
-            });
-            
-            // Add grouped options
-            Object.keys(groupedRates).sort().forEach(category => {
-                if (groupedRates[category].length > 0) {
-                    select.innerHTML += `<optgroup label="${category}">`;
-                    groupedRates[category].forEach(pr => {
-                        const label = payRateLabels?.get(pr.id) || 
-                                    `${category} - Level ${pr.level || '?'} - Point ${pr.pay_point || '?'}`;
-                        const rate = pr.hourly_pay_rate || pr.base_rate || 0;
-                        select.innerHTML += `<option value="${pr.id}">${label} ($${rate}/hr)</option>`;
-                    });
-                    select.innerHTML += `</optgroup>`;
-                }
-            });
+            if (activeShiftType) {
+                select.value = activeShiftType.id;
+            } else if (dutyTypes.length > 0) {
+                // If no "Active Shift" found, select the first duty type
+                select.value = dutyTypes[0].id;
+            }
         }
-    });
+        
+        console.log(`Populated duty type select with ${dutyTypes.length} duty types`);
+    }
+});
 
+
+    // ===== POPULATE PAY RATE DROPDOWNS =====
+    // Don't populate these here - they should be populated dynamically
+    // based on the selected staff member in the updateStaffSelection functions
+    
     // ===== POPULATE STATUS DROPDOWN (only for edit modal) =====
     const statusSelect = document.getElementById('editShiftStatus');
-    if (statusSelect) {
-        statusSelect.innerHTML = `
-            <option value="pending">Pending</option>
-            <option value="confirmed">Confirmed</option>
-            <option value="completed">Completed</option>
-            <option value="cancelled">Cancelled</option>
-        `;
+if (statusSelect) {
+    statusSelect.innerHTML = `
+        <option value="pending">Pending</option>
+        <option value="confirmed">Confirmed</option>
+        <option value="approved">Approved</option>
+        <option value="rejected">Rejected</option>
+    `;
     }
-
 }
-
-// ALSO ADD/UPDATE these helper functions if they don't exist:
-
 function updateStaffSelection() {
     const input = document.getElementById('shiftStaffInput');
     const hiddenInput = document.getElementById('shiftStaff');
@@ -13354,14 +14644,13 @@ function updateEditStaffSelection() {
     updateEditPayRateForAssignment();
 }
 
-// Updated updateEditParticipantSelection function
 async function updateEditParticipantSelection() {
     const input = document.getElementById('editShiftParticipantInput');
     const hiddenInput = document.getElementById('editShiftParticipant');
     const locationHidden = document.getElementById('editShiftLocation');
     const locationDisplay = document.getElementById('editShiftLocationDisplay');
     
-    const inputValue = input.value.replace(' (Care Home)', '');
+    const inputValue = input.value.trim();
     const selectedParticipant = participants.find(p => `${p.first_name} ${p.last_name}` === inputValue);
     
     if (selectedParticipant) {
@@ -13379,10 +14668,61 @@ async function updateEditParticipantSelection() {
         
         // Update pay rate when both staff and participant are selected
         await updateEditPayRateForAssignment();
+        
+        // Update schedule cards
+        updateModalScheduleCards('edit');
     } else {
         hiddenInput.value = '';
         locationHidden.value = '';
         locationDisplay.value = '';
+        
+        // Still update schedule cards to clear them if needed
+        updateModalScheduleCards('edit');
+    }
+}
+
+async function updateEditStaffSelection() {
+    const input = document.getElementById('editShiftStaffInput');
+    const hiddenInput = document.getElementById('editShiftStaff');
+    
+    const inputValue = input.value.trim();
+    const selectedStaff = staff.find(s => `${s.first_name} ${s.last_name}` === inputValue);
+    
+    if (selectedStaff) {
+        hiddenInput.value = selectedStaff.id;
+        
+        // Update pay rate options for this staff member
+        const payRateSelect = document.getElementById('editShiftPayRate');
+        if (payRateSelect) {
+            payRateSelect.innerHTML = '<option value="">Use Assignment Default</option>';
+            
+            if (window.payRates) {
+                window.payRates.forEach(rate => {
+                    const option = document.createElement('option');
+                    option.value = rate.id;
+                    option.text = `${rate.category} - ${rate.level} (P${rate.pay_point}) - $${rate.hourly_pay_rate}/hr`;
+                    payRateSelect.appendChild(option);
+                });
+            }
+        }
+        
+        // Update pay rate when both staff and participant are selected
+        await updateEditPayRateForAssignment();
+        
+        // Update schedule cards
+        updateModalScheduleCards('edit');
+    } else {
+        hiddenInput.value = '';
+        
+        // Clear pay rate options
+        const payRateSelect = document.getElementById('editShiftPayRate');
+        if (payRateSelect) {
+            payRateSelect.innerHTML = '<option value="">Select staff first</option>';
+            payRateSelect.disabled = true;
+        }
+        
+        // Still update schedule cards to clear them if needed
+        updateModalScheduleCards('edit');
     }
 }
 
@@ -13510,89 +14850,6 @@ async function createShift() {
     }
 }
 
-// Updated updateShift function
-async function updateShift() {
-    try {
-        const shiftId = document.getElementById('editShiftId').value;
-        const date = document.getElementById('editShiftDate').value;
-        const startTime = document.getElementById('editShiftStartTime').value;
-        const endTime = document.getElementById('editShiftEndTime').value;
-        const staffId = document.getElementById('editShiftStaff').value;
-        const participantId = document.getElementById('editShiftParticipant').value;
-        const locationId = document.getElementById('editShiftLocation').value;
-        const dutyTypeId = document.getElementById('editShiftDutyType').value;
-        const payRateOverride = document.getElementById('editShiftPayRate').value;
-        const clockInRequired = document.getElementById('editClockInRequired').checked;
-        const status = document.getElementById('editShiftStatus').value;
-        const notes = document.getElementById('editShiftNotes').value;
-
-        // Basic validation
-        if (!date || !staffId || !participantId || !dutyTypeId) {
-            showNotification('Please fill required fields', 'error');
-            return;
-        }
-
-        if (!locationId) {
-            showNotification('Location could not be determined from participant', 'error');
-            return;
-        }
-
-        // Get the effective pay rate
-        let effectivePayRateId = payRateOverride;
-        
-        if (!effectivePayRateId) {
-            effectivePayRateId = await getAssignmentPayRate(staffId, participantId);
-        }
-
-        if (!effectivePayRateId) {
-            showNotification('Missing pay rate. Please select or assign a valid pay rate.', 'error');
-            return;
-        }
-
-        // Calculate duration
-        let duration_hours = null;
-        const selectedDutyType = dutyTypes.find(d => d.id === dutyTypeId);
-        if (selectedDutyType?.name.toLowerCase().includes('sleepover')) {
-            duration_hours = 2;
-        } else if (startTime && endTime) {
-            const start = new Date(`2000-01-01T${startTime}`);
-            let end = new Date(`2000-01-01T${endTime}`);
-            if (end <= start) end.setDate(end.getDate() + 1);
-            duration_hours = (end - start) / (1000 * 60 * 60);
-        }
-
-        const updateData = {
-            date: date,
-            start_time: startTime || null,
-            end_time: endTime || null,
-            staff_id: staffId,
-            participant_id: participantId,
-            location_id: locationId,
-            duty_type_id: dutyTypeId,
-            pay_override_id: effectivePayRateId,
-            clock_in_required: clockInRequired,
-            status: status,
-            notes: notes,
-            duration_hours: duration_hours,
-            updated_at: new Date().toISOString()
-        };
-
-        const { error } = await supabaseClient
-            .from('shifts')
-            .update(updateData)
-            .eq('id', shiftId);
-
-        if (error) throw error;
-
-        showNotification('Shift updated successfully', 'success');
-        closeModal('editShiftModal');
-        await loadShifts();
-
-    } catch (error) {
-        console.error('Error updating shift:', error);
-        showNotification('Failed to update shift: ' + error.message, 'error');
-    }
-}
 
 // Helper function to set "Active Shift" as default when opening add modal
 function openAddShiftModal() {
@@ -13643,7 +14900,7 @@ function showAddShiftModal() {
     loadStaffDataList();
     loadParticipantDataList();
     loadLocationOptions();
-    loadDutyTypeOptions();
+    populateModalDropdowns();
     loadPayRateOptions();
 }
 
@@ -13657,6 +14914,14 @@ function loadStaffDataList() {
     }
 }
 
+function setFieldValue(fieldId, value) {
+    const field = document.getElementById(fieldId);
+    if (field) {
+        field.value = value || '';
+    }
+}
+
+
 function loadParticipantDataList() {
     const datalist = document.getElementById('participantDataList');
     if (datalist && window.participants) {
@@ -13664,12 +14929,6 @@ function loadParticipantDataList() {
             `<option value="${p.first_name} ${p.last_name}" data-id="${p.id}">`
         ).join('');
     }
-    // After your existing setFieldValue calls, add:
-setFieldValue('planManagerEmail', data.participant_plan_manager_email);
-setFieldValue('fundingType', data.funding_type);
-setFieldValue('supportNeeds', data.support_needs);
-setFieldValue('mobilityRequirements', data.mobility_requirements);
-setFieldValue('communicationNeeds', data.communication_needs);
 }
 
 function loadLocationOptions() {
@@ -13682,13 +14941,120 @@ function loadLocationOptions() {
     }
 }
 
-function loadDutyTypeOptions() {
-    const select = document.getElementById('shiftDutyType');
-    if (select && window.dutyTypes) {
-        select.innerHTML = '<option value="">Select Duty Type</option>' +
-            window.dutyTypes.map(dt => 
-                `<option value="${dt.id}">${dt.name}</option>`
-            ).join('');
+//function populateModalDropdowns() {
+  //  const select = document.getElementById('shiftDutyType');
+    //if (select && window.dutyTypes) {
+      //  select.innerHTML = '<option value="">Select Duty Type</option>' +
+        //    window.dutyTypes.map(dt => 
+          //      `<option value="${dt.id}">${dt.name}</option>`
+            //).join('');
+    //}
+//}
+
+function populateModalDropdowns() {
+    console.log('Populating modal dropdowns with data:', {
+        staff: staff.length,
+        participants: participants.length,
+        locations: locations.length,
+        dutyTypes: dutyTypes.length
+    });
+    
+    // ===== POPULATE DATALISTS FOR STAFF (autocomplete inputs) =====
+    const staffDataLists = [
+        'staffDataList',        // For create shift modal
+        'editStaffList'         // For edit shift modal
+    ];
+    
+    staffDataLists.forEach(datalistId => {
+        const datalist = document.getElementById(datalistId);
+        if (datalist) {
+            datalist.innerHTML = '';
+            staff.forEach(s => {
+                const option = document.createElement('option');
+                option.value = `${s.first_name} ${s.last_name}`;
+                option.setAttribute('data-id', s.id);
+                datalist.appendChild(option);
+            });
+            console.log(`Populated ${datalistId} with ${staff.length} staff members`);
+        } else {
+            console.warn(`Datalist ${datalistId} not found`);
+        }
+    });
+    
+    // ===== POPULATE DATALISTS FOR PARTICIPANTS (autocomplete inputs) =====
+    const participantDataLists = [
+        'participantDataList',   // For create shift modal
+        'editParticipantList'    // For edit shift modal
+    ];
+    
+    participantDataLists.forEach(datalistId => {
+        const datalist = document.getElementById(datalistId);
+        if (datalist) {
+            datalist.innerHTML = '';
+            
+            participants.forEach(p => {
+                const option = document.createElement('option');
+                option.value = `${p.first_name} ${p.last_name}`;
+                option.setAttribute('data-id', p.id);
+                datalist.appendChild(option);
+            });
+            
+            console.log(`Populated ${datalistId} with ${participants.length} participants`);
+        } else {
+            console.warn(`Datalist ${datalistId} not found`);
+        }
+    });
+
+    // ===== POPULATE DUTY TYPE DROPDOWNS (regular selects) =====
+    const dutyTypeSelects = [
+        document.getElementById('shiftDutyType'),
+        document.getElementById('editShiftDutyType')
+    ];
+    
+    dutyTypeSelects.forEach(select => {
+        if (select) {
+            // For add modal, check if we want to preserve Active Shift
+            const isAddModal = select.id === 'shiftDutyType';
+            
+            select.innerHTML = '<option value="">Select Duty Type</option>';
+            
+            // Add all duty types from database
+            dutyTypes.forEach(dt => {
+                const option = document.createElement('option');
+                option.value = dt.id;
+                option.textContent = dt.name;
+                select.appendChild(option);
+            });
+            
+            // For the add modal, set Active Shift as default if it exists
+            if (isAddModal) {
+                const activeShiftType = dutyTypes.find(dt => 
+                    dt.name === 'Active Shift' || 
+                    dt.name.toLowerCase() === 'active shift' ||
+                    dt.name.toLowerCase().includes('active')
+                );
+                
+                if (activeShiftType) {
+                    select.value = activeShiftType.id;
+                } else if (dutyTypes.length > 0) {
+                    // If no Active Shift found, select the first duty type
+                    select.value = dutyTypes[0].id;
+                }
+            }
+            
+            console.log(`Populated duty type select with ${dutyTypes.length} duty types`);
+        }
+    });
+
+    // ===== POPULATE STATUS DROPDOWN (only for edit modal) =====
+    const statusSelect = document.getElementById('editShiftStatus');
+    if (statusSelect) {
+        statusSelect.innerHTML = `
+            <option value="pending">Pending</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+        `;
     }
 }
 
@@ -13741,16 +15107,16 @@ function editShift(shiftId) {
         return;
     }
 
-
     // Populate edit form
     document.getElementById('editShiftId').value = shift.id;
     document.getElementById('editShiftDate').value = shift.date;
     document.getElementById('editShiftStartTime').value = shift.start_time || '';
     document.getElementById('editShiftEndTime').value = shift.end_time || '';
     
-    // Set staff selection
-    if (shift.staff) {
-        const staffName = `${shift.staff.first_name} ${shift.staff.last_name}`;
+    // Set staff selection - handle both shift.staff and shift.staff_member
+    const staffData = shift.staff || shift.staff_member || {};
+    if (shift.staff_id && staffData.first_name) {
+        const staffName = `${staffData.first_name} ${staffData.last_name}`;
         document.getElementById('editShiftStaffInput').value = staffName;
         document.getElementById('editShiftStaff').value = shift.staff_id;
     } else {
@@ -13758,55 +15124,81 @@ function editShift(shiftId) {
         document.getElementById('editShiftStaff').value = '';
     }
     
-    // Set participant selection
-    if (shift.participant) {
-        const participantName = `${shift.participant.first_name} ${shift.participant.last_name}`;
+    // Set participant selection - handle both shift.participant and shift.participants
+    const participantData = shift.participant || shift.participants || {};
+    if (shift.participant_id && participantData.first_name) {
+        const participantName = `${participantData.first_name} ${participantData.last_name}`;
         document.getElementById('editShiftParticipantInput').value = participantName;
         document.getElementById('editShiftParticipant').value = shift.participant_id;
+        
+        // Auto-populate location based on participant
+        if (participantData.location_id) {
+            document.getElementById('editShiftLocation').value = participantData.location_id;
+            const location = locations.find(l => l.id === participantData.location_id);
+            if (location) {
+                document.getElementById('editShiftLocationDisplay').value = location.name;
+            }
+        }
     } else {
         document.getElementById('editShiftParticipantInput').value = '';
         document.getElementById('editShiftParticipant').value = '';
+        document.getElementById('editShiftLocationDisplay').value = '';
     }
     
-    document.getElementById('editShiftLocation').value = shift.location_id || '';
-    document.getElementById('editShiftDutyType').value = shift.duty_type_id || '';
-    
-    // Handle pay rate override - ensure the select has the value as an option
-    const payRateSelect = document.getElementById('editShiftPayRate');
-    if (payRateSelect) {
-        // First, ensure the option exists
-        if (shift.pay_override_id) {
-            // Check if the option already exists
-            let optionExists = false;
-            for (let i = 0; i < payRateSelect.options.length; i++) {
-                if (payRateSelect.options[i].value === shift.pay_override_id) {
-                    optionExists = true;
-                    break;
-                }
-            }
-            
-            // If the option doesn't exist, add it
-            if (!optionExists && shift.pay_override) {
-                const option = document.createElement('option');
-                option.value = shift.pay_override_id;
-                option.text = `Custom Rate - $${shift.pay_override.hourly_pay_rate || shift.pay_override.base_rate || 0}/hr`;
-                payRateSelect.appendChild(option);
-            }
-            
-            // Now set the value
-            payRateSelect.value = shift.pay_override_id;
-        } else {
-            // No override, use empty value (Staff Default)
-            payRateSelect.value = '';
+    // Set location if not already set by participant
+    if (shift.location_id && !document.getElementById('editShiftLocation').value) {
+        document.getElementById('editShiftLocation').value = shift.location_id;
+        const location = shift.location || shift.locations || locations.find(l => l.id === shift.location_id);
+        if (location) {
+            document.getElementById('editShiftLocationDisplay').value = location.name || '';
         }
     }
     
-    document.getElementById('editShiftStatus').value = shift.status || 'scheduled';
+    document.getElementById('editShiftDutyType').value = shift.duty_type_id || '';
+    
+    // Set clock-in required checkbox
+    const clockInCheckbox = document.getElementById('editClockInRequired');
+    if (clockInCheckbox) {
+        clockInCheckbox.checked = shift.clock_in_required || false;
+    }
+    
+    // Handle pay rate override
+    const payRateSelect = document.getElementById('editShiftPayRate');
+    if (payRateSelect) {
+        // Clear existing options first
+        payRateSelect.innerHTML = '<option value="">Use Assignment Default</option>';
+        
+        // Load pay rates for the selected staff if available
+        if (shift.staff_id) {
+            const staffMember = window.staff.find(s => s.id === shift.staff_id);
+            if (staffMember && window.payRates) {
+                window.payRates.forEach(rate => {
+                    const option = document.createElement('option');
+                    option.value = rate.id;
+                    option.text = `${rate.category} - ${rate.level} (P${rate.pay_point}) - $${rate.hourly_pay_rate}/hr`;
+                    payRateSelect.appendChild(option);
+                });
+            }
+        }
+        
+        // Set the selected value
+        if (shift.pay_override_id) {
+            payRateSelect.value = shift.pay_override_id;
+        }
+    }
+    
+    document.getElementById('editShiftStatus').value = shift.status || 'pending'; // Default to pending instead of scheduled
     document.getElementById('editShiftNotes').value = shift.notes || '';
 
+    // Show the modal
     document.getElementById('editShiftModal').style.display = 'flex';
+    
+    // Update the schedule cards after populating the form
+    setTimeout(() => {
+        updateModalScheduleCards('edit');
+    }, 100);
 }
-        
+
         async function deleteShift(shiftId) {
     try {
         // Get the shift data before deletion for undo
@@ -14011,22 +15403,7 @@ async function checkShiftConflicts(staffId, participantId, date, startTime, endT
     };
     
     try {
-        // 1. Check staff availability/leave
-        const { data: leaveData } = await supabaseClient
-            .from('staff_availability')
-            .select('*')
-            .eq('staff_id', staffId)
-            .eq('date', date)
-            .eq('is_available', false)
-            .single();
-        
-        if (leaveData) {
-            conflicts.violations.push({
-                type: 'on_leave',
-                message: `Staff is on leave on ${formatDateFriendly(date)}`,
-                blocking: true
-            });
-        }
+        // Get all shifts for this staff on this date
         
         // 2. Get all shifts for this staff on this date
         let staffQuery = supabaseClient
@@ -14134,7 +15511,7 @@ async function checkShiftConflicts(staffId, participantId, date, startTime, endT
         // SUMMARY AND TIMESHEET RENDERING - FIXED
         // ========================================
 
-        function renderSummary() {
+        function renderclockinlogs() {
     const summaryGrid = document.getElementById('summaryGrid');
     if (!summaryGrid || !shifts) {
         if (summaryGrid) {
@@ -14366,9 +15743,18 @@ async function checkShiftConflicts(staffId, participantId, date, startTime, endT
                 <tbody>
     `;
     
-    // Sort shifts by date and time
+    // Sort shifts by date and time - FIXED: Handle null start_time values
     relevantShifts.sort((a, b) => {
-        if (a.date !== b.date) return new Date(b.date) - new Date(a.date);
+        // First sort by date
+        if (a.date !== b.date) {
+            return new Date(b.date) - new Date(a.date);
+        }
+        
+        // Then sort by start_time, handling null values
+        if (!a.start_time && !b.start_time) return 0;
+        if (!a.start_time) return 1;  // Put null values at the end
+        if (!b.start_time) return -1; // Put null values at the end
+        
         return a.start_time.localeCompare(b.start_time);
     });
     
@@ -14396,7 +15782,7 @@ async function checkShiftConflicts(staffId, participantId, date, startTime, endT
                 <td>${formatDateShort(shift.date)}</td>
                 <td>
                     <i class="fas fa-clock clock-icon" style="color: #6c757d;"></i>
-                    ${formatTime12Hour(shift.start_time)}
+                    ${shift.start_time ? formatTime12Hour(shift.start_time) : 'N/A'}
                 </td>
                 <td>
                     ${shift.clock_in_time ? 
@@ -14448,6 +15834,7 @@ async function checkShiftConflicts(staffId, participantId, date, startTime, endT
     
     summaryGrid.innerHTML = html;
 }
+
 
 // Helper function to calculate punctuality in NSW timezone
 function calculatePunctuality(shift) {
@@ -16514,7 +17901,7 @@ async function createCareHomeShifts() {
         duty_type_id: template.duty_type_id,
         start_time: template.start_time,
         end_time: template.end_time,
-        status: 'scheduled',
+        status: 'confirmed',
         // FIX: Add pay_override_id
         pay_override_id: staff.find(s => s.id === selectedStaffId)?.pay_rate_id || null,
         created_by: currentStaffData.id,
@@ -17188,6 +18575,13 @@ function closeModal(modalId) {
         dutyTypes = dutyTypesData || [];
         payRates = payRatesData || [];
         
+        // ALSO SET ON WINDOW OBJECT FOR MODAL ENHANCEMENTS
+        window.staff = staff;
+        window.participants = participants;
+        window.locations = locations;
+        window.dutyTypes = dutyTypes;
+        window.payRates = payRates;
+        
         // Create pay rate labels map
         payRateLabels = new Map();
         if (payRateLabelsData) {
@@ -17222,7 +18616,6 @@ function closeModal(modalId) {
         showNotification('Failed to load reference data: ' + error.message, 'error');
     }
 }
-
         function refreshData() {
             showNotification('Refreshing data...', 'info');
             Promise.all([loadInitialData(), loadShifts()])
@@ -19239,6 +20632,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         console.log('=== MC MANAGER STARTING ===');
         
+        const addShiftDate = document.getElementById('shiftDate');
+if (addShiftDate) {
+    addShiftDate.addEventListener('change', function() {
+        updateModalScheduleCards('add');
+    });
+}
+
+const editShiftDate = document.getElementById('editShiftDate');
+if (editShiftDate) {
+    editShiftDate.addEventListener('change', function() {
+        updateModalScheduleCards('edit');
+    });
+}
         // Check if templates view exists
         if (!document.getElementById('templatesView')) {
             const mainContent = document.querySelector('.main-content') || document.body;
