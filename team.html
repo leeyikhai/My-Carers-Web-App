@@ -3732,7 +3732,7 @@ id="nav-profile">
                 </div>
                 
                 <div class="form-group">
-                    <label for="shiftNotes">Notes</label>
+                    <label for="shiftNotes">Notes <i>(Reason for deviation in shift times)</i></label>
                     <textarea id="shiftNotes" name="shiftNotes" class="form-control" rows="3"></textarea>
                 </div>
             </form>
@@ -14562,12 +14562,41 @@ function formatTimeDisplay(timeStr) {
 // Check for shift conflicts when submitting
 async function checkShiftConflicts(date, startTime, endTime, dutyTypeName) {
     try {
-        // Get all shifts for this staff on this date - using your exact working syntax
+        // Constants for sleepover times
+        const SLEEPOVER_START = '22:00';
+        const SLEEPOVER_END = '06:00';
+        
+        // Helper functions
+        function parseTimeToDate(date, time) {
+            // Handle both HH:MM and HH:MM:SS formats
+            const normalizedTime = time.length === 5 ? `${time}:00` : time;
+            return new Date(`${date}T${normalizedTime}`);
+        }
+        
+        function checkTimeOverlap(start1, end1, start2, end2) {
+            // Handle overnight shifts by adjusting end times
+            if (end1 <= start1) end1 = new Date(end1.getTime() + 24 * 60 * 60 * 1000);
+            if (end2 <= start2) end2 = new Date(end2.getTime() + 24 * 60 * 60 * 1000);
+            
+            // Check for overlap
+            return !(end1 <= start2 || start1 >= end2);
+        }
+        
+        function getDateMinusDays(dateStr, days) {
+            const d = new Date(dateStr + 'T00:00:00');
+            d.setDate(d.getDate() - days);
+            return d.toISOString().slice(0, 10);
+        }
+        
+        // Get previous date to catch overnight sleepovers
+        const prevDate = getDateMinusDays(date, 1);
+        
+        // Fetch shifts from both current date and previous date
         const { data: allShifts, error } = await supabaseClient
             .from('shifts')
             .select('*, duty_type:duty_type_id(name)')
             .eq('staff_id', currentStaff.id)
-            .eq('date', date)
+            .in('date', [date, prevDate])
             .is('deleted_at', null);
         
         if (error) {
@@ -14575,126 +14604,114 @@ async function checkShiftConflicts(date, startTime, endTime, dutyTypeName) {
             return null;
         }
         
-        // Filter out denied/rejected shifts in JavaScript
+        // Filter out denied/rejected shifts
         const existingShifts = allShifts ? allShifts.filter(shift => 
             shift.status !== 'denied' && shift.status !== 'rejected'
         ) : [];
         
-        const isSleepover = dutyTypeName.includes('sleepover');
+        // Determine if the new shift is a sleepover
+        const isNewSleepover = dutyTypeName?.toLowerCase().includes('sleepover');
         
-        if (existingShifts && existingShifts.length > 0) {
-            for (const shift of existingShifts) {
-                const existingIsSleepover = shift.duty_type?.name?.toLowerCase().includes('sleepover');
+        // Build the new shift time window
+        let newStart, newEnd;
+        
+        if (isNewSleepover) {
+            // Sleepover is treated as 10pm-6am on the given date
+            newStart = parseTimeToDate(date, SLEEPOVER_START);
+            newEnd = parseTimeToDate(date, SLEEPOVER_END);
+        } else {
+            if (!startTime || !endTime) return null; // No times provided for regular shift
+            newStart = parseTimeToDate(date, startTime);
+            newEnd = parseTimeToDate(date, endTime);
+        }
+        
+        // Check each existing shift for conflicts
+        for (const shift of existingShifts) {
+            const existingDutyName = shift.duty_type?.name || '';
+            const existingIsSleepover = existingDutyName.toLowerCase().includes('sleepover');
+            
+            // Get participant name for better error messages
+            let participantName = 'Unknown Participant';
+            if (shift.participant_id) {
+                const { data: participant } = await supabaseClient
+                    .from('participants')
+                    .select('first_name, last_name')
+                    .eq('id', shift.participant_id)
+                    .single();
                 
-                // Get participant name
-                let participantName = 'Unknown Participant';
-                if (shift.participant_id) {
-                    const { data: participant, error: participantError } = await supabaseClient
-                        .from('participants')
-                        .select('first_name, last_name')
-                        .eq('id', shift.participant_id)
-                        .single();
-                    
-                    if (participant) {
-                        participantName = `${participant.first_name} ${participant.last_name}`;
-                    }
+                if (participant) {
+                    participantName = `${participant.first_name} ${participant.last_name}`;
                 }
-                
-                // Format date nicely (e.g., "Wednesday 22 Oct")
-                const dateObj = new Date(date);
-                const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
-                const dayNum = dateObj.getDate();
-                const monthName = dateObj.toLocaleDateString('en-US', { month: 'short' });
-                const formattedDate = `${dayName} ${dayNum} ${monthName}`;
-                
-                // Format existing shift time
-                const existingTimeStr = existingIsSleepover ? 'Sleepover Shift' : 
+            }
+            
+            // Format date nicely
+            const dateObj = new Date(shift.date);
+            const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+            const dayNum = dateObj.getDate();
+            const monthName = dateObj.toLocaleDateString('en-US', { month: 'short' });
+            const formattedDate = `${dayName} ${dayNum} ${monthName}`;
+            
+            // Build the existing shift time window
+            let existingStart, existingEnd;
+            
+            if (existingIsSleepover) {
+                // Existing sleepover: 10pm-6am on shift date
+                existingStart = parseTimeToDate(shift.date, SLEEPOVER_START);
+                existingEnd = parseTimeToDate(shift.date, SLEEPOVER_END);
+            } else if (shift.start_time && shift.end_time) {
+                existingStart = parseTimeToDate(shift.date, shift.start_time);
+                existingEnd = parseTimeToDate(shift.date, shift.end_time);
+            } else {
+                // No valid times, skip this shift
+                continue;
+            }
+            
+            // Check for time overlap
+            const hasOverlap = checkTimeOverlap(newStart, newEnd, existingStart, existingEnd);
+            
+            if (hasOverlap) {
+                // Handle different statuses
+                const existingTimeStr = existingIsSleepover ? 
+                    'Sleepover (10:00 PM - 6:00 AM)' : 
                     `${formatTimeDisplay(shift.start_time)} - ${formatTimeDisplay(shift.end_time)}`;
                 
-                // Check based on status
                 if (shift.status === 'confirmed') {
-                    // This is a manager-rostered shift
-                    if (isSleepover || existingIsSleepover) {
-                        return {
-                            hasConflict: true,
-                            message: `You are already rostered for a ${existingIsSleepover ? 'sleepover' : 'shift'} with ${participantName} on ${formattedDate}`,
-                            time: existingTimeStr
-                        };
-                    }
-                    
-                    // Check time overlap for confirmed shifts
-                    if (startTime && endTime && shift.start_time && shift.end_time) {
-                        const newStart = new Date(`2000-01-01T${startTime}`);
-                        const newEnd = new Date(`2000-01-01T${endTime}`);
-                        const existingStart = new Date(`2000-01-01T${shift.start_time}`);
-                        const existingEnd = new Date(`2000-01-01T${shift.end_time}`);
-                        
-                        // Handle overnight shifts
-                        if (newEnd <= newStart) newEnd.setDate(newEnd.getDate() + 1);
-                        if (existingEnd <= existingStart) existingEnd.setDate(existingEnd.getDate() + 1);
-                        
-                        // Check for overlap
-                        if (!(newEnd <= existingStart || newStart >= existingEnd)) {
-                            return {
-                                hasConflict: true,
-                                message: `You're already rostered with ${participantName} on ${formattedDate} (${existingTimeStr})`,
-                                time: existingTimeStr
-                            };
-                        }
-                    }
-                }
-                
-                else if (shift.status === 'pending') {
-                    // They already submitted a request that's waiting
-                    const newTimeStr = `${formatTimeDisplay(startTime)} - ${formatTimeDisplay(endTime)}`;
-                    
-                    // Check if it's the exact same time
-                    if (shift.start_time === startTime + ':00' && shift.end_time === endTime + ':00') {
-                        return {
-                            hasConflict: true,
-                            message: `You already submitted this exact shift with ${participantName} on ${formattedDate}`,
-                            time: ''
-                        };
-                    }
-                    
-                    // Different time - suggest using adjustment
                     return {
                         hasConflict: true,
-                        message: `You have a pending request with ${participantName} on ${formattedDate} (${existingTimeStr}). Use Adjust Shift to change the time`,
-                        time: ''
+                        message: `You are already rostered with ${participantName} on ${formattedDate} (${existingTimeStr})`,
+                        time: existingTimeStr
                     };
                 }
                 
-                else if (shift.status === 'approved') {
-                    // Their previous request was approved
-                    if (isSleepover || existingIsSleepover) {
+                else if (shift.status === 'pending') {
+                    // For pending, check if it's the exact same request
+                    const sameRequest = shift.date === date && 
+                        (isNewSleepover && existingIsSleepover ||
+                         (!isNewSleepover && !existingIsSleepover &&
+                          shift.start_time === (startTime.length === 5 ? startTime + ':00' : startTime) &&
+                          shift.end_time === (endTime.length === 5 ? endTime + ':00' : endTime)));
+                    
+                    if (sameRequest) {
                         return {
                             hasConflict: true,
-                            message: `You already have an approved ${existingIsSleepover ? 'sleepover' : 'shift'} request with ${participantName} on ${formattedDate}`,
-                            time: existingTimeStr
+                            message: `You already submitted this exact shift request with ${participantName} on ${formattedDate}`,
+                            time: ''
+                        };
+                    } else {
+                        return {
+                            hasConflict: true,
+                            message: `You have a pending request with ${participantName} on ${formattedDate} (${existingTimeStr}). Use Adjust Shift to change the time`,
+                            time: ''
                         };
                     }
-                    
-                    // Check time overlap for approved shifts
-                    if (startTime && endTime && shift.start_time && shift.end_time) {
-                        const newStart = new Date(`2000-01-01T${startTime}`);
-                        const newEnd = new Date(`2000-01-01T${endTime}`);
-                        const existingStart = new Date(`2000-01-01T${shift.start_time}`);
-                        const existingEnd = new Date(`2000-01-01T${shift.end_time}`);
-                        
-                        // Handle overnight shifts
-                        if (newEnd <= newStart) newEnd.setDate(newEnd.getDate() + 1);
-                        if (existingEnd <= existingStart) existingEnd.setDate(existingEnd.getDate() + 1);
-                        
-                        // Check for overlap
-                        if (!(newEnd <= existingStart || newStart >= existingEnd)) {
-                            return {
-                                hasConflict: true,
-                                message: `You already have an approved shift with ${participantName} on ${formattedDate} that conflicts with this time`,
-                                time: existingTimeStr
-                            };
-                        }
-                    }
+                }
+                
+                else if (shift.status === 'approved') {
+                    return {
+                        hasConflict: true,
+                        message: `You have an approved shift with ${participantName} on ${formattedDate} (${existingTimeStr}) that conflicts with this time`,
+                        time: existingTimeStr
+                    };
                 }
             }
         }
