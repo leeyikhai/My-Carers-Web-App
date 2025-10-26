@@ -21857,10 +21857,10 @@ const DocumentUploadModal = {
                                 </div>
                                 
                                 <div class="form-group">
-                                    <label>Title *</label>
-                                    <input type="text" id="uploadDocTitle" class="form-control" required
-                                           placeholder="e.g., Driver's License #123456">
-                                </div>
+    <label>Title</label>
+    <input type="text" id="uploadDocTitle" class="form-control" 
+           placeholder="e.g., Driver's License #123456 (optional)">
+</div>
 
                                 ${this.currentStaffId ? '' : `
                                 <div class="form-group">
@@ -22161,78 +22161,103 @@ const DocumentUploadModal = {
     },
 
     async upload() {
-        const form = document.getElementById('documentUploadForm');
-        if (!form.checkValidity()) {
-            form.reportValidity();
-            return;
+    // Manual validation for required fields only
+    const docTypeId = document.getElementById('uploadDocType').value;
+    const file = document.getElementById('uploadFile').files[0];
+    const staffId = this.currentStaffId || document.getElementById('uploadStaffId').value;
+    
+    if (!docTypeId) {
+        showToast('Please select a document type', 'error');
+        return;
+    }
+    
+    if (!staffId) {
+        showToast('Please select a staff member', 'error');
+        return;
+    }
+    
+    if (!file) {
+        showToast('Please select a file', 'error');
+        return;
+    }
+    
+    const btn = document.getElementById('uploadSubmitBtn');
+    btn.disabled = true;
+    btn.textContent = 'Uploading...';
+    
+    try {
+        const typeOption = document.getElementById('uploadDocType').selectedOptions[0];
+        // Auto-generate title if empty
+        const titleInput = document.getElementById('uploadDocTitle').value;
+        const title = titleInput || `${typeOption.textContent} - ${new Date().toLocaleDateString()}`;
+        
+        const issueDate = document.getElementById('uploadIssueDate').value;
+        const expiryDate = document.getElementById('uploadExpiryDate').value;
+        const notes = document.getElementById('uploadNotes').value;
+        
+        // Get current user for verification
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        
+        // Create file path
+        const typeSlug = typeOption.dataset.slug || 'general';
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${staffId}/${Date.now()}_${title.replace(/[^a-z0-9]/gi, '_')}.${fileExt}`;
+        
+        // Upload to storage
+        const { data: uploadData, error: uploadError } = await supabaseClient.storage
+            .from('documents')
+            .upload(fileName, file);
+            
+        if (uploadError) throw uploadError;
+        
+        // Get public URL
+        const { data: urlData } = supabaseClient.storage
+            .from('documents')
+            .getPublicUrl(fileName);
+            
+        // Insert into documents table with auto-verification
+        const { error: dbError } = await supabaseClient
+            .from('documents')
+            .insert({
+                entity_type: 'staff',
+                entity_id: staffId,
+                document_type_id: docTypeId,
+                title: title,
+                file_url: urlData.publicUrl,
+                bucket: 'documents',
+                object_path: fileName,
+                issue_date: issueDate || null,
+                expiry_date: expiryDate || null,
+                notes: notes || null,
+                // Auto-verify when uploaded through mc-manager
+                is_verified: true,
+                verified_by: user?.id || null,
+                verified_at: new Date().toISOString(),
+                // Version fields
+                version_number: 1,
+                is_current: true,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            });
+            
+        if (dbError) throw dbError;
+        
+        showToast('Document uploaded and verified successfully', 'success');
+        this.close();
+        
+        // Refresh the document list
+        if (window.EnhancedDocumentManager) {
+            window.EnhancedDocumentManager.loadStaffDocuments();
         }
         
-        const btn = document.getElementById('uploadSubmitBtn');
-        btn.disabled = true;
-        btn.textContent = 'Uploading...';
-        
-        try {
-            const docTypeId = document.getElementById('uploadDocType').value;
-            const typeOption = document.getElementById('uploadDocType').selectedOptions[0];
-            const title = document.getElementById('uploadDocTitle').value;
-            const staffId = this.currentStaffId || document.getElementById('uploadStaffId').value;
-            const issueDate = document.getElementById('uploadIssueDate').value;
-            const expiryDate = document.getElementById('uploadExpiryDate').value;
-            const notes = document.getElementById('uploadNotes').value;
-            const file = document.getElementById('uploadFile').files[0];
-            
-            if (!file) {
-                showToast('Please select a file', 'error');
-                return;
-            }
-            
-            const typeSlug = typeOption.dataset.slug;
-            const uuid = crypto.randomUUID();
-            const ext = file.name.split('.').pop();
-            const objectPath = `${staffId}/${typeSlug}/${uuid}.${ext}`;
-            
-            const { data: uploadData, error: uploadError } = await supabaseClient.storage
-                .from('documents')
-                .upload(objectPath, file);
-                
-            if (uploadError) throw uploadError;
-            
-            const { data: urlData } = supabaseClient.storage
-                .from('documents')
-                .getPublicUrl(objectPath);
-                
-            const { error: dbError } = await supabaseClient
-                .from('documents')
-                .insert({
-                    entity_type: 'staff',
-                    entity_id: staffId,
-                    document_type_id: docTypeId,
-                    title,
-                    file_url: urlData.publicUrl,
-                    bucket: 'documents',
-                    object_path: objectPath,
-                    issue_date: issueDate || null,
-                    expiry_date: expiryDate || null,
-                    notes: notes || null
-                });
-                
-            if (dbError) throw dbError;
-            
-            showToast('Document uploaded successfully', 'success');
-            this.close();
-            
-            if (window.EnhancedDocumentManager) {
-                window.EnhancedDocumentManager.loadStaffDocuments();
-            }
-            
-        } catch (error) {
-            console.error('Error uploading:', error);
-            showToast('Failed to upload document', 'error');
-        } finally {
-            btn.disabled = false;
-            btn.textContent = 'Upload Document';
-        }
-    },
+    } catch (error) {
+        console.error('Error uploading:', error);
+        showToast(error.message || 'Failed to upload document', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Upload Document';
+    }
+},
 
     close() {
         const modal = document.getElementById('documentUploadModal');
