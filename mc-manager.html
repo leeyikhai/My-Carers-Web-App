@@ -22,1456 +22,2266 @@
     <link rel="icon" type="image/png" sizes="16x16" href="https://gqchhsayqxttewthcsah.supabase.co/storage/v1/object/public/Branding/mc-favicon-16x16.png">
 <link rel="icon" type="image/png" sizes="32x32" href="https://gqchhsayqxttewthcsah.supabase.co/storage/v1/object/public/Branding/mc-favicon-32x32.png">
 
-    <style>
-
-      
-        :root {
-
-            .participant-badge {
-    display: inline-block;
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 500;
-    color: white;
-    white-space: nowrap;
-}
-
-/* Modal Tabs Styling */
-.modal-tabs {
-    display: flex;
-    gap: 0;
-    margin-bottom: 24px;
-    border-bottom: 2px solid #e0e0e0;
-    overflow-x: auto;
-}
-
-.tab-btn {
-    padding: 12px 20px;
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: #666;
-    font-weight: 500;
-    border-bottom: 3px solid transparent;
-    transition: all 0.3s;
-    white-space: nowrap;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.tab-btn:hover {
-    color: var(--primary-color);
-    background: #f5f5f5;
-}
-
-.tab-btn.active {
-    color: var(--primary-color);
-    border-bottom-color: var(--primary-color);
-}
-
-/* Section Titles */
-.section-title {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin: 24px 0 16px 0;
-    padding-bottom: 8px;
-    border-bottom: 2px solid #e0e0e0;
-    color: var(--text-dark);
-}
-
-/* Info Boxes */
-.info-box {
-    padding: 12px;
-    border-radius: 8px;
-    margin-bottom: 16px;
-    display: flex;
-    gap: 10px;
-    align-items: start;
-}
-
-.info-box.info {
-    background: #e3f2fd;
-    border-left: 4px solid #2196f3;
-}
-
-.info-box i {
-    margin-top: 2px;
-    color: #2196f3;
-}
-
-/* Location Controls */
-.location-controls {
-    display: flex;
-    gap: 16px;
-    align-items: end;
-    margin-bottom: 16px;
-}
-
-.map-container {
-    height: 400px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    margin-bottom: 16px;
-}
-
-.location-info-card {
-    background: #f8f9fa;
-    border-radius: 8px;
-    padding: 16px;
-    margin-bottom: 16px;
-}
-
-.location-info-card h4 {
-    margin: 0 0 12px 0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.info-grid {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: 16px;
-    margin-bottom: 12px;
-}
-
-.location-display {
-    margin-top: 4px;
-    color: #666;
-}
-
-.location-tips {
-    display: grid;
-    gap: 6px;
-    font-size: 13px;
-    color: #666;
-    padding-top: 12px;
-    border-top: 1px solid #dee2e6;
-}
-
-.location-tips div {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.location-tips i {
-    color: var(--primary-color);
-}
-
-/* Tables */
-.table-responsive {
-    overflow-x: auto;
-    margin-top: 16px;
-}
-
-.data-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.data-table th {
-    background: #f8f9fa;
-    padding: 12px;
-    text-align: left;
-    font-weight: 600;
-    border-bottom: 2px solid #dee2e6;
-}
-
-.data-table td {
-    padding: 12px;
-    border-bottom: 1px solid #dee2e6;
-}
-
-.data-table tr.no-data td {
-    text-align: center;
-    color: #999;
-    padding: 24px;
-}
-
-/* Required field indicator */
-label.required::after {
-    content: " *";
-    color: #dc3545;
-}
-
-/* Search bar */
-.search-bar {
-    position: relative;
-    margin-bottom: 16px;
-}
-
-.search-input {
-    width: 100%;
-    padding: 10px 40px 10px 12px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-}
-
-.search-bar i {
-    position: absolute;
-    right: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #999;
-}
-
-/* Document upload section */
-.document-upload-section {
-    background: #f8f9fa;
-    padding: 20px;
-    border-radius: 8px;
-    margin-bottom: 24px;
-}
-
-/* Staff assignment form */
-.staff-assignment-form {
-    background: #f8f9fa;
-    padding: 20px;
-    border-radius: 8px;
-    margin-bottom: 24px;
-}
-
-.loading-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(255, 255, 255, 0.95);
-    z-index: 1000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: var(--radius-lg);
-}
-
-.modal-content {
-    position: relative; /* For loading overlay positioning */
-}
-.accordion-content { 
-    display: none; 
-}
-
-.accordion-content.active { 
-    display: table-row;
-}
-/* Pay Rate Badges */
-.participant-badge {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.badge-default {
-    background: #e9ecef;
-    color: #495057;
-}
-
-.badge-assignment {
-    background: #d4edda;
-    color: #155724;
-}
-
-.badge-override {
-    background: #fff3cd;
-    color: #856404;
-}
-
-.badge-holiday {
-    background: #f8d7da;
-    color: #721c24;
-}
-
-.badge-sleepover {
-    background: #cce5ff;
-    color: #004085;
-}
-
-/* Shift Cards */
-.shift-card {
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
-    padding: 12px;
-    margin-bottom: 12px;
-    background: white;
-    transition: box-shadow 0.2s;
-}
-
-.shift-card:hover {
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-
-.shift-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-}
-
-.shift-badges {
-    display: flex;
-    gap: 6px;
-}
-
-.rate-summary {
-    margin-top: 30px;
-    padding: 20px;
-    background: #f8f9fa;
-    border-radius: 8px;
-}
-
-.rate-summary-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 15px;
-    margin-top: 15px;
-}
-
-.rate-summary-item {
-    background: white;
-    padding: 12px;
-    border-radius: 6px;
-    border: 1px solid #dee2e6;
-}
-
-.location-badge {
-    display: inline-block;
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 500;
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    color: white;
-    white-space: nowrap;
-}
-          
-
-          /* Add to your existing styles */
-@media (max-width: 768px) {
-    /* Header adjustments */
-    .header-content {
-        flex-direction: column;
-        padding: 12px;
-        gap: 8px;
+<style>
+    /* ==========================================================================
+       Root Variables & Design System
+       ========================================================================== */
+    :root {
+        /* Primary Colors - Using lighter blue for primary actions */
+        --primary-color: #4A90E2;          /* Lighter blue for primary buttons */
+        --primary-hover: #357ABD;          /* Hover state for lighter blue */
+        --primary-dark: #004990;           /* Original dark blue for accents */
+        --primary-dark-hover: #003d75;     /* Dark blue hover */
+        --primary-light: #e3f2fd;          /* Light blue background */
+        --primary-lighter: #f0f8ff;        /* Extra light blue */
+        
+        /* Extended Color Palette */
+        --success-color: #88a542;
+        --success-hover: #7a9339;
+        --success-light: #d4edda;
+        --success-dark: #155724;
+        
+        --danger-color: #e74c3c;
+        --danger-hover: #c0392b;
+        --danger-light: #f8d7da;
+        --danger-dark: #721c24;
+        
+        --warning-color: #f39c12;
+        --warning-hover: #e67e22;
+        --warning-light: #fff3cd;
+        --warning-dark: #856404;
+        
+        --info-color: #359dca;
+        --info-hover: #2e8bb5;
+        --info-light: #cce5ff;
+        --info-dark: #004085;
+        
+        /* Day Colors for Scheduling */
+        --monday-color: #e91e63;
+        --tuesday-color: #ff9800;
+        --wednesday-color: #4caf50;
+        --thursday-color: #2196f3;
+        --friday-color: #9c27b0;
+        --saturday-color: #673ab7;
+        --sunday-color: #f44336;
+        
+        /* Text Colors */
+        --text-primary: #2c3e50;
+        --text-secondary: #34495e;
+        --text-muted: #7f8c8d;
+        --text-light: #95a5a6;
+        --text-white: #ffffff;
+        
+        /* Background Colors */
+        --bg-primary: #ffffff;
+        --bg-secondary: #f8f9fa;
+        --bg-light: #ecf0f1;
+        --bg-dark: #e9ecef;
+        
+        /* Border Colors */
+        --border-color: #e0e0e0;
+        --border-light: #ecf0f1;
+        --border-dark: #bdc3c7;
+        --border-dashed: #ddd;
+        
+        /* Shadows */
+        --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
+        --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
+        --shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
+        --shadow-xl: 0 20px 25px rgba(0,0,0,0.15);
+        --shadow-hover: 0 8px 16px rgba(0,0,0,0.1);
+        
+        /* Border Radius */
+        --radius-sm: 4px;
+        --radius-md: 6px;
+        --radius-lg: 8px;
+        --radius-xl: 12px;
+        --radius-2xl: 16px;
+        --radius-pill: 20px;
+        --radius-circle: 50%;
+        
+        /* Transitions */
+        --transition: all 0.2s ease-in-out;
+        --transition-fast: all 0.15s ease;
+        --transition-slow: all 0.3s ease;
+        
+        /* Typography */
+        --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        --font-size-xs: 0.75rem;    /* 12px */
+        --font-size-sm: 0.875rem;   /* 14px */
+        --font-size-base: 1rem;     /* 16px */
+        --font-size-lg: 1.125rem;   /* 18px */
+        --font-size-xl: 1.25rem;    /* 20px */
+        --font-size-2xl: 1.5rem;    /* 24px */
+        --font-size-3xl: 1.875rem;  /* 30px */
+        --font-size-4xl: 2.25rem;   /* 36px */
+        
+        /* Font Weights */
+        --font-weight-normal: 400;
+        --font-weight-medium: 500;
+        --font-weight-semibold: 600;
+        --font-weight-bold: 700;
+        
+        /* Line Heights */
+        --line-height-tight: 1.2;
+        --line-height-normal: 1.6;
+        --line-height-relaxed: 1.8;
+        
+        /* Spacing */
+        --spacing-xs: 4px;
+        --spacing-sm: 8px;
+        --spacing-md: 12px;
+        --spacing-lg: 16px;
+        --spacing-xl: 20px;
+        --spacing-2xl: 24px;
+        --spacing-3xl: 32px;
+        --spacing-4xl: 40px;
+        
+        /* Z-Index Scale */
+        --z-dropdown: 100;
+        --z-sticky: 500;
+        --z-overlay: 900;
+        --z-modal: 1000;
+        --z-tooltip: 1100;
+        --z-notification: 10000;
     }
     
-    /* View toggle stack vertically */
+    /* ==========================================================================
+       Base Styles & Resets
+       ========================================================================== */
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+    
+    body {
+        font-family: var(--font-family);
+        background-color: var(--bg-secondary);
+        color: var(--text-primary);
+        line-height: var(--line-height-normal);
+        font-size: var(--font-size-base);
+    }
+    
+    /* ==========================================================================
+       Header System
+       ========================================================================== */
+    .header {
+        background: var(--bg-primary);
+        box-shadow: var(--shadow-sm);
+        position: sticky;
+        top: 0;
+        z-index: var(--z-sticky);
+        border-bottom: 1px solid var(--border-light);
+    }
+    
+    .header-content {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 0 var(--spacing-2xl);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        height: 64px;
+    }
+    
+    .logo {
+        font-size: var(--font-size-xl);
+        font-weight: var(--font-weight-bold);
+        color: var(--primary-dark);
+        letter-spacing: -0.5px;
+    }
+    
+    .user-info {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-lg);
+    }
+    
+    .user-name {
+        font-weight: var(--font-weight-medium);
+        color: var(--text-secondary);
+        font-size: var(--font-size-base);
+    }
+    
+    .user-role {
+        background: var(--primary-color);
+        color: var(--text-white);
+        padding: var(--spacing-xs) var(--spacing-md);
+        border-radius: var(--radius-pill);
+        font-size: var(--font-size-xs);
+        font-weight: var(--font-weight-semibold);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    /* ==========================================================================
+       Container System
+       ========================================================================== */
+    .container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: var(--spacing-2xl);
+    }
+    
+    .management-section {
+        padding: 0;
+    }
+    
+    /* ==========================================================================
+       Button System - Unified with Lighter Blue Primary
+       ========================================================================== */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--spacing-sm);
+        padding: var(--spacing-sm) var(--spacing-lg);
+        border: none;
+        border-radius: var(--radius-md);
+        font-size: var(--font-size-sm);
+        font-weight: var(--font-weight-medium);
+        line-height: 1.4;
+        cursor: pointer;
+        transition: var(--transition);
+        text-decoration: none;
+        white-space: nowrap;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+    
+    /* Primary Button - Now lighter blue */
+    .btn-primary {
+        background: var(--primary-color);
+        color: var(--text-white);
+    }
+    
+    .btn-primary:hover:not(:disabled) {
+        background: var(--primary-hover);
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-md);
+    }
+    
+    .btn-primary:active:not(:disabled) {
+        transform: translateY(0);
+    }
+    
+    /* Success Button */
+    .btn-success {
+        background: var(--success-color);
+        color: var(--text-white);
+    }
+    
+    .btn-success:hover:not(:disabled) {
+        background: var(--success-hover);
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-md);
+    }
+    
+    /* Warning Button */
+    .btn-warning {
+        background: var(--warning-color);
+        color: var(--text-white);
+    }
+    
+    .btn-warning:hover:not(:disabled) {
+        background: var(--warning-hover);
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-md);
+    }
+    
+    /* Danger Button */
+    .btn-danger {
+        background: var(--danger-color);
+        color: var(--text-white);
+    }
+    
+    .btn-danger:hover:not(:disabled) {
+        background: var(--danger-hover);
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-md);
+    }
+    
+    /* Info Button */
+    .btn-info {
+        background: var(--info-color);
+        color: var(--text-white);
+    }
+    
+    .btn-info:hover:not(:disabled) {
+        background: var(--info-hover);
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-md);
+    }
+    
+    /* Outline Button */
+    .btn-outline {
+        background: transparent;
+        border: 1px solid var(--border-color);
+        color: var(--text-secondary);
+    }
+    
+    .btn-outline:hover:not(:disabled) {
+        background: var(--bg-light);
+        border-color: var(--text-secondary);
+    }
+    
+    /* Button Sizes */
+    .btn-sm {
+        padding: var(--spacing-xs) var(--spacing-md);
+        font-size: var(--font-size-xs);
+    }
+    
+    .btn-lg {
+        padding: var(--spacing-md) var(--spacing-2xl);
+        font-size: var(--font-size-base);
+    }
+    
+    /* Icon Button */
+    .btn-icon {
+        padding: var(--spacing-sm);
+        min-width: 36px;
+        height: 36px;
+    }
+    
+    /* ==========================================================================
+       Navigation Systems
+       ========================================================================== */
+    
+    /* View Toggle */
     .view-toggle {
-        flex-direction: column;
-        width: 100%;
+        display: flex;
+        background: var(--bg-light);
+        border-radius: var(--radius-md);
+        padding: 4px;
+        gap: 2px;
     }
     
     .view-toggle button {
-        width: 100%;
-        padding: 12px;
+        padding: 10px 16px;
+        border: none;
+        background: transparent;
+        border-radius: var(--radius-sm);
+        font-size: var(--font-size-sm);
+        font-weight: var(--font-weight-medium);
+        color: var(--text-muted);
+        cursor: pointer;
+        transition: var(--transition);
     }
     
-    /* Table responsive */
-    .roster-table {
-        font-size: 11px;
+    .view-toggle button.active {
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        box-shadow: var(--shadow-sm);
     }
     
-    .roster-table th,
-    .roster-table td {
-        padding: 8px 4px;
+    .view-toggle button:hover:not(.active) {
+        color: var(--text-secondary);
     }
     
-    /* Hide less important columns on mobile */
-    .roster-table th:nth-child(5),
-    .roster-table td:nth-child(5) {
-        display: none; /* Hide location column */
+    /* Dropdown Navigation */
+    .nav-dropdown {
+        position: relative;
+        display: inline-block;
     }
     
-    /* Timesheet responsive */
-    .timesheet-table {
-        font-size: 11px;
+    .nav-dropdown-btn {
+        background: var(--primary-color);  /* Changed to lighter blue */
+        color: var(--text-white);
+        padding: var(--spacing-md) var(--spacing-2xl);
+        font-size: var(--font-size-base);
+        border: none;
+        cursor: pointer;
+        border-radius: var(--radius-md);
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+        transition: var(--transition);
     }
     
-    .timesheet-table th,
-    .timesheet-table td {
-        padding: 8px 4px;
+    .nav-dropdown-btn:hover {
+        background: var(--primary-hover);
     }
     
-    /* Stack hour breakdown vertically */
-    .hour-breakdown-item {
+    .nav-dropdown-btn i {
+        font-size: 0.9em;
+    }
+    
+    .nav-dropdown-content {
+        display: none;
+        position: absolute;
+        background: var(--bg-primary);
+        min-width: 250px;
+        box-shadow: var(--shadow-lg);
+        z-index: var(--z-dropdown);
+        border-radius: var(--radius-lg);
+        margin-top: 4px;
+        overflow: hidden;
+    }
+    
+    .nav-dropdown-content.show {
         display: block;
-        margin-bottom: 4px;
     }
     
-    /* Modal full screen on mobile */
-    .modal {
-        max-width: 100%;
+    .nav-category {
+        background: var(--bg-light);
+        padding: var(--spacing-sm) var(--spacing-lg);
+        font-weight: var(--font-weight-semibold);
+        font-size: var(--font-size-xs);
+        text-transform: uppercase;
+        color: var(--text-secondary);
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .nav-dropdown-content button {
+        background: none;
+        color: var(--text-primary);
+        padding: var(--spacing-md) var(--spacing-xl);
+        border: none;
+        text-align: left;
+        cursor: pointer;
         width: 100%;
-        height: 100vh;
-        border-radius: 0;
+        transition: var(--transition-fast);
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-sm);
     }
     
-    /* Filters stack vertically */
-    .filter-row {
-        grid-template-columns: 1fr;
+    .nav-dropdown-content button:hover {
+        background: var(--bg-secondary);
     }
     
-    /* Week navigation stack */
-    .week-nav {
-        flex-direction: column;
-        gap: 12px;
+    .nav-dropdown-content button.active {
+        background: var(--primary-light);
+        color: var(--primary-dark);
+        font-weight: var(--font-weight-medium);
     }
     
-    .week-nav button {
-        width: 100%;
+    .nav-dropdown-content button.danger {
+        color: var(--danger-color);
     }
     
-    /* Cards full width */
-    .card {
-        margin: 8px;
+    .nav-dropdown-content button i {
+        width: 20px;
+        opacity: 0.6;
     }
     
-    /* Request items stack content */
-    .request-item {
-        font-size: 13px;
-    }
-    
-    .request-actions {
-        flex-direction: column;
-    }
-    
-    .request-actions .btn {
-        width: 100%;
-    }
-    
-    /* Summary cards stack */
-    .summary-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    /* Availability grid smaller */
-    .availability-grid {
-        font-size: 10px;
-        grid-template-columns: 80px repeat(7, 1fr);
-    }
-    
-    .availability-cell {
-        padding: 6px;
-        min-height: 35px;
-    }
-}
 
-@media (max-width: 480px) {
-    /* Even smaller screens */
-    .roster-table {
-        font-size: 10px;
-    }
-    
-    /* Show only essential columns */
-    .roster-table th:nth-child(6),
-    .roster-table td:nth-child(6) {
-        display: none; /* Hide duty type */
-    }
-    
-    /* Compact timesheet */
-    .timesheet-wrapper {
-        margin: 0;
-        border-radius: 0;
-    }
-    
-    /* Smaller buttons */
-    .btn {
-        padding: 6px 12px;
-        font-size: 12px;
-    }
-    
-    .btn-sm {
-        padding: 4px 8px;
-        font-size: 11px;
-    }
-}
-            --primary-color: #004990;
-            --primary-hover: #003d75;
-            --success-color: #88a542;
-            --success-hover: #7a9339;
-            --info-color: #359dca;
-            --info-hover: #2e8bb5;
-            --warning-color: #f39c12;
-            --warning-hover: #e67e22;
-            --danger-color: #e74c3c;
-            --danger-hover: #c0392b;
-            
-            --text-primary: #2c3e50;
-            --text-secondary: #34495e;
-            --text-muted: #7f8c8d;
-            --text-light: #95a5a6;
-            
-            --bg-primary: #ffffff;
-            --bg-secondary: #f8f9fa;
-            --bg-light: #ecf0f1;
-            
-            --border-color: #bdc3c7;
-            --border-light: #ecf0f1;
-            
-            --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
-            --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
-            --shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
-            
-            --radius-sm: 4px;
-            --radius-md: 8px;
-            --radius-lg: 12px;
-            
-            --transition: all 0.2s ease-in-out;
-            --font-size-xs: 0.75rem;
-            --font-size-sm: 0.875rem;
-            --font-size-base: 1rem;
-            --font-size-lg: 1.125rem;
-            --font-size-xl: 1.25rem;
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background-color: var(--bg-secondary);
-            color: var(--text-primary);
-            line-height: 1.6;
-            font-size: var(--font-size-base);
-        }
-
-        /* Header Styles */
-        .header {
-            background: var(--bg-primary);
-            box-shadow: var(--shadow-sm);
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-            border-bottom: 1px solid var(--border-light);
-        }
-
-        .header-content {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 0 24px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            height: 64px;
-        }
-
-        .logo {
-            font-size: var(--font-size-xl);
-            font-weight: 700;
-            color: var(--primary-color);
-            letter-spacing: -0.5px;
-        }
-
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-
-        .user-name {
-            font-weight: 500;
-            color: var(--text-secondary);
-            font-size: var(--font-size-base);
-        }
-
-        .user-role {
-            background: var(--primary-color);
-            color: white;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: var(--font-size-xs);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        /* Container */
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 24px;
-        }
-
-        /* Button System */
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            padding: 8px 16px;
-            border: none;
-            border-radius: var(--radius-md);
-            font-size: var(--font-size-sm);
-            font-weight: 500;
-            line-height: 1.4;
-            cursor: pointer;
-            transition: var(--transition);
-            text-decoration: none;
-            white-space: nowrap;
-        }
-
-        .btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-
-        .btn-primary {
-            background: var(--primary-color);
-            color: white;
-        }
-
-        .btn-primary:hover:not(:disabled) {
-            background: var(--primary-hover);
-            transform: translateY(-1px);
-        }
-
-        .btn-success {
-            background: var(--success-color);
-            color: white;
-        }
-
-        .btn-success:hover:not(:disabled) {
-            background: var(--success-hover);
-            transform: translateY(-1px);
-        }
-
-        .btn-warning {
-            background: var(--warning-color);
-            color: white;
-        }
-
-        .btn-warning:hover:not(:disabled) {
-            background: var(--warning-hover);
-            transform: translateY(-1px);
-        }
-
-        .btn-danger {
-            background: var(--danger-color);
-            color: white;
-        }
-
-        .btn-danger:hover:not(:disabled) {
-            background: var(--danger-hover);
-            transform: translateY(-1px);
-        }
-
-        .btn-outline {
-            background: transparent;
-            border: 1px solid var(--border-color);
-            color: var(--text-secondary);
-        }
-
-        .btn-outline:hover:not(:disabled) {
-            background: var(--bg-light);
-            border-color: var(--text-secondary);
-        }
-
-        .btn-sm {
-            padding: 4px 12px;
-            font-size: var(--font-size-xs);
-        }
-
-        .btn-lg {
-            padding: 12px 24px;
-            font-size: var(--font-size-base);
-        }
-
-        /* Card System */
-        .card {
-            background: var(--bg-primary);
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-sm);
-            border: 1px solid var(--border-light);
-            overflow: hidden;
-            transition: var(--transition);
-        }
-
-        .card:hover {
-            box-shadow: var(--shadow-md);
-        }
-
-        .card-header {
-            padding: 20px 24px;
-            border-bottom: 1px solid var(--border-light);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: var(--bg-secondary);
-        }
-
-        .card-title {
-            font-size: var(--font-size-lg);
-            font-weight: 600;
-            color: var(--text-primary);
-            margin: 0;
-        }
-
-        .card-content {
-            padding: 24px;
-        }
-
-        /* View Controls */
-        .view-controls {
-            background: var(--bg-primary);
-            padding: 24px;
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-sm);
-            margin-bottom: 24px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 16px;
-        }
-
-        .view-toggle {
-            display: flex;
-            background: var(--bg-light);
-            border-radius: var(--radius-md);
-            padding: 4px;
-            gap: 2px;
-        }
-
-        .view-toggle button {
-            padding: 10px 16px;
-            border: none;
-            background: transparent;
-            border-radius: var(--radius-sm);
-            font-size: var(--font-size-sm);
-            font-weight: 500;
-            color: var(--text-muted);
-            cursor: pointer;
-            transition: var(--transition);
-        }
-
-        .view-toggle button.active {
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            box-shadow: var(--shadow-sm);
-        }
-
-        .view-toggle button:hover:not(.active) {
-            color: var(--text-secondary);
-        }
-
-        .view-actions {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-
-        /* Week Navigation */
-        .week-nav {
-            background: var(--bg-primary);
-            padding: 20px 24px;
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-sm);
-            margin-bottom: 24px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 24px;
-        }
-
-        .week-display {
-            font-size: var(--font-size-lg);
-            font-weight: 600;
-            color: var(--text-primary);
-            min-width: 250px;
-            text-align: center;
-        }
-
-        /* Filters */
-        .filters {
-            background: var(--bg-primary);
-            padding: 24px;
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-sm);
-            margin-bottom: 24px;
-        }
-
-        .filter-row {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            align-items: end;
-        }
-
-        .filter-group {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .filter-group label {
-            font-weight: 500;
-            margin-bottom: 8px;
-            color: var(--text-secondary);
-            font-size: var(--font-size-sm);
-        }
-
-        .filter-group input, 
-        .filter-group select {
-            padding: 10px 12px;
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-md);
-            font-size: var(--font-size-sm);
-            background: var(--bg-primary);
-            transition: var(--transition);
-        }
-
-        .filter-group input:focus, 
-        .filter-group select:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(0, 73, 144, 0.1);
-        }
-
-        .searchable-dropdown {
-            position: relative;
-        }
-
-        .searchable-input {
-            width: 100%;
-            padding: 10px 12px;
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-md);
-            font-size: var(--font-size-sm);
-            background: var(--bg-primary);
-            transition: var(--transition);
-        }
-
-        .searchable-input:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(0, 73, 144, 0.1);
-        }
-
-        /* Table System */
-        .table-container {
-            background: var(--bg-primary);
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-sm);
-            overflow: hidden;
-            margin-bottom: 24px;
-            border: 1px solid var(--border-light);
-        }
-
-        .table-header {
-            padding: 24px;
-            border-bottom: 1px solid var(--border-light);
-            background: var(--bg-secondary);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 16px;
-        }
-
-        .table-title {
-            font-size: var(--font-size-xl);
-            font-weight: 600;
-            color: var(--text-primary);
-            margin: 0;
-        }
-
-        .table-actions {
-            display: flex;
-            gap: 12px;
-        }
-
-        .roster-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: var(--font-size-sm);
-        }
-
-        .roster-table th {
-            background: var(--bg-light);
-            padding: 16px 12px;
-            text-align: left;
-            font-weight: 600;
-            font-size: var(--font-size-xs);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--text-muted);
-            border-bottom: 2px solid var(--border-color);
-        }
-
-        .roster-table td {
-            padding: 16px 12px;
-            border-bottom: 1px solid var(--border-light);
-            vertical-align: top;
-            line-height: 1.4;
-        }
-
-        .roster-table tr:hover:not(.day-header) {
-            background: var(--bg-secondary);
-        }
-
-        /* Day Color Coding - Subtle Left Border */
-        .monday-shift { border-left: 4px solid #e91e63; }
-        .tuesday-shift { border-left: 4px solid #ff9800; }
-        .wednesday-shift { border-left: 4px solid #4caf50; }
-        .thursday-shift { border-left: 4px solid #2196f3; }
-        .friday-shift { border-left: 4px solid #9c27b0; }
-        .saturday-shift { border-left: 4px solid #673ab7; }
-        .sunday-shift { border-left: 4px solid #f44336; }
-
-        /* Day Headers */
-        .day-header {
-            background: linear-gradient(135deg, var(--primary-color), var(--info-color)) !important;
-        }
-
-        .day-header td {
-            color: white !important;
-            font-weight: 600;
-            padding: 12px 16px;
-        }
-
-        .day-stats {
-            float: right;
-            background: rgba(255,255,255,0.2);
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: var(--font-size-xs);
-            font-weight: 500;
-        }
-
-        /* Status System */
-        .status-badge {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: var(--font-size-xs);
-            font-weight: 500;
-            text-transform: capitalize;
-        }
-
-        .status-scheduled, .status-confirmed {
-            background: #e3f2fd;
-            color: #1565c0;
-        }
-
-        .status-completed {
-            background: #e8f5e8;
-            color: #2e7d32;
-        }
-
-        .status-no_show, .status-cancelled {
-            background: #ffebee;
-            color: #c62828;
-        }
-
-        .status-pending {
-            background: #fff8e1;
-            color: #f57c00;
-        }
-
-        /* Hour and Pay Display */
-        .hour-breakdown {
-            cursor: help;
-            border-bottom: 1px dotted var(--text-muted);
-            position: relative;
-            font-weight: 600;
-        }
-
-        .pay-breakdown {
-            font-size: var(--font-size-xs);
-            color: var(--text-muted);
-            margin-top: 4px;
-            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
-            line-height: 1.3;
-        }
-
-        .pay-override {
-            background: #fff3cd;
-            border-left: 3px solid var(--warning-color);
-            padding: 4px 8px;
-            font-size: var(--font-size-xs);
-            border-radius: var(--radius-sm);
-            margin-top: 4px;
-            color: #856404;
-        }
-
-        .transfer-pending, .adjustment-pending {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: var(--radius-sm);
-            font-size: var(--font-size-xs);
-            font-weight: 500;
-            margin-top: 4px;
-        }
-
-        .transfer-pending {
-            background: #fff3cd;
-            color: #856404;
-        }
-
-        .adjustment-pending {
-            background: #e1d5ff;
-            color: #5b21b6;
-        }
-
-        .hour-warning {
-            background: #f8d7da;
-            color: #721c24;
-            padding: 12px 16px;
-            border-radius: var(--radius-md);
-            font-size: var(--font-size-sm);
-            font-weight: 500;
-            margin-top: 12px;
-            border: 1px solid #f5c6cb;
-        }
-
-        /* Modal System */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(0,0,0,0.6);
-            backdrop-filter: blur(4px);
-            z-index: 9999;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-
-        .modal {
-            background: var(--bg-primary);
-            border-radius: var(--radius-lg);
-            max-width: 600px;
-            width: 100%;
-            max-height: 90vh;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            box-shadow: var(--shadow-lg);
-        }
-
-        .modal.large {
-            max-width: 800px;
-        }
-
-        .modal-header {
-            padding: 24px;
-            border-bottom: 1px solid var(--border-light);
-            background: var(--bg-secondary);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .modal-title {
-            font-size: var(--font-size-lg);
-            font-weight: 600;
-            color: var(--text-primary);
-            margin: 0;
-        }
-
-        .modal-close {
-            background: none;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            color: var(--text-muted);
-            padding: 4px;
-            border-radius: var(--radius-sm);
-            transition: var(--transition);
-        }
-
-        .modal-close:hover {
-            background: var(--bg-light);
-            color: var(--text-primary);
-        }
-
-        .modal-content {
-            padding: 24px;
-            overflow: auto;
-            flex: 1;
-        }
-
-        .modal-footer {
-            padding: 20px 24px;
-            border-top: 1px solid var(--border-light);
-            background: var(--bg-secondary);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .modal-footer .btn-danger {
-            margin-right: auto;
-        }
-
-        .modal-footer .modal-actions {
-            display: flex;
-            gap: 12px;
-        }
-
-        /* Form System */
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-            color: var(--text-secondary);
-            font-size: var(--font-size-sm);
-        }
-
-        .form-group input,
-        .form-group select,
-        .form-group textarea {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-md);
-            font-size: var(--font-size-sm);
-            background: var(--bg-primary);
-            transition: var(--transition);
-        }
-
-        .form-group input:focus,
-        .form-group select:focus,
-        .form-group textarea:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(0, 73, 144, 0.1);
-        }
-
-        .form-group textarea {
-            resize: vertical;
-            min-height: 100px;
-            line-height: 1.5;
-        }
-
-        .form-row {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-        }
-
-        /* View Content */
-        .view-content {
-            display: none;
-        }
-
-        .view-content.active {
-            display: block;
-        }
-
-        /* Summary Grid */
-        .summary-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 24px;
-            margin-bottom: 24px;
-        }
-
-        .summary-card {
-            background: var(--bg-primary);
-            padding: 24px;
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-sm);
-            border: 1px solid var(--border-light);
-        }
-
-        .summary-card h3 {
-            margin-bottom: 20px;
-            color: var(--text-primary);
-            font-size: var(--font-size-lg);
-            font-weight: 600;
-            border-bottom: 1px solid var(--border-light);
-            padding-bottom: 12px;
-        }
-
-        .summary-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            padding: 12px 0;
-            border-bottom: 1px solid var(--border-light);
-        }
-
-        .summary-item:last-child {
-            border-bottom: none;
-        }
-
-        .summary-item-details {
-            font-size: var(--font-size-xs);
-            color: var(--text-muted);
-            margin-top: 4px;
-            line-height: 1.4;
-        }
-
-        /* Loading States */
-        .loading {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 60px 20px;
-            color: var(--text-muted);
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .spinner {
-            width: 24px;
-            height: 24px;
-            border: 2px solid var(--border-light);
-            border-top: 2px solid var(--primary-color);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        /* Notification System */
-        .notification {
-            position: fixed;
-            top: 24px;
-            right: 24px;
-            padding: 16px 20px;
-            border-radius: var(--radius-md);
-            box-shadow: var(--shadow-lg);
-            z-index: 10000;
-            max-width: 400px;
-            animation: slideIn 0.3s ease-out;
-            border: 1px solid transparent;
-        }
-
-        .notification.success {
-            background: var(--success-color);
-            color: white;
-            border-color: var(--success-hover);
-        }
-
-        .notification.error {
-            background: var(--danger-color);
-            color: white;
-            border-color: var(--danger-hover);
-        }
-
-        .notification.info {
-            background: var(--info-color);
-            color: white;
-            border-color: var(--info-hover);
-        }
-
-        .notification.warning {
-            background: var(--warning-color);
-            color: white;
-            border-color: var(--warning-hover);
-        }
-
-        @keyframes slideIn {
-            from { 
-                transform: translateX(100%); 
-                opacity: 0; 
-            }
-            to { 
-                transform: translateX(0); 
-                opacity: 1; 
-            }
-        }
-
-        /* Empty States */
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: var(--text-muted);
-        }
-
-        .empty-state h3 {
-            color: var(--text-secondary);
-            margin-bottom: 12px;
-        }
-
-        .empty-state p {
-            margin-bottom: 20px;
-            line-height: 1.5;
-        }
-
-        /* Holiday Management */
-        .holiday-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 16px;
-            background: var(--bg-secondary);
-            border-radius: var(--radius-md);
-            margin-bottom: 8px;
-            border: 1px solid var(--border-light);
-        }
-
-        .holiday-form {
-            padding: 20px;
-            background: var(--bg-light);
-            border-radius: var(--radius-md);
-            margin-bottom: 20px;
-            border: 1px solid var(--border-light);
-        }
-
-        .overlap-indicator {
-    display: inline-block;
-    background: #ffc107;
-    color: #000;
-    padding: 2px 6px;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: bold;
-    margin-left: 8px;
-    cursor: help;
-}
-
-.overlap-tooltip {
-    background: rgba(0, 0, 0, 0.9);
-    color: white;
-    padding: 8px 12px;
-    border-radius: 4px;
-    font-size: 12px;
-    z-index: 10000;
-    max-width: 300px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-}
-
-@keyframes slideIn {
-    from { transform: translateX(100%); opacity: 0; }
-    to { transform: translateX(0); opacity: 1; }
-}
-@keyframes slideOut {
-    from { transform: translateX(0); opacity: 1; }
-    to { transform: translateX(100%); opacity: 0; }
-}
-
-
-
-.status-pending {
-    background: #fff3cd;
-    color: #856404;
-}
-
-.status-confirmed {
-    background: #d4edda;
-    color: #155724;
-}
-
-.status-completed {
-    background: #cce5ff;
-    color: #004085;
-}
-        /* Responsive Design */
-        @media (max-width: 768px) {
-            .container {
-                padding: 16px;
-            }
-            
-            .header-content {
-                padding: 0 16px;
-                flex-direction: column;
-                height: auto;
-                gap: 12px;
-                padding-top: 12px;
-                padding-bottom: 12px;
-            }
-            
-            .view-controls {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            
-            .view-toggle {
+    /*===================================
+    //modal===============================*/
+            .modal-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background-color: rgba(0, 0, 0, 0.5);
+                z-index: var(--z-modal, 1000);
+                display: flex;
+                align-items: center;
                 justify-content: center;
+                padding: var(--spacing-lg, 16px);
+                overflow-y: auto;
             }
             
-            .view-actions {
-                justify-content: center;
-            }
-            
-            .week-nav {
-                flex-direction: column;
-                gap: 16px;
-            }
-            
-            .filter-row {
-                grid-template-columns: 1fr;
-                gap: 16px;
-            }
-            
-            .table-header {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            
-            .table-actions {
-                justify-content: center;
-            }
-            
-            .roster-table {
-                font-size: var(--font-size-xs);
-            }
-
-            .roster-table th,
-            .roster-table td {
-                padding: 12px 8px;
-            }
-            
+            /* Default Modal - Now Wider */
             .modal {
-                max-width: 95%;
-                margin: 0 auto;
-            }
-            
-            .modal-footer {
+                background-color: var(--bg-primary, #ffffff);
+                border-radius: var(--radius-lg, 8px);
+                box-shadow: var(--shadow-xl, 0 20px 25px rgba(0,0,0,0.15));
+                width: 100%;
+                max-width: 800px; /* Increased from 600px */
+                max-height: 90vh;
+                display: flex;
                 flex-direction: column;
-                gap: 12px;
+                margin: auto;
             }
             
-            .modal-footer .btn-danger {
-                margin-right: 0;
-                order: 2;
+            /* Large Modal Variant */
+            .modal.large {
+                max-width: 1200px; /* Increased for better content display */
+            }
+            
+            /* Extra Large Modal Variant */
+            .modal.x-large {
+                max-width: 1400px;
+            }
+            
+            /* Modal with Sidebar Layout */
+            .modal.with-sidebar {
+                max-width: 1400px; /* Increased for sidebar layouts */
+            }
+            
+            .modal.with-sidebar .modal-content {
+                padding: 0;
+            }
+            
+            .modal-body-wrapper {
+                display: flex;
+                gap: 0;
+                flex: 1;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            .modal-main-content {
+                flex: 1;
+                min-width: 0;
+                padding: var(--spacing-2xl, 24px);
+                overflow-y: auto;
+            }
+            
+            .modal-sidebar {
+                width: 450px; /* Increased from 400px */
+                background: var(--bg-secondary, #f8f9fa);
+                padding: var(--spacing-2xl, 24px);
+                overflow-y: auto;
+                border-left: 1px solid var(--border-light, #ecf0f1);
+                flex-shrink: 0;
+            }
+            
+            /* Modal Header */
+            .modal-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: var(--spacing-xl, 20px) var(--spacing-2xl, 24px);
+                border-bottom: 1px solid var(--border-light, #ecf0f1);
+                flex-shrink: 0;
+            }
+            
+            .modal-title {
+                margin: 0;
+                font-size: var(--font-size-xl, 1.25rem);
+                font-weight: var(--font-weight-semibold, 600);
+                color: var(--text-primary, #2c3e50);
+            }
+            
+            .modal-close {
+                background: none;
+                border: none;
+                font-size: var(--font-size-2xl, 1.5rem);
+                cursor: pointer;
+                color: var(--text-muted, #7f8c8d);
+                padding: var(--spacing-xs, 4px);
+                border-radius: var(--radius-sm, 4px);
+                transition: var(--transition, all 0.2s ease-in-out);
+                line-height: 1;
+                width: 32px;
+                height: 32px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            
+            .modal-close:hover {
+                background: var(--bg-light, #ecf0f1);
+                color: var(--text-primary, #2c3e50);
+            }
+            
+            /* Modal Content */
+            .modal-content {
+                padding: var(--spacing-2xl, 24px);
+                overflow-y: auto;
+                flex: 1;
+                position: relative;
+            }
+            
+            /* Modal Footer */
+            .modal-footer {
+                padding: var(--spacing-xl, 20px) var(--spacing-2xl, 24px);
+                border-top: 1px solid var(--border-light, #ecf0f1);
+                background: var(--bg-secondary, #f8f9fa);
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: var(--spacing-md, 12px);
+                flex-shrink: 0;
             }
             
             .modal-footer .modal-actions {
-                order: 1;
-                width: 100%;
-                justify-content: stretch;
+                display: flex;
+                gap: var(--spacing-md, 12px);
+                margin-left: auto;
             }
             
-            .modal-actions .btn {
-                flex: 1;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .summary-grid {
-                grid-template-columns: 1fr;
+            /* Responsive Modal Adjustments */
+            @media (max-width: 1400px) {
+                .modal.x-large,
+                .modal.with-sidebar {
+                    max-width: 95%;
+                }
             }
             
-            .roster-table th,
-            .roster-table td {
-                padding: 8px 4px;
+            @media (max-width: 1200px) {
+                .modal.large {
+                    max-width: 95%;
+                }
+                
+                .modal-sidebar {
+                    width: 380px;
+                }
             }
+            
+            @media (max-width: 992px) {
+                .modal-body-wrapper {
+                    flex-direction: column;
+                }
+                
+                .modal-sidebar {
+                    width: 100%;
+                    border-left: none;
+                    border-top: 1px solid var(--border-light, #ecf0f1);
+                }
+                
+                .modal.with-sidebar {
+                    max-height: 95vh;
+                }
+            }
+            
+            @media (max-width: 768px) {
+                .modal-overlay {
+                    padding: 0;
+                    align-items: flex-end;
+                }
+                
+                .modal {
+                    max-width: 100%;
+                    width: 100%;
+                    height: 100vh;
+                    max-height: 100vh;
+                    border-radius: 0;
+                    margin: 0;
+                }
+                
+                .modal.large,
+                .modal.x-large,
+                .modal.with-sidebar {
+                    max-width: 100%;
+                }
+                
+                .modal-content,
+                .modal-main-content,
+                .modal-sidebar {
+                    padding: var(--spacing-lg, 16px);
+                }
+                
+                .modal-header,
+                .modal-footer {
+                    padding: var(--spacing-lg, 16px);
+                }
+                
+                .modal-footer {
+                    flex-direction: column;
+                    gap: var(--spacing-md, 12px);
+                }
+                
+                .modal-footer .modal-actions {
+                    width: 100%;
+                    flex-direction: column;
+                }
+                
+                .modal-actions .btn {
+                    width: 100%;
+                }
+            }
+/* End MODAL*/
+    /* ==========================================================================
+       Tab Navigation System
+       ========================================================================== */
+    .doc-tabs,
+    .modal-tabs {
+        display: flex;
+        gap: 0;
+        margin: 0 0 var(--spacing-xl) 0;
+        border-bottom: 2px solid var(--border-color);
+        overflow-x: auto;
+    }
+    
+    .doc-tab-btn,
+    .tab-btn {
+        padding: var(--spacing-md) var(--spacing-xl);
+        background: none;
+        border: none;
+        border-bottom: 3px solid transparent;
+        cursor: pointer;
+        font-weight: var(--font-weight-medium);
+        color: var(--text-secondary);
+        transition: var(--transition);
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+        white-space: nowrap;
+    }
+    
+    .doc-tab-btn:hover,
+    .tab-btn:hover {
+        background: var(--bg-light);
+        color: var(--primary-color);
+    }
+    
+    .doc-tab-btn.active,
+    .tab-btn.active {
+        border-bottom-color: var(--primary-color);
+        color: var(--primary-color);
+    }
+    
+    .doc-tab-content,
+    .tab-content {
+        display: none;
+    }
+    
+    .doc-tab-content.active,
+    .tab-content.active {
+        display: block;
+    }
+    
+    /* ==========================================================================
+       Card System
+       ========================================================================== */
+    .card {
+        background: var(--bg-primary);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+        border: 1px solid var(--border-light);
+        overflow: hidden;
+        transition: var(--transition);
+    }
+    
+    .card:hover {
+        box-shadow: var(--shadow-md);
+    }
+    
+    .card-header {
+        padding: var(--spacing-xl) var(--spacing-2xl);
+        border-bottom: 1px solid var(--border-light);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: var(--bg-secondary);
+    }
+    
+    .card-title {
+        font-size: var(--font-size-lg);
+        font-weight: var(--font-weight-semibold);
+        color: var(--text-primary);
+        margin: 0;
+    }
+    
+    .card-content {
+        padding: var(--spacing-2xl);
+    }
+    
+    /* Summary Cards */
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: var(--spacing-2xl);
+        margin-bottom: var(--spacing-2xl);
+    }
+    
+    .summary-card {
+        background: var(--bg-primary);
+        padding: var(--spacing-2xl);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+        border: 1px solid var(--border-light);
+    }
+    
+    .summary-card h3 {
+        margin-bottom: var(--spacing-xl);
+        color: var(--text-primary);
+        font-size: var(--font-size-lg);
+        font-weight: var(--font-weight-semibold);
+        border-bottom: 1px solid var(--border-light);
+        padding-bottom: var(--spacing-md);
+    }
+    
+    /* ==========================================================================
+       View Controls & Week Navigation
+       ========================================================================== */
+    .view-controls {
+        background: var(--bg-primary);
+        padding: var(--spacing-2xl);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+        margin-bottom: var(--spacing-2xl);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: var(--spacing-lg);
+    }
+    
+    .view-actions {
+        display: flex;
+        gap: var(--spacing-md);
+        flex-wrap: wrap;
+    }
+    
+    .week-nav {
+        background: var(--bg-primary);
+        padding: var(--spacing-xl) var(--spacing-2xl);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+        margin-bottom: var(--spacing-2xl);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: var(--spacing-2xl);
+    }
+    
+    .week-display {
+        font-size: var(--font-size-lg);
+        font-weight: var(--font-weight-semibold);
+        color: var(--text-primary);
+        min-width: 250px;
+        text-align: center;
+    }
+    
+    .current-view-label {
+        display: inline-block;
+        margin-left: var(--spacing-xl);
+        color: var(--text-secondary);
+        font-size: var(--font-size-sm);
+    }
+    
+    /* ==========================================================================
+       Form System
+       ========================================================================== */
+    .form-group {
+        margin-bottom: var(--spacing-xl);
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: var(--spacing-sm);
+        font-weight: var(--font-weight-medium);
+        color: var(--text-secondary);
+        font-size: var(--font-size-sm);
+    }
+    
+    .form-group label.required::after {
+        content: " *";
+        color: var(--danger-color);
+    }
+    
+    .form-control,
+    .searchable-input,
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="date"],
+    input[type="number"],
+    input[type="file"],
+    select,
+    textarea {
+        width: 100%;
+        padding: var(--spacing-sm) var(--spacing-md);
+        font-size: var(--font-size-sm);
+        line-height: 1.5;
+        color: var(--text-primary);
+        background-color: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        transition: var(--transition);
+    }
+    
+    .form-control:focus,
+    .searchable-input:focus,
+    input:focus,
+    select:focus,
+    textarea:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+    }
+    
+    textarea {
+        resize: vertical;
+        min-height: 100px;
+    }
+    
+    .form-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: var(--spacing-xl);
+    }
+    
+    /* Searchable Dropdown */
+    .searchable-dropdown {
+        position: relative;
+    }
+    
+    .searchable-input {
+        width: 250px;
+    }
+    
+    /* Search Bar */
+    .search-bar {
+        position: relative;
+        margin-bottom: var(--spacing-lg);
+    }
+    
+    .search-input {
+        width: 100%;
+        padding: 10px 40px 10px 12px;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+    }
+    
+    .search-bar i {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-muted);
+    }
+    
+    /* ==========================================================================
+       Filter System
+       ========================================================================== */
+    .filters,
+    .doc-filters {
+        background: var(--bg-primary);
+        padding: var(--spacing-2xl);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+        margin-bottom: var(--spacing-2xl);
+    }
+    
+    .filter-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: var(--spacing-xl);
+        align-items: end;
+    }
+    
+    .doc-filters {
+        display: flex;
+        gap: var(--spacing-sm);
+        margin-bottom: var(--spacing-xl);
+        flex-wrap: wrap;
+        align-items: flex-end;
+        padding: 0;
+        background: transparent;
+        box-shadow: none;
+    }
+    
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .filter-group label {
+        font-weight: var(--font-weight-medium);
+        margin-bottom: var(--spacing-sm);
+        color: var(--text-secondary);
+        font-size: var(--font-size-sm);
+    }
+    
+    .filter-group input,
+    .filter-group select {
+        padding: 10px 12px;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        font-size: var(--font-size-sm);
+        background: var(--bg-primary);
+        transition: var(--transition);
+    }
+    
+    .filter-group input:focus,
+    .filter-group select:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+    }
+    
+    .filter-note {
+        width: 100%;
+        margin: 0 0 var(--spacing-lg) 0;
+        padding: var(--spacing-sm);
+        background: var(--primary-lighter);
+        border-radius: var(--radius-sm);
+        color: var(--info-dark);
+        font-size: var(--font-size-sm);
+    }
+    
+    /* ==========================================================================
+       Table System
+       ========================================================================== */
+    .table-container {
+        background: var(--bg-primary);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+        overflow: hidden;
+        margin-bottom: var(--spacing-2xl);
+        border: 1px solid var(--border-light);
+    }
+    
+    .table-header {
+        padding: var(--spacing-2xl);
+        border-bottom: 1px solid var(--border-light);
+        background: var(--bg-secondary);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: var(--spacing-lg);
+    }
+    
+    .table-title {
+        font-size: var(--font-size-xl);
+        font-weight: var(--font-weight-semibold);
+        color: var(--text-primary);
+        margin: 0;
+    }
+    
+    .table-actions {
+        display: flex;
+        gap: var(--spacing-md);
+    }
+    
+    .table-responsive {
+        overflow-x: auto;
+        margin-top: var(--spacing-lg);
+    }
+    
+    /* Base Table Styles */
+    .roster-table,
+    .document-table,
+    .data-table,
+    .timesheet-table,
+    .overview-matrix {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: var(--font-size-sm);
+    }
+    
+    .roster-table th,
+    .document-table th,
+    .data-table th,
+    .timesheet-table th,
+    .overview-matrix th {
+        background: var(--bg-light);
+        padding: var(--spacing-lg) var(--spacing-md);
+        text-align: left;
+        font-weight: var(--font-weight-semibold);
+        font-size: var(--font-size-xs);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-muted);
+        border-bottom: 2px solid var(--border-color);
+    }
+    
+    .roster-table td,
+    .document-table td,
+    .data-table td,
+    .timesheet-table td,
+    .overview-matrix td {
+        padding: var(--spacing-lg) var(--spacing-md);
+        border-bottom: 1px solid var(--border-light);
+        vertical-align: top;
+        line-height: 1.4;
+    }
+    
+    .roster-table tr:hover:not(.day-header),
+    .document-table tr:hover,
+    .data-table tr:hover {
+        background: var(--bg-secondary);
+    }
+    
+    /* Clickable Table Rows */
+    .document-table tbody tr,
+    .clickable-row {
+        cursor: pointer;
+    }
+    
+    .document-table tbody tr.selected {
+        background: var(--primary-light);
+    }
+    
+    /* No Data Row */
+    .data-table tr.no-data td {
+        text-align: center;
+        color: var(--text-muted);
+        padding: var(--spacing-2xl);
+    }
+    
+    /* Overview Matrix Special Styles */
+    .overview-matrix th,
+    .overview-matrix td {
+        text-align: center;
+        border: 1px solid var(--border-color);
+    }
+    
+    .rotate-header {
+        writing-mode: vertical-rl;
+        text-orientation: mixed;
+        height: 120px;
+        white-space: nowrap;
+    }
+    
+    .matrix-cell {
+        font-weight: var(--font-weight-bold);
+        cursor: pointer;
+    }
+    
+    /* Day Headers for Schedule */
+    .day-header {
+        background: linear-gradient(135deg, var(--primary-color), var(--info-color)) !important;
+    }
+    
+    .day-header td {
+        color: var(--text-white) !important;
+        font-weight: var(--font-weight-semibold);
+        padding: var(--spacing-md) var(--spacing-lg);
+    }
+    
+    .day-stats {
+        float: right;
+        background: rgba(255,255,255,0.2);
+        padding: var(--spacing-xs) var(--spacing-md);
+        border-radius: var(--radius-pill);
+        font-size: var(--font-size-xs);
+    }
+    
+    /* Day Color Coding */
+    .monday-shift { border-left: 4px solid var(--monday-color); }
+    .tuesday-shift { border-left: 4px solid var(--tuesday-color); }
+    .wednesday-shift { border-left: 4px solid var(--wednesday-color); }
+    .thursday-shift { border-left: 4px solid var(--thursday-color); }
+    .friday-shift { border-left: 4px solid var(--friday-color); }
+    .saturday-shift { border-left: 4px solid var(--saturday-color); }
+    .sunday-shift { border-left: 4px solid var(--sunday-color); }
+    
+    /* ==========================================================================
+       Status Badge System
+       ========================================================================== */
+    .status-badge,
+    .badge,
+    .participant-badge {
+        display: inline-block;
+        padding: var(--spacing-xs) var(--spacing-sm);
+        font-size: var(--font-size-xs);
+        font-weight: var(--font-weight-medium);
+        line-height: 1;
+        text-align: center;
+        white-space: nowrap;
+        vertical-align: baseline;
+        border-radius: var(--radius-sm);
+    }
+    
+    .participant-badge {
+        border-radius: var(--radius-pill);
+        font-size: 11px;
+        font-weight: var(--font-weight-semibold);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    /* Status Colors */
+    .status-valid,
+    .status-confirmed,
+    .badge-success {
+        background: var(--success-light);
+        color: var(--success-dark);
+    }
+    
+    .status-expired,
+    .badge-danger {
+        background: var(--danger-light);
+        color: var(--danger-dark);
+    }
+    
+    .status-expiring,
+    .status-pending,
+    .badge-warning {
+        background: var(--warning-light);
+        color: var(--warning-dark);
+    }
+    
+    .status-unverified,
+    .status-completed,
+    .badge-info {
+        background: var(--info-light);
+        color: var(--info-dark);
+    }
+    
+    .status-missing {
+        background: var(--bg-secondary);
+        color: var(--text-secondary);
+    }
+    
+    /* Special Badge Types */
+    .badge-default {
+        background: var(--bg-dark);
+        color: var(--text-secondary);
+    }
+    
+    .badge-assignment {
+        background: var(--success-light);
+        color: var(--success-dark);
+    }
+    
+    .badge-override {
+        background: var(--warning-light);
+        color: var(--warning-dark);
+    }
+    
+    .badge-holiday {
+        background: var(--danger-light);
+        color: var(--danger-dark);
+    }
+    
+    .badge-sleepover {
+        background: var(--info-light);
+        color: var(--info-dark);
+    }
+    
+    .location-badge {
+        display: inline-block;
+        padding: var(--spacing-xs) var(--spacing-md);
+        border-radius: var(--radius-pill);
+        font-size: var(--font-size-xs);
+        font-weight: var(--font-weight-medium);
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: var(--text-white);
+        white-space: nowrap;
+    }
+    
+    /* Matrix Cell Status Colors */
+    .matrix-cell.valid { background: var(--success-light); color: var(--success-dark); }
+    .matrix-cell.expired { background: var(--danger-light); color: var(--danger-dark); }
+    .matrix-cell.expiring { background: var(--warning-light); color: var(--warning-dark); }
+    .matrix-cell.unverified { background: var(--info-light); color: var(--info-dark); }
+    .matrix-cell.missing { background: var(--bg-secondary); color: var(--text-secondary); }
+    
+    /* Legend Boxes */
+    .overview-legend {
+        margin-top: var(--spacing-xl);
+        display: flex;
+        gap: var(--spacing-xl);
+        justify-content: center;
+    }
+    
+    .legend-box {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 1px solid var(--border-color);
+        vertical-align: middle;
+        margin-right: var(--spacing-xs);
+    }
+    
+    .legend-box.valid { background: var(--success-light); }
+    .legend-box.expired { background: var(--danger-light); }
+    .legend-box.expiring { background: var(--warning-light); }
+    .legend-box.unverified { background: var(--info-light); }
+    .legend-box.missing { background: var(--bg-secondary); }
+    
+    /* ==========================================================================
+       Document Management Components
+       ========================================================================== */
+    
+    /* Split View Layout */
+    .split-view-container {
+        display: grid;
+        grid-template-columns: 1fr 400px;
+        gap: var(--spacing-xl);
+        height: calc(100vh - 300px);
+    }
+    
+    .document-list-panel {
+        overflow-y: auto;
+    }
+    
+    .document-preview-panel {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+    }
+    
+    /* Document Preview */
+    #documentPreview {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .preview-header {
+        padding: var(--spacing-lg);
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .preview-header h4 {
+        margin: 0;
+    }
+    
+    .preview-actions {
+        display: flex;
+        gap: var(--spacing-xs);
+    }
+    
+    .preview-content {
+        flex: 1;
+        padding: var(--spacing-xl);
+        overflow: auto;
+        background: var(--bg-primary);
+    }
+    
+    .preview-info {
+        padding: var(--spacing-lg);
+        border-top: 1px solid var(--border-color);
+        background: var(--bg-secondary);
+        font-size: var(--font-size-sm);
+    }
+    
+    .preview-info p {
+        margin: var(--spacing-xs) 0;
+    }
+    
+    .preview-placeholder {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-muted);
+    }
+    
+    .preview-placeholder i {
+        font-size: 4em;
+        margin-bottom: var(--spacing-sm);
+    }
+    
+    .preview-unsupported {
+        text-align: center;
+        padding: var(--spacing-4xl);
+    }
+    
+    .preview-unsupported i {
+        font-size: 3em;
+        color: var(--text-muted);
+        margin-bottom: var(--spacing-xl);
+    }
+    
+    /* Edit Mode */
+    #editMode .form-group {
+        margin-bottom: var(--spacing-lg);
+    }
+    
+    #editMode .form-group label {
+        display: block;
+        margin-bottom: var(--spacing-xs);
+        font-weight: var(--font-weight-medium);
+    }
+    
+    #editMode .form-control {
+        width: 100%;
+        padding: var(--spacing-sm);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-sm);
+    }
+    
+    /* Overview Controls */
+    .overview-controls {
+        margin-bottom: var(--spacing-xl);
+        padding: var(--spacing-lg);
+        background: var(--bg-secondary);
+        border-radius: var(--radius-lg);
+    }
+    
+    .overview-controls label {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+    }
+    
+    /* Document Upload Section */
+    .document-upload-section {
+        background: var(--bg-secondary);
+        padding: var(--spacing-xl);
+        border-radius: var(--radius-lg);
+        margin-bottom: var(--spacing-2xl);
+    }
+    
+    /* ==========================================================================
+       Upload & File Management Components
+       ========================================================================== */
+    .upload-step {
+        display: none;
+    }
+    
+    .upload-step.active {
+        display: block;
+    }
+    
+    .upload-options {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: var(--spacing-xl);
+        padding: var(--spacing-xl);
+    }
+    
+    .upload-option {
+        border: 2px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        padding: var(--spacing-4xl) var(--spacing-xl);
+        text-align: center;
+        cursor: pointer;
+        transition: var(--transition-slow);
+    }
+    
+    .upload-option:hover {
+        border-color: var(--primary-color);
+        background: var(--bg-secondary);
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+    
+    .upload-option i {
+        font-size: 3em;
+        color: var(--primary-color);
+        margin-bottom: var(--spacing-xl);
+    }
+    
+    .upload-option h4 {
+        margin: 0 0 var(--spacing-sm) 0;
+    }
+    
+    .upload-option p {
+        margin: 0;
+        color: var(--text-secondary);
+    }
+    
+    /* File Drop Zone */
+    .file-drop-zone {
+        border: 2px dashed var(--border-dashed);
+        border-radius: var(--radius-lg);
+        padding: var(--spacing-4xl);
+        text-align: center;
+        cursor: pointer;
+        transition: var(--transition-slow);
+    }
+    
+    .file-drop-zone:hover,
+    .file-drop-zone.drag-over {
+        border-color: var(--primary-color);
+        background: var(--primary-lighter);
+    }
+    
+    .file-drop-zone i {
+        font-size: 3em;
+        color: var(--text-muted);
+        margin-bottom: var(--spacing-sm);
+    }
+    
+    .file-drop-zone input[type="file"] {
+        display: none;
+    }
+    
+    /* File Preview */
+    #filePreview {
+        text-align: center;
+        padding: var(--spacing-xl);
+    }
+    
+    #filePreview img {
+        border-radius: var(--radius-lg);
+        margin-bottom: var(--spacing-sm);
+    }
+    
+    /* Camera & Capture Controls */
+    .camera-controls,
+    .capture-controls,
+    .perspective-controls {
+        display: flex;
+        gap: var(--spacing-sm);
+        justify-content: center;
+        margin-top: var(--spacing-xl);
+    }
+    
+    /* Perspective Correction */
+    .perspective-container {
+        position: relative;
+        display: inline-block;
+        margin: 0 auto;
+    }
+    
+    .perspective-handles {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+    }
+    
+    .corner-handle {
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        background: var(--primary-color);
+        border: 2px solid var(--text-white);
+        border-radius: var(--radius-circle);
+        cursor: move;
+        transform: translate(-50%, -50%);
+        pointer-events: auto;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+    
+    .corner-handle:hover {
+        background: var(--primary-hover);
+        transform: translate(-50%, -50%) scale(1.2);
+    }
+    
+    #perspectiveCanvas {
+        max-width: 100%;
+        display: block;
+    }
+    
+    /* ==========================================================================
+       Modal System
+       ========================================================================== */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: var(--z-modal);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: var(--spacing-2xl);
+    }
+    
+    .modal {
+        background-color: var(--bg-primary);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-xl);
+        width: 100%;
+        max-width: 600px;
+        max-height: 90vh;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: var(--spacing-xl) var(--spacing-2xl);
+        border-bottom: 1px solid var(--border-light);
+    }
+    
+    .modal-header h3 {
+        margin: 0;
+        font-size: var(--font-size-xl);
+        font-weight: var(--font-weight-semibold);
+        color: var(--text-primary);
+    }
+    
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: var(--font-size-2xl);
+        cursor: pointer;
+        color: var(--text-muted);
+        padding: var(--spacing-xs);
+        border-radius: var(--radius-sm);
+        transition: var(--transition);
+    }
+    
+    .modal-close:hover {
+        background: var(--bg-light);
+        color: var(--text-primary);
+    }
+    
+    .modal-content {
+        padding: var(--spacing-2xl);
+        overflow-y: auto;
+        flex: 1;
+        position: relative;
+    }
+    
+    .modal-footer {
+        padding: var(--spacing-xl) var(--spacing-2xl);
+        border-top: 1px solid var(--border-light);
+        background: var(--bg-secondary);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: var(--spacing-md);
+    }
+    
+    .modal-footer .btn-danger {
+        margin-right: auto;
+    }
+    
+    .modal-footer .modal-actions {
+        display: flex;
+        gap: var(--spacing-md);
+    }
+    
+    /* ==========================================================================
+       Info Components
+       ========================================================================== */
+    .info-box {
+        padding: var(--spacing-md);
+        border-radius: var(--radius-lg);
+        margin-bottom: var(--spacing-lg);
+        display: flex;
+        gap: var(--spacing-sm);
+        align-items: start;
+    }
+    
+    .info-box.info {
+        background: var(--primary-light);
+        border-left: 4px solid var(--info-color);
+    }
+    
+    .info-box i {
+        margin-top: 2px;
+        color: var(--info-color);
+    }
+    
+    .section-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin: var(--spacing-2xl) 0 var(--spacing-lg) 0;
+        padding-bottom: var(--spacing-sm);
+        border-bottom: 2px solid var(--border-color);
+        color: var(--text-primary);
+    }
+    
+    .section-header {
+        margin-bottom: var(--spacing-xl);
+    }
+    
+    /* ==========================================================================
+       Loading & Empty States
+       ========================================================================== */
+    .loading,
+    .loading-overlay {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: var(--spacing-3xl);
+        color: var(--text-muted);
+        flex-direction: column;
+        gap: var(--spacing-md);
+    }
+    
+    .loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.95);
+        z-index: var(--z-overlay);
+        border-radius: var(--radius-lg);
+    }
+    
+    .spinner {
+        width: 24px;
+        height: 24px;
+        border: 2px solid var(--border-light);
+        border-top: 2px solid var(--primary-color);
+        border-radius: var(--radius-circle);
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: var(--spacing-3xl) var(--spacing-xl);
+        color: var(--text-muted);
+    }
+    
+    .empty-state h3 {
+        color: var(--text-secondary);
+        margin-bottom: var(--spacing-md);
+    }
+    
+    .empty-state p {
+        margin-bottom: var(--spacing-xl);
+        line-height: var(--line-height-relaxed);
+    }
+    
+    /* ==========================================================================
+       Notification System
+       ========================================================================== */
+    .notification {
+        position: fixed;
+        top: var(--spacing-2xl);
+        right: var(--spacing-2xl);
+        padding: var(--spacing-lg) var(--spacing-xl);
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-lg);
+        z-index: var(--z-notification);
+        max-width: 400px;
+        animation: slideIn 0.3s ease-out;
+        border: 1px solid transparent;
+    }
+    
+    .notification.success {
+        background: var(--success-color);
+        color: var(--text-white);
+        border-color: var(--success-hover);
+    }
+    
+    .notification.error {
+        background: var(--danger-color);
+        color: var(--text-white);
+        border-color: var(--danger-hover);
+    }
+    
+    .notification.info {
+        background: var(--info-color);
+        color: var(--text-white);
+        border-color: var(--info-hover);
+    }
+    
+    .notification.warning {
+        background: var(--warning-color);
+        color: var(--text-white);
+        border-color: var(--warning-hover);
+    }
+    
+    @keyframes slideIn {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
         }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    
+    @keyframes slideOut {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+    }
+    
+    /* ==========================================================================
+       Special Components
+       ========================================================================== */
+    
+    /* Holiday Management */
+    .holiday-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: var(--spacing-md) var(--spacing-lg);
+        background: var(--bg-secondary);
+        border-radius: var(--radius-md);
+        margin-bottom: var(--spacing-sm);
+        border: 1px solid var(--border-light);
+    }
+    
+    .holiday-form {
+        padding: var(--spacing-xl);
+        background: var(--bg-light);
+        border-radius: var(--radius-md);
+        margin-bottom: var(--spacing-xl);
+        border: 1px solid var(--border-light);
+    }
+    
+    /* Staff Assignment Form */
+    .staff-assignment-form {
+        background: var(--bg-secondary);
+        padding: var(--spacing-xl);
+        border-radius: var(--radius-lg);
+        margin-bottom: var(--spacing-2xl);
+    }
+    
+    /* Location Components */
+    .location-controls {
+        display: flex;
+        gap: var(--spacing-lg);
+        align-items: end;
+        margin-bottom: var(--spacing-lg);
+    }
+    
+    .map-container {
+        height: 400px;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        margin-bottom: var(--spacing-lg);
+    }
+    
+    .location-info-card {
+        background: var(--bg-secondary);
+        border-radius: var(--radius-lg);
+        padding: var(--spacing-lg);
+        margin-bottom: var(--spacing-lg);
+    }
+    
+    .location-info-card h4 {
+        margin: 0 0 var(--spacing-md) 0;
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+    }
+    
+    .info-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: var(--spacing-lg);
+        margin-bottom: var(--spacing-md);
+    }
+    
+    .location-display {
+        margin-top: var(--spacing-xs);
+        color: var(--text-secondary);
+    }
+    
+    .location-tips {
+        display: grid;
+        gap: var(--spacing-xs);
+        font-size: var(--font-size-sm);
+        color: var(--text-secondary);
+        padding-top: var(--spacing-md);
+        border-top: 1px solid var(--border-light);
+    }
+    
+    .location-tips div {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+    }
+    
+    .location-tips i {
+        color: var(--primary-color);
+    }
+    
+    /* Shift Cards */
+    .shift-card {
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-lg);
+        padding: var(--spacing-md);
+        margin-bottom: var(--spacing-md);
+        background: var(--bg-primary);
+        transition: var(--transition);
+    }
+    
+    .shift-card:hover {
+        box-shadow: var(--shadow-hover);
+    }
+    
+    .shift-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: var(--spacing-sm);
+    }
+    
+    .shift-badges {
+        display: flex;
+        gap: var(--spacing-xs);
+    }
+    
+    /* Rate Summary */
+    .rate-summary {
+        margin-top: var(--spacing-3xl);
+        padding: var(--spacing-xl);
+        background: var(--bg-secondary);
+        border-radius: var(--radius-lg);
+    }
+    
+    .rate-summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: var(--spacing-lg);
+        margin-top: var(--spacing-lg);
+    }
+    
+    .rate-summary-item {
+        background: var(--bg-primary);
+        padding: var(--spacing-md);
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border-light);
+    }
+    
+    /* Overlap Indicator */
+    .overlap-indicator {
+        display: inline-block;
+        background: var(--warning-color);
+        color: #000;
+        padding: 2px 6px;
+        border-radius: var(--radius-pill);
+        font-size: 11px;
+        font-weight: var(--font-weight-bold);
+        margin-left: var(--spacing-sm);
+        cursor: help;
+    }
+    
+    .overlap-tooltip {
+        background: rgba(0, 0, 0, 0.9);
+        color: var(--text-white);
+        padding: var(--spacing-sm) var(--spacing-md);
+        border-radius: var(--radius-sm);
+        font-size: var(--font-size-xs);
+        z-index: var(--z-tooltip);
+        max-width: 300px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    
+    /* Accordion */
+    .accordion-content {
+        display: none;
+    }
+    
+    .accordion-content.active {
+        display: table-row;
+    }
+    
+    /* View Content */
+    .view-content {
+        display: none;
+        padding: var(--spacing-xl);
+    }
+    
+    .view-content.active {
+        display: block;
+    }
+    
+    /* Documents View Specific */
+    #documentsView {
+        padding: var(--spacing-xl);
+    }
+    
+    #documentsView .management-section {
+        padding: var(--spacing-xl);
+    }
+    
+    #documentsView .roster-table {
+        margin-top: var(--spacing-xl);
+    }
+    
+    /* ==========================================================================
+       Responsive Design
+       ========================================================================== */
+    @media (max-width: 1024px) {
+        .split-view-container {
+            grid-template-columns: 1fr;
+            grid-template-rows: 1fr 1fr;
+        }
+    }
+    
+    @media (max-width: 768px) {
+        /* Typography adjustments */
+        :root {
+            --font-size-base: 0.875rem;
+        }
+        
+        /* Container adjustments */
+        .container {
+            padding: var(--spacing-lg);
+        }
+        
+        /* Header adjustments */
+        .header-content {
+            flex-direction: column;
+            padding: var(--spacing-md);
+            gap: var(--spacing-sm);
+            height: auto;
+        }
+        
+        /* Navigation adjustments */
+        .doc-tabs,
+        .modal-tabs {
+            flex-direction: column;
+        }
+        
+        .view-toggle {
+            flex-direction: column;
+            width: 100%;
+        }
+        
+        .view-toggle button {
+            width: 100%;
+            padding: var(--spacing-md);
+        }
+        
+        .view-controls {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        
+        .view-actions {
+            justify-content: center;
+        }
+        
+        /* Filter adjustments */
+        .doc-filters,
+        .filter-row {
+            flex-direction: column;
+            grid-template-columns: 1fr;
+        }
+        
+        .searchable-input {
+            width: 100%;
+        }
+        
+        /* Table adjustments */
+        .roster-table,
+        .timesheet-table {
+            font-size: 11px;
+        }
+        
+        .roster-table th,
+        .roster-table td,
+        .timesheet-table th,
+        .timesheet-table td {
+            padding: var(--spacing-sm) var(--spacing-xs);
+        }
+        
+        /* Hide less important columns on mobile */
+        .roster-table th:nth-child(5),
+        .roster-table td:nth-child(5) {
+            display: none; /* Hide location column */
+        }
+        
+        /* Week navigation */
+        .week-nav {
+            flex-direction: column;
+            gap: var(--spacing-lg);
+        }
+        
+        .week-nav button {
+            width: 100%;
+        }
+        
+        /* Cards */
+        .card {
+            margin: var(--spacing-sm);
+        }
+        
+        /* Modal adjustments */
+        .modal {
+            max-width: 95%;
+            margin: 0 auto;
+        }
+        
+        .modal-footer {
+            flex-direction: column;
+            gap: var(--spacing-md);
+        }
+        
+        .modal-footer .btn-danger {
+            margin-right: 0;
+            order: 2;
+        }
+        
+        .modal-footer .modal-actions {
+            order: 1;
+            width: 100%;
+            justify-content: stretch;
+        }
+        
+        .modal-actions .btn {
+            flex: 1;
+        }
+        
+        /* Hour breakdown */
+        .hour-breakdown-item {
+            display: block;
+            margin-bottom: var(--spacing-xs);
+        }
+        
+        /* Request items */
+        .request-item {
+            font-size: var(--font-size-sm);
+        }
+        
+        .request-actions {
+            flex-direction: column;
+        }
+        
+        .request-actions .btn {
+            width: 100%;
+        }
+        
+        /* Summary grid */
+        .summary-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        /* Availability grid */
+        .availability-grid {
+            font-size: 10px;
+            grid-template-columns: 80px repeat(7, 1fr);
+        }
+        
+        .availability-cell {
+            padding: var(--spacing-xs);
+            min-height: 35px;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        /* Even smaller screens */
+        .roster-table {
+            font-size: 10px;
+        }
+        
+        /* Show only essential columns */
+        .roster-table th:nth-child(6),
+        .roster-table td:nth-child(6) {
+            display: none; /* Hide duty type */
+        }
+        
+        /* Compact timesheet */
+        .timesheet-wrapper {
+            margin: 0;
+            border-radius: 0;
+        }
+        
+        /* Smaller buttons */
+        .btn {
+            padding: var(--spacing-xs) var(--spacing-md);
+            font-size: var(--font-size-xs);
+        }
+        
+        .btn-sm {
+            padding: var(--spacing-xs) var(--spacing-sm);
+            font-size: 11px;
+        }
+        
+        /* Grid adjustments */
+        .summary-grid,
+        .form-row {
+            grid-template-columns: 1fr;
+        }
+        
+        /* Table padding */
+        .table th,
+        .table td {
+            padding: var(--spacing-xs);
+        }
+        
+        /* Modal full screen */
+        .modal {
+            width: 100%;
+            height: 100vh;
+            border-radius: 0;
+            max-height: 100vh;
+        }
+    }
+    
+    /* ==========================================================================
+       Print Styles
+       ========================================================================== */
+    @media print {
+        /* Hide non-printable elements */
+        .no-print,
+        .btn,
+        .modal-overlay,
+        .notification,
+        .nav-dropdown,
+        .view-toggle,
+        .filter-row,
+        .table-actions,
+        .header {
+            display: none !important;
+        }
+        
+        /* Print optimizations */
+        body {
+            background: white;
+            color: black;
+            font-size: 12pt;
+        }
+        
+        .table {
+            border: 1px solid black;
+            page-break-inside: avoid;
+        }
+        
+        .card {
+            box-shadow: none;
+            border: 1px solid black;
+            page-break-inside: avoid;
+        }
+    }
+    
+    /* ==========================================================================
+       Utility Classes
+       ========================================================================== */
+    .text-center { text-align: center; }
+    .text-right { text-align: right; }
+    .text-left { text-align: left; }
+    
+    .text-primary { color: var(--text-primary); }
+    .text-secondary { color: var(--text-secondary); }
+    .text-muted { color: var(--text-muted); }
+    .text-success { color: var(--success-dark); }
+    .text-danger { color: var(--danger-dark); }
+    .text-warning { color: var(--warning-dark); }
+    .text-info { color: var(--info-dark); }
+    
+    .d-none { display: none; }
+    .d-block { display: block; }
+    .d-flex { display: flex; }
+    
+    .justify-content-between { justify-content: space-between; }
+    .align-items-center { align-items: center; }
+    
+    /* ==========================================================================
+       Animation Classes
+       ========================================================================== */
+    .fade-in {
+        animation: fadeIn 0.3s ease-in;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    .scale-in {
+        animation: scaleIn 0.2s ease-out;
+    }
+    
+    @keyframes scaleIn {
+        from { transform: scale(0.9); opacity: 0; }
+        to { transform: scale(1); opacity: 1; }
+    }
+    
+    .slide-up {
+        animation: slideUp 0.3s ease-out;
+    }
+    
+    @keyframes slideUp {
+        from { transform: translateY(20px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
     </style>
 </head>
 <body>
@@ -1503,6 +2313,7 @@ label.required::after {
                 <button onclick="switchView('notes')" id="notesViewBtn">Notes</button>
                 <button onclick="switchView('availability')" id="availabilityViewBtn">Availability</button>
                 <button onclick="switchView('participants')" id="participantsViewBtn">Participants</button>
+                <button onclick="switchView('documents')" id="documentsViewBtn">Documents</button>
             </div>
             <div class="view-actions">
                 <button class="btn btn-outline btn-sm" id="undoBtn" onclick="UndoRedoManager.undo()" disabled title="Nothing to undo (Ctrl+Z)">↶ Undo</button>
@@ -2546,6 +3357,10 @@ label.required::after {
             </button>
         </footer>
     </div>
+</div>
+
+<div id="documentsView" class="view-content" style="display: none;">
+    <!-- DocumentsModule will populate this automatically -->
 </div>
 
     <script>
@@ -8166,11 +8981,16 @@ function switchView(view) {
             if (typeof loadGoogleMapsScript === 'function') {
                 loadGoogleMapsScript();
             }
-            break;
-        default:
-            console.log('Unknown view:', view);
-            break;
+            case 'documents':
+    if (typeof EnhancedDocumentManager !== 'undefined') {
+        EnhancedDocumentManager.init();
     }
+    break;
+
+    default:
+        console.log('Unknown view:', view);
+        break;
+}
 }
 
 //PARTICIPANTS SECTION
@@ -10602,158 +11422,7 @@ async function denyAdjustment(requestId) {
     }
 }
 
-        async function renderAvailability() {
-    const availabilityContent = document.getElementById('availabilityContent');
-    if (!availabilityContent) {
-        const availabilityView = document.getElementById('availabilityView');
-        if (availabilityView) {
-            availabilityView.innerHTML = `
-                <div class="table-container">
-                    <header class="table-header">
-                        <h2 class="table-title">Staff Availability Management</h2>
-                        <div class="table-actions">
-                            <button class="btn btn-primary btn-sm" onclick="showAvailabilityModal()">Set Availability</button>
-                            <button class="btn btn-outline btn-sm" onclick="renderAvailability()">Refresh</button>
-                        </div>
-                    </header>
-                    <div class="card-content" id="availabilityContent">
-                        <div class="loading">
-                            <div class="spinner"></div>
-                            <span>Loading availability...</span>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-        return;
-    }
-    
-    try {
-        // Load staff availability for the current week
-        const weekStart = getFortnightStart(new Date());
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekEnd.getDate() + 6);
         
-        const { data: availability } = await supabaseClient
-            .from('staff_availability')
-            .select(`
-                *,
-                staff:staff_id(first_name, last_name)
-            `)
-            .gte('date', weekStart.toISOString().split('T')[0])
-            .lte('date', weekEnd.toISOString().split('T')[0])
-            .order('date');
-        
-        let html = `
-            <style>
-                .availability-grid {
-                    display: grid;
-                    grid-template-columns: 150px repeat(7, 1fr);
-                    gap: 1px;
-                    background: #e9ecef;
-                    border-radius: 8px;
-                    overflow: hidden;
-                    margin-bottom: 24px;
-                }
-                
-                .availability-cell {
-                    background: white;
-                    padding: 12px;
-                    min-height: 50px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: 14px;
-                }
-                
-                .availability-header {
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    color: white;
-                    font-weight: 600;
-                    font-size: 12px;
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                }
-                
-                .availability-name {
-                    background: #f8f9fa;
-                    font-weight: 500;
-                    justify-content: flex-start;
-                    padding-left: 16px;
-                }
-                
-                .available {
-                    background: #d4edda;
-                    color: #155724;
-                }
-                
-                .unavailable {
-                    background: #f8d7da;
-                    color: #721c24;
-                }
-                
-                .partial {
-                    background: #fff3cd;
-                    color: #856404;
-                }
-            </style>
-            
-            <div class="availability-grid">
-                <div class="availability-cell availability-header">Staff</div>
-        `;
-        
-        // Add day headers
-        const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-        days.forEach((day, index) => {
-            const date = new Date(weekStart);
-            date.setDate(date.getDate() + index);
-            html += `
-                <div class="availability-cell availability-header">
-                    ${day}<br>${date.getDate()}
-                </div>
-            `;
-        });
-        
-        // Group availability by staff
-        const staffAvailability = {};
-        availability?.forEach(av => {
-            const staffId = av.staff_id;
-            if (!staffAvailability[staffId]) {
-                staffAvailability[staffId] = {
-                    staff: av.staff,
-                    days: {}
-                };
-            }
-            const dayIndex = new Date(av.date).getDay();
-            staffAvailability[staffId].days[dayIndex] = av.available;
-        });
-        
-        // Render each staff member's availability
-        Object.values(staffAvailability).forEach(sa => {
-            html += `<div class="availability-cell availability-name">${sa.staff.first_name} ${sa.staff.last_name}</div>`;
-            
-            for (let i = 0; i < 7; i++) {
-                const dayIndex = i === 6 ? 0 : i + 1; // Adjust for Monday start
-                const isAvailable = sa.days[dayIndex];
-                const className = isAvailable === true ? 'available' : 
-                                 isAvailable === false ? 'unavailable' : '';
-                const text = isAvailable === true ? '✓' : 
-                           isAvailable === false ? '✗' : '-';
-                
-                html += `<div class="availability-cell ${className}">${text}</div>`;
-            }
-        });
-        
-        html += '</div>';
-        
-        availabilityContent.innerHTML = html;
-        
-    } catch (error) {
-        console.error('Error loading availability:', error);
-        availabilityContent.innerHTML = '<div class="error">Failed to load availability</div>';
-    }
-}
-
 
 // ============================================
 // COMPLETE ROSTER REPLACEMENT CODE
@@ -14020,7 +14689,7 @@ async function validateParticipantLocation(participantId) {
 }
 
         // ========================================
-        // SEARCHABLE DROPDOWNS - FIXED
+        // SEARCHABLE DROPDOWNS
         // ========================================
 
         function populateFilterDropdowns() {
@@ -16887,6 +17556,7 @@ window.cancelEditNote = function(noteId) {
     if (saveBtn) saveBtn.style.display = 'none';
     if (cancelBtn) cancelBtn.style.display = 'none';
 };
+
 async function renderNotes(page = 1) {
     try {
         const notesContent = document.getElementById('notesContent');
@@ -20320,6 +20990,1882 @@ function showEditShiftNoteModal(noteData) {
         modal.style.display = 'flex';
     }, 100);
 }
+
+//DOCUMENT MANAGER
+// Enhanced Document Management Module for mc-manager.html
+const EnhancedDocumentManager = {
+    currentTab: 'types',
+    currentPreviewDoc: null,
+    staffList: [],
+    documentTypes: [],
+    allDocuments: [],
+    filters: {
+        staff: '',
+        documentType: '',
+        status: 'all',
+        expiryDays: 30,
+        startDate: '',
+        endDate: ''
+    },
+
+    async init() {
+        await this.loadStaffList();
+        await this.loadDocumentTypes();
+        this.renderInterface();
+        this.attachEventListeners();
+        this.syncWithGlobalFilters();
+    },
+
+    // Sync with existing global filters
+    syncWithGlobalFilters() {
+        // Use the existing staffFilterValue from global scope
+        if (typeof staffFilterValue !== 'undefined' && staffFilterValue) {
+            this.filters.staff = staffFilterValue;
+        }
+        
+        // Listen for changes to global filters
+        const originalApplyFilters = window.applyFilters;
+        window.applyFilters = function() {
+            originalApplyFilters();
+            if (EnhancedDocumentManager.currentTab === 'staff') {
+                EnhancedDocumentManager.loadStaffDocuments();
+            }
+        };
+    },
+
+    renderInterface() {
+        const container = document.getElementById('documentsView');
+        container.innerHTML = `
+            <div class="document-management-container">
+                <!-- Header -->
+                <div class="section-header">
+                    <h2>Document Management</h2>
+                    <button class="btn btn-primary" onclick="EnhancedDocumentManager.showAddDocumentModal()">
+                        <i class="fas fa-plus"></i> Add Document
+                    </button>
+                </div>
+                
+                <!-- Tabs -->
+                <div class="doc-tabs">
+                    <button class="doc-tab-btn ${this.currentTab === 'types' ? 'active' : ''}" 
+                            onclick="EnhancedDocumentManager.switchTab('types')">
+                        <i class="fas fa-cog"></i> Document Types
+                    </button>
+                    <button class="doc-tab-btn ${this.currentTab === 'staff' ? 'active' : ''}" 
+                            onclick="EnhancedDocumentManager.switchTab('staff')">
+                        <i class="fas fa-user"></i> Staff Documents
+                    </button>
+                    <button class="doc-tab-btn ${this.currentTab === 'overview' ? 'active' : ''}" 
+                            onclick="EnhancedDocumentManager.switchTab('overview')">
+                        <i class="fas fa-th"></i> All Staff Overview
+                    </button>
+                </div>
+                
+                <!-- Tab Contents -->
+                <div id="docTypesTab" class="doc-tab-content ${this.currentTab === 'types' ? 'active' : ''}">
+                    <!-- Document Types Management -->
+                </div>
+                
+                <div id="docStaffTab" class="doc-tab-content ${this.currentTab === 'staff' ? 'active' : ''}">
+                    <!-- Split view: table + preview -->
+                    <div class="split-view-container">
+                        <div class="document-list-panel">
+                            <div id="documentFilters"></div>
+                            <div id="documentsTable"></div>
+                        </div>
+                        <div class="document-preview-panel">
+                            <div id="documentPreview">
+                                <div class="preview-placeholder">
+                                    <i class="fas fa-file-alt"></i>
+                                    <p>Select a document to preview</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="docOverviewTab" class="doc-tab-content ${this.currentTab === 'overview' ? 'active' : ''}">
+                    <!-- All Staff Matrix View -->
+                    <div class="overview-controls">
+                        <label>Expiry Warning Days: 
+                            <input type="number" id="expiryDaysInput" min="0" max="365" value="30" 
+                                   style="width: 80px;" class="form-control"
+                                   onchange="EnhancedDocumentManager.updateExpiryThreshold(this.value)">
+                            days
+                        </label>
+                    </div>
+                    <div id="staffOverviewTable"></div>
+                </div>
+            </div>
+        `;
+        
+        // Load initial tab content
+        this.loadTabContent(this.currentTab);
+    },
+
+    switchTab(tab) {
+        this.currentTab = tab;
+        
+        // Update tab buttons
+        document.querySelectorAll('.doc-tab-btn').forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+        
+        // Update tab content
+        document.querySelectorAll('.doc-tab-content').forEach(content => content.classList.remove('active'));
+        document.getElementById(`doc${tab.charAt(0).toUpperCase() + tab.slice(1)}Tab`).classList.add('active');
+        
+        this.loadTabContent(tab);
+    },
+
+    async loadTabContent(tab) {
+        switch(tab) {
+            case 'types':
+                await this.loadDocumentTypes();
+                this.renderDocumentTypes();
+                break;
+            case 'staff':
+                await this.loadStaffDocuments();
+                break;
+            case 'overview':
+                await this.loadAllStaffOverview();
+                break;
+        }
+    },
+
+    // Document Types Management with proper modal
+    renderDocumentTypes() {
+        const container = document.getElementById('docTypesTab');
+        container.innerHTML = `
+            <table class="roster-table">
+                <thead>
+                    <tr>
+                        <th style="width: 60px;">Order</th>
+                        <th>Name</th>
+                        <th>Requires Expiry</th>
+                        <th>Requires Issue Date</th>
+                        <th>Staff Can Delete</th>
+                        <th>Visible to Staff</th>
+                        <th>Active</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${this.documentTypes.map(type => `
+                        <tr>
+                            <td>
+                                <input type="number" value="${type.display_order || 0}" 
+                                       style="width: 50px;" class="form-control"
+                                       onchange="EnhancedDocumentManager.updateDocType('${type.id}', 'display_order', this.value)">
+                            </td>
+                            <td>${type.name}</td>
+                            <td>
+                                <input type="checkbox" ${type.requires_expiry ? 'checked' : ''}
+                                       onchange="EnhancedDocumentManager.updateDocType('${type.id}', 'requires_expiry', this.checked)">
+                            </td>
+                            <td>
+                                <input type="checkbox" ${type.requires_issue_date ? 'checked' : ''}
+                                       onchange="EnhancedDocumentManager.updateDocType('${type.id}', 'requires_issue_date', this.checked)">
+                            </td>
+                            <td>
+                                <input type="checkbox" ${type.staff_can_delete !== false ? 'checked' : ''}
+                                       onchange="EnhancedDocumentManager.updateDocType('${type.id}', 'staff_can_delete', this.checked)">
+                            </td>
+                            <td>
+                                <input type="checkbox" ${type.is_visible_to_staff !== false ? 'checked' : ''}
+                                       onchange="EnhancedDocumentManager.updateDocType('${type.id}', 'is_visible_to_staff', this.checked)">
+                            </td>
+                            <td>
+                                <input type="checkbox" ${type.is_active !== false ? 'checked' : ''}
+                                       onchange="EnhancedDocumentManager.updateDocType('${type.id}', 'is_active', this.checked)">
+                            </td>
+                            <td>
+                                <button class="btn btn-sm" onclick="EnhancedDocumentManager.editDocType('${type.id}')">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+            <div style="margin-top: 20px;">
+                <button class="btn btn-primary" onclick="EnhancedDocumentManager.showAddDocTypeModal()">
+                    <i class="fas fa-plus"></i> Add Document Type
+                </button>
+            </div>
+        `;
+    },
+
+    // Staff Documents with split view
+    async loadStaffDocuments() {
+        try {
+            // Build filters section with searchable dropdowns
+            const filtersHtml = `
+                <div class="doc-filters">
+                    <p class="filter-note">Use the main Staff filter above to filter by staff member</p>
+                    
+                    <div class="filter-group">
+                        <label>Document Type</label>
+                        <input type="text" class="searchable-input" id="docTypeFilterInput" 
+                               placeholder="Type to search document types..." 
+                               list="docTypeFilterList">
+                        <datalist id="docTypeFilterList">
+                            ${this.documentTypes.filter(t => t.is_active).map(t => `
+                                <option value="${t.name}" data-id="${t.id}"></option>
+                            `).join('')}
+                        </datalist>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label>Status</label>
+                        <select id="docStatusFilter" class="form-control">
+                            <option value="all">All Status</option>
+                            <option value="expired">Expired</option>
+                            <option value="expiring">Expiring Soon</option>
+                            <option value="unverified">Unverified</option>
+                        </select>
+                    </div>
+                    
+                    <button class="btn btn-outline btn-sm" onclick="EnhancedDocumentManager.clearDocFilters()">
+                        Clear Filters
+                    </button>
+                </div>
+            `;
+            
+            document.getElementById('documentFilters').innerHTML = filtersHtml;
+            
+            // Attach searchable dropdown listeners
+            document.getElementById('docTypeFilterInput').addEventListener('change', () => {
+                this.applyDocumentFilters();
+            });
+            
+            document.getElementById('docStatusFilter').addEventListener('change', () => {
+                this.applyDocumentFilters();
+            });
+            
+            // Load documents
+            let query = supabaseClient
+                .from('documents')
+                .select(`
+                    *,
+                    document_types!inner(name, requires_expiry)
+                `)
+                .eq('entity_type', 'staff')
+                .is('deleted_at', null);
+                
+            // Use global staff filter if set
+            if (typeof staffFilterValue !== 'undefined' && staffFilterValue) {
+                query = query.eq('entity_id', staffFilterValue);
+            }
+            
+            const { data: documents, error } = await query.order('created_at', { ascending: false });
+            if (error) throw error;
+            
+            this.allDocuments = documents || [];
+            this.renderDocumentsTable();
+            
+        } catch (error) {
+            console.error('Error loading documents:', error);
+            showToast('Failed to load documents', 'error');
+        }
+    },
+
+    clearDocFilters() {
+        document.getElementById('docTypeFilterInput').value = '';
+        document.getElementById('docStatusFilter').value = 'all';
+        this.applyDocumentFilters();
+    },
+
+    applyDocumentFilters() {
+        // Get selected document type
+        const typeInput = document.getElementById('docTypeFilterInput');
+        const selectedType = this.documentTypes.find(t => t.name === typeInput.value);
+        this.filters.documentType = selectedType ? selectedType.id : '';
+        
+        // Get status filter
+        this.filters.status = document.getElementById('docStatusFilter').value;
+        
+        this.renderDocumentsTable();
+    },
+
+    renderDocumentsTable() {
+        const filtered = this.filterDocuments();
+        const container = document.getElementById('documentsTable');
+        
+        container.innerHTML = `
+            <table class="roster-table document-table">
+                <thead>
+                    <tr>
+                        <th>Staff</th>
+                        <th>Document Type</th>
+                        <th>Title</th>
+                        <th>Expiry</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${filtered.map(doc => {
+                        const staff = this.staffList.find(s => s.id === doc.entity_id) || {};
+                        const staffName = `${staff.first_name || ''} ${staff.last_name || ''}`.trim() || 'Unknown';
+                        const status = this.getDocumentStatus(doc);
+                        
+                        return `
+                            <tr class="document-row ${status.class}" 
+                                onclick="EnhancedDocumentManager.previewDocument('${doc.id}')"
+                                data-doc-id="${doc.id}">
+                                <td>${staffName}</td>
+                                <td>${doc.document_types?.name || 'Unknown'}</td>
+                                <td>${doc.title}</td>
+                                <td>${doc.expiry_date ? formatDate(doc.expiry_date) : '-'}</td>
+                                <td><span class="status-badge ${status.class}">${status.text}</span></td>
+                                <td onclick="event.stopPropagation()">
+                                    ${doc.is_verified ? 
+                                        `<button class="btn btn-sm btn-warning" onclick="EnhancedDocumentManager.toggleVerify('${doc.id}', false)">
+                                            <i class="fas fa-times"></i>
+                                        </button>` :
+                                        `<button class="btn btn-sm btn-success" onclick="EnhancedDocumentManager.toggleVerify('${doc.id}', true)">
+                                            <i class="fas fa-check"></i>
+                                        </button>`
+                                    }
+                                    <button class="btn btn-sm btn-danger" onclick="EnhancedDocumentManager.deleteDoc('${doc.id}')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            </table>
+        `;
+    },
+
+    previewDocument(docId) {
+        const doc = this.allDocuments.find(d => d.id === docId);
+        if (!doc) return;
+        
+        this.currentPreviewDoc = doc;
+        const previewContainer = document.getElementById('documentPreview');
+        
+        // Highlight selected row
+        document.querySelectorAll('.document-row').forEach(row => row.classList.remove('selected'));
+        document.querySelector(`[data-doc-id="${docId}"]`)?.classList.add('selected');
+        
+        // Check if it's an image or PDF
+        const isImage = /\.(jpg|jpeg|png|gif)$/i.test(doc.file_url);
+        const isPDF = /\.pdf$/i.test(doc.file_url);
+        
+        // Get document type info for field requirements
+        const docType = this.documentTypes.find(t => t.id === doc.document_type_id);
+        
+        previewContainer.innerHTML = `
+            <div class="preview-header">
+                <h4>${doc.title}</h4>
+                <div class="preview-actions">
+                    <button class="btn btn-sm" onclick="window.open('${doc.file_url}', '_blank')">
+                        <i class="fas fa-external-link-alt"></i> Open
+                    </button>
+                    ${isImage ? `
+                        <button class="btn btn-sm" onclick="EnhancedDocumentManager.editImage('${doc.id}')">
+                            <i class="fas fa-crop"></i> Edit Image
+                        </button>
+                    ` : ''}
+                    <button class="btn btn-sm btn-primary" onclick="EnhancedDocumentManager.toggleEditMode('${doc.id}')">
+                        <i class="fas fa-edit"></i> Edit Info
+                    </button>
+                </div>
+            </div>
+            <div class="preview-content">
+                ${isImage ? 
+                    `<img src="${doc.file_url}" alt="${doc.title}" style="max-width: 100%; height: auto;">` :
+                    isPDF ?
+                    `<embed src="${doc.file_url}" type="application/pdf" width="100%" height="600px">` :
+                    `<div class="preview-unsupported">
+                        <i class="fas fa-file"></i>
+                        <p>Preview not available for this file type</p>
+                        <a href="${doc.file_url}" target="_blank" class="btn btn-primary">Download File</a>
+                    </div>`
+                }
+            </div>
+            <div class="preview-info" id="previewInfo">
+                <div id="viewMode">
+                    <p><strong>Type:</strong> ${doc.document_types?.name || 'Unknown'}</p>
+                    <p><strong>Title:</strong> ${doc.title}</p>
+                    ${doc.issue_date ? `<p><strong>Issue Date:</strong> ${formatDate(doc.issue_date)}</p>` : ''}
+                    ${doc.expiry_date ? `<p><strong>Expiry Date:</strong> ${formatDate(doc.expiry_date)}</p>` : ''}
+                    ${doc.notes ? `<p><strong>Notes:</strong> ${doc.notes}</p>` : ''}
+                    <p><strong>Uploaded:</strong> ${formatDate(doc.created_at)}</p>
+                    ${doc.is_verified ? 
+                        `<p class="text-success"><i class="fas fa-check-circle"></i> Verified on ${formatDate(doc.verified_at)}</p>` :
+                        `<p class="text-warning"><i class="fas fa-exclamation-circle"></i> Not Verified</p>`
+                    }
+                </div>
+                <div id="editMode" style="display: none;">
+                    <form id="editDocForm">
+                        <div class="form-group">
+                            <label>Title</label>
+                            <input type="text" class="form-control" id="editDocTitle" value="${doc.title}">
+                        </div>
+                        ${docType?.requires_issue_date || doc.issue_date ? `
+                        <div class="form-group">
+                            <label>Issue Date ${docType?.requires_issue_date ? '*' : ''}</label>
+                            <input type="date" class="form-control" id="editIssueDate" 
+                                   value="${doc.issue_date || ''}" ${docType?.requires_issue_date ? 'required' : ''}>
+                        </div>
+                        ` : ''}
+                        ${docType?.requires_expiry || doc.expiry_date ? `
+                        <div class="form-group">
+                            <label>Expiry Date ${docType?.requires_expiry ? '*' : ''}</label>
+                            <input type="date" class="form-control" id="editExpiryDate" 
+                                   value="${doc.expiry_date || ''}" ${docType?.requires_expiry ? 'required' : ''}>
+                        </div>
+                        ` : ''}
+                        <div class="form-group">
+                            <label>Notes</label>
+                            <textarea class="form-control" id="editDocNotes" rows="3">${doc.notes || ''}</textarea>
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <button type="button" class="btn btn-primary" onclick="EnhancedDocumentManager.saveDocumentEdit('${doc.id}')">
+                                Save Changes
+                            </button>
+                            <button type="button" class="btn btn-outline" onclick="EnhancedDocumentManager.cancelEdit()">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+    },
+
+    toggleEditMode(docId) {
+        document.getElementById('viewMode').style.display = 'none';
+        document.getElementById('editMode').style.display = 'block';
+    },
+
+    cancelEdit() {
+        document.getElementById('viewMode').style.display = 'block';
+        document.getElementById('editMode').style.display = 'none';
+    },
+
+    async saveDocumentEdit(docId) {
+        try {
+            const updates = {
+                title: document.getElementById('editDocTitle').value,
+                notes: document.getElementById('editDocNotes').value || null
+            };
+            
+            const issueDateInput = document.getElementById('editIssueDate');
+            if (issueDateInput) {
+                updates.issue_date = issueDateInput.value || null;
+            }
+            
+            const expiryDateInput = document.getElementById('editExpiryDate');
+            if (expiryDateInput) {
+                updates.expiry_date = expiryDateInput.value || null;
+            }
+            
+            const { error } = await supabaseClient
+                .from('documents')
+                .update(updates)
+                .eq('id', docId);
+                
+            if (error) throw error;
+            
+            showToast('Document updated successfully', 'success');
+            
+            // Reload documents and refresh preview
+            await this.loadStaffDocuments();
+            this.previewDocument(docId);
+            
+        } catch (error) {
+            console.error('Error updating document:', error);
+            showToast('Failed to update document', 'error');
+        }
+    },
+
+    // All Staff Overview with color coding
+    async loadAllStaffOverview() {
+        try {
+            const { data: documents } = await supabaseClient
+                .from('documents')
+                .select('entity_id, document_type_id, expiry_date, is_verified')
+                .eq('entity_type', 'staff')
+                .is('deleted_at', null);
+                
+            // Create document map
+            const docMap = {};
+            documents?.forEach(doc => {
+                const key = `${doc.entity_id}_${doc.document_type_id}`;
+                docMap[key] = doc;
+            });
+            
+            const container = document.getElementById('staffOverviewTable');
+            const activeTypes = this.documentTypes.filter(t => t.is_active);
+            
+            container.innerHTML = `
+                <div style="overflow-x: auto;">
+                    <table class="overview-matrix">
+                        <thead>
+                            <tr>
+                                <th style="position: sticky; left: 0; background: #f8f9fa;">Staff</th>
+                                ${activeTypes.map(t => `
+                                    <th class="rotate-header">${t.name}</th>
+                                `).join('')}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${this.staffList.map(staff => {
+                                const staffName = `${staff.first_name} ${staff.last_name}`;
+                                return `
+                                    <tr>
+                                        <td style="position: sticky; left: 0; background: white; font-weight: 500;">
+                                            <a href="#" onclick="EnhancedDocumentManager.viewStaffDocuments('${staff.id}'); return false;">
+                                                ${staffName}
+                                            </a>
+                                        </td>
+                                        ${activeTypes.map(type => {
+                                            const key = `${staff.id}_${type.id}`;
+                                            const doc = docMap[key];
+                                            const cellClass = this.getCellClass(doc);
+                                            const cellContent = this.getCellContent(doc);
+                                            
+                                            return `<td class="matrix-cell ${cellClass}">${cellContent}</td>`;
+                                        }).join('')}
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="overview-legend">
+                    <span><span class="legend-box valid"></span> Valid</span>
+                    <span><span class="legend-box expiring"></span> Expiring Soon</span>
+                    <span><span class="legend-box expired"></span> Expired</span>
+                    <span><span class="legend-box unverified"></span> Unverified</span>
+                    <span><span class="legend-box missing"></span> Missing</span>
+                </div>
+            `;
+        } catch (error) {
+            console.error('Error loading overview:', error);
+        }
+    },
+
+    getCellClass(doc) {
+        if (!doc) return 'missing';
+        if (!doc.is_verified) return 'unverified';
+        if (doc.expiry_date) {
+            const days = this.daysUntilExpiry(doc.expiry_date);
+            if (days < 0) return 'expired';
+            if (days <= this.filters.expiryDays) return 'expiring';
+        }
+        return 'valid';
+    },
+
+    getCellContent(doc) {
+        if (!doc) return '-';
+        if (!doc.is_verified) return '⚠';
+        if (doc.expiry_date) {
+            const days = this.daysUntilExpiry(doc.expiry_date);
+            if (days < 0) return '✗';
+            if (days <= this.filters.expiryDays) return days + 'd';
+        }
+        return '✓';
+    },
+
+    daysUntilExpiry(expiryDate) {
+        const expiry = new Date(expiryDate);
+        const now = new Date();
+        return Math.floor((expiry - now) / (1000 * 60 * 60 * 24));
+    },
+
+    updateExpiryThreshold(days) {
+        this.filters.expiryDays = parseInt(days);
+        this.loadAllStaffOverview();
+    },
+
+    // Helper methods
+    getDocumentStatus(doc) {
+        if (!doc.is_verified) return { text: 'Unverified', class: 'status-unverified' };
+        if (doc.expiry_date) {
+            const days = this.daysUntilExpiry(doc.expiry_date);
+            if (days < 0) return { text: 'Expired', class: 'status-expired' };
+            if (days <= 30) return { text: `Expires in ${days}d`, class: 'status-expiring' };
+        }
+        return { text: 'Valid', class: 'status-valid' };
+    },
+
+    filterDocuments() {
+        return this.allDocuments.filter(doc => {
+            // Document type filter
+            if (this.filters.documentType && doc.document_type_id !== this.filters.documentType) {
+                return false;
+            }
+            
+            // Status filter
+            if (this.filters.status !== 'all') {
+                const status = this.getDocumentStatus(doc);
+                if (this.filters.status === 'expired' && !status.text.includes('Expired')) return false;
+                if (this.filters.status === 'expiring' && !status.text.includes('Expires')) return false;
+                if (this.filters.status === 'unverified' && status.text !== 'Unverified') return false;
+            }
+            
+            return true;
+        });
+    },
+
+    applyDocumentFilters() {
+        this.filters.staff = document.getElementById('docStaffFilter')?.value || '';
+        this.loadStaffDocuments();
+    },
+
+    // CRUD operations
+    async updateDocType(id, field, value) {
+        try {
+            const { error } = await supabaseClient
+                .from('document_types')
+                .update({ [field]: value })
+                .eq('id', id);
+                
+            if (error) throw error;
+            showToast('Updated successfully', 'success');
+        } catch (error) {
+            console.error('Error updating:', error);
+            showToast('Failed to update', 'error');
+        }
+    },
+
+    async toggleVerify(docId, verify) {
+        try {
+            const updates = verify ? {
+                is_verified: true,
+                verified_by: currentUser.id,
+                verified_at: new Date().toISOString()
+            } : {
+                is_verified: false,
+                verified_by: null,
+                verified_at: null
+            };
+            
+            const { error } = await supabaseClient
+                .from('documents')
+                .update(updates)
+                .eq('id', docId);
+                
+            if (error) throw error;
+            
+            showToast(verify ? 'Document verified' : 'Verification removed', 'success');
+            await this.loadStaffDocuments();
+        } catch (error) {
+            console.error('Error toggling verification:', error);
+            showToast('Failed to update verification', 'error');
+        }
+    },
+
+    async deleteDoc(docId) {
+        if (!confirm('Delete this document permanently?')) return;
+        
+        try {
+            const doc = this.allDocuments.find(d => d.id === docId);
+            
+            // Delete from storage
+            if (doc?.bucket && doc?.object_path) {
+                await supabaseClient.storage
+                    .from(doc.bucket)
+                    .remove([doc.object_path]);
+            }
+            
+            // Delete from database
+            const { error } = await supabaseClient
+                .from('documents')
+                .delete()
+                .eq('id', docId);
+                
+            if (error) throw error;
+            
+            showToast('Document deleted', 'success');
+            await this.loadStaffDocuments();
+            
+            // Clear preview if it was the deleted document
+            if (this.currentPreviewDoc?.id === docId) {
+                document.getElementById('documentPreview').innerHTML = `
+                    <div class="preview-placeholder">
+                        <i class="fas fa-file-alt"></i>
+                        <p>Select a document to preview</p>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Error deleting:', error);
+            showToast('Failed to delete document', 'error');
+        }
+    },
+
+    // Load initial data
+    async loadStaffList() {
+        try {
+            const { data, error } = await supabaseClient
+                .from('staff')
+                .select('id, first_name, last_name, email')
+                .eq('is_active', true)
+                .order('first_name');
+                
+            if (error) throw error;
+            this.staffList = data || [];
+        } catch (error) {
+            console.error('Error loading staff:', error);
+        }
+    },
+
+    async loadDocumentTypes() {
+        try {
+            const { data, error } = await supabaseClient
+                .from('document_types')
+                .select('*')
+                .order('display_order')
+                .order('name');
+                
+            if (error) throw error;
+            this.documentTypes = data || [];
+        } catch (error) {
+            console.error('Error loading document types:', error);
+        }
+    },
+
+    viewStaffDocuments(staffId) {
+    // Update the global staff filter
+    const staffMember = this.staffList.find(s => s.id === staffId);
+    if (staffMember) {
+        // Update the main staff filter input
+        const staffFilterInput = document.getElementById('staffFilterInput');
+        if (staffFilterInput) {
+            staffFilterInput.value = `${staffMember.first_name} ${staffMember.last_name}`;
+            // Update the global variable
+            window.staffFilterValue = staffId;
+        }
+    }
+    
+    // Switch to staff tab
+    this.switchTab('staff');
+    
+    // Apply the global filters which will trigger document loading
+    if (typeof window.applyFilters === 'function') {
+        window.applyFilters();
+    } else {
+        // Fallback if applyFilters doesn't exist
+        this.loadStaffDocuments();
+    }
+},
+
+    // Modal functions
+    showAddDocumentModal() {
+    DocumentUploadModal.show();
+},
+
+    showAddDocTypeModal() {
+        // Will implement proper modal
+        const name = prompt('Document Type Name:');
+        if (!name) return;
+        
+        this.addDocumentType(name);
+    },
+
+    async addDocumentType(name) {
+        try {
+            const { error } = await supabaseClient
+                .from('document_types')
+                .insert({
+                    name,
+                    slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '_'),
+                    display_order: 999,
+                    is_active: true,
+                    is_visible_to_staff: true,
+                    staff_can_delete: true
+                });
+                
+            if (error) throw error;
+            
+            showToast('Document type added', 'success');
+            await this.loadDocumentTypes();
+            this.renderDocumentTypes();
+        } catch (error) {
+            console.error('Error adding document type:', error);
+            showToast('Failed to add document type', 'error');
+        }
+    },
+
+    // Edit image with perspective correction
+    editImage(docId) {
+        // Will implement in next part
+        showToast('Image editor coming next', 'info');
+    },
+
+    // Event listeners
+    attachEventListeners() {
+        // Add any additional event listeners here
+    }
+};
+
+
+// Export for use
+window.EnhancedDocumentManager = EnhancedDocumentManager;
+
+//Document Manager End
+// COMPLETE DOCUMENT UPLOAD AND PERSPECTIVE CORRECTION - JUST PASTE THIS!
+const DocumentUploadModal = {
+    currentStaffId: null,
+    capturedImage: null,
+
+    show(staffId = null) {
+        this.currentStaffId = staffId;
+        this.createModal();
+        document.getElementById('documentUploadModal').style.display = 'block';
+    },
+
+    createModal() {
+        if (document.getElementById('documentUploadModal')) return;
+
+        const modalHtml = `
+            <div id="documentUploadModal" class="modal-overlay" style="display: none;">
+                <div class="modal large">
+                    <header class="modal-header">
+                        <h3 class="modal-title">Upload Document</h3>
+                        <button class="modal-close" onclick="DocumentUploadModal.close()">&times;</button>
+                    </header>
+                    <div class="modal-content">
+                        <div id="uploadStep1" class="upload-step active">
+                            <div class="upload-options">
+                                <div class="upload-option" onclick="DocumentUploadModal.showFileUpload()">
+                                    <i class="fas fa-file-upload"></i>
+                                    <h4>Upload File</h4>
+                                    <p>Select a file from your device</p>
+                                </div>
+                                <div class="upload-option" onclick="DocumentUploadModal.showCamera()">
+                                    <i class="fas fa-camera"></i>
+                                    <h4>Take Photo</h4>
+                                    <p>Capture document with camera</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="uploadStep2File" class="upload-step">
+                            <form id="documentUploadForm">
+                                <div class="form-group">
+                                    <label>Document Type *</label>
+                                    <select id="uploadDocType" required onchange="DocumentUploadModal.onTypeChange()">
+                                        <option value="">Select type...</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Title *</label>
+                                    <input type="text" id="uploadDocTitle" class="form-control" required
+                                           placeholder="e.g., Driver's License #123456">
+                                </div>
+
+                                ${this.currentStaffId ? '' : `
+                                <div class="form-group">
+                                    <label>Staff Member *</label>
+                                    <select id="uploadStaffId" required>
+                                        <option value="">Select staff...</option>
+                                    </select>
+                                </div>
+                                `}
+
+                                <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                    <div class="form-group" id="issueDateGroup" style="display: none;">
+                                        <label>Issue Date</label>
+                                        <input type="date" id="uploadIssueDate" class="form-control">
+                                    </div>
+                                    
+                                    <div class="form-group" id="expiryDateGroup" style="display: none;">
+                                        <label>Expiry Date</label>
+                                        <input type="date" id="uploadExpiryDate" class="form-control">
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>File *</label>
+                                    <div class="file-drop-zone" id="fileDropZone">
+                                        <i class="fas fa-cloud-upload-alt"></i>
+                                        <p>Drag & drop file here or click to browse</p>
+                                        <input type="file" id="uploadFile" accept=".pdf,.jpg,.jpeg,.png" 
+                                               onchange="DocumentUploadModal.handleFileSelect(this)">
+                                    </div>
+                                    <div id="filePreview" style="display: none;">
+                                        <img id="filePreviewImg" style="max-width: 200px; max-height: 200px;">
+                                        <p id="filePreviewName"></p>
+                                        <button type="button" class="btn btn-sm" onclick="DocumentUploadModal.clearFile()">
+                                            Remove
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Notes</label>
+                                    <textarea id="uploadNotes" class="form-control" rows="3" 
+                                              placeholder="Additional information..."></textarea>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div id="uploadStep2Camera" class="upload-step">
+                            <div id="cameraView" style="display: none;">
+                                <video id="cameraStream" autoplay style="width: 100%; max-height: 400px;"></video>
+                                <canvas id="cameraCanvas" style="display: none;"></canvas>
+                                <div class="camera-controls">
+                                    <button class="btn btn-primary" onclick="DocumentUploadModal.capturePhoto()">
+                                        <i class="fas fa-camera"></i> Capture
+                                    </button>
+                                    <button class="btn btn-outline" onclick="DocumentUploadModal.switchCamera()">
+                                        <i class="fas fa-sync-alt"></i> Switch Camera
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div id="capturedView" style="display: none;">
+                                <div style="width: 100%; overflow: auto; text-align: center; background: #f0f0f0; padding: 10px;">
+                                    <img id="capturedImage" style="max-width: 100%; max-height: 400px; height: auto; object-fit: contain; display: block; margin: 0 auto;">
+                                </div>
+                                <div class="capture-controls">
+                                    <button class="btn btn-outline" onclick="DocumentUploadModal.retakePhoto()">
+                                        <i class="fas fa-redo"></i> Retake
+                                    </button>
+                                    <button class="btn btn-primary" onclick="PerspectiveCorrector.init(DocumentUploadModal.capturedImage)">
+                                        <i class="fas fa-crop"></i> Adjust Perspective
+                                    </button>
+                                    <button class="btn btn-success" onclick="DocumentUploadModal.acceptPhoto()">
+                                        <i class="fas fa-check"></i> Use This Photo
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <footer class="modal-footer">
+                        <div class="modal-actions">
+                            <button class="btn btn-outline" onclick="DocumentUploadModal.close()">Cancel</button>
+                            <button class="btn btn-primary" id="uploadSubmitBtn" onclick="DocumentUploadModal.upload()" 
+                                    style="display: none;">Upload Document</button>
+                        </div>
+                    </footer>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        this.attachDragDrop();
+        this.loadDocumentTypes();
+        if (!this.currentStaffId) {
+            this.loadStaffDropdown();
+        }
+    },
+
+    async loadDocumentTypes() {
+        try {
+            const { data: types } = await supabaseClient
+                .from('document_types')
+                .select('*')
+                .eq('is_active', true)
+                .eq('is_visible_to_staff', true)
+                .order('display_order');
+
+            const select = document.getElementById('uploadDocType');
+            select.innerHTML = '<option value="">Select type...</option>';
+            types?.forEach(type => {
+                select.innerHTML += `
+                    <option value="${type.id}" 
+                            data-requires-expiry="${type.requires_expiry}"
+                            data-requires-issue="${type.requires_issue_date}"
+                            data-slug="${type.slug}">
+                        ${type.name}
+                    </option>
+                `;
+            });
+        } catch (error) {
+            console.error('Error loading document types:', error);
+        }
+    },
+
+    async loadStaffDropdown() {
+        try {
+            const { data: staff } = await supabaseClient
+                .from('staff')
+                .select('id, first_name, last_name')
+                .eq('is_active', true)
+                .order('first_name');
+
+            const select = document.getElementById('uploadStaffId');
+            if (select) {
+                select.innerHTML = '<option value="">Select staff...</option>';
+                staff?.forEach(s => {
+                    select.innerHTML += `
+                        <option value="${s.id}">${s.first_name} ${s.last_name}</option>
+                    `;
+                });
+            }
+        } catch (error) {
+            console.error('Error loading staff:', error);
+        }
+    },
+
+    onTypeChange() {
+        const select = document.getElementById('uploadDocType');
+        const option = select.selectedOptions[0];
+        
+        if (!option) return;
+
+        const requiresExpiry = option.dataset.requiresExpiry === 'true';
+        const requiresIssue = option.dataset.requiresIssue === 'true';
+
+        document.getElementById('issueDateGroup').style.display = requiresIssue ? 'block' : 'none';
+        document.getElementById('expiryDateGroup').style.display = requiresExpiry ? 'block' : 'none';
+        
+        document.getElementById('uploadIssueDate').required = requiresIssue;
+        document.getElementById('uploadExpiryDate').required = requiresExpiry;
+    },
+
+    showFileUpload() {
+        document.getElementById('uploadStep1').classList.remove('active');
+        document.getElementById('uploadStep2File').classList.add('active');
+        document.getElementById('uploadSubmitBtn').style.display = 'block';
+    },
+
+    showCamera() {
+        document.getElementById('uploadStep1').classList.remove('active');
+        document.getElementById('uploadStep2Camera').classList.add('active');
+        this.startCamera();
+    },
+
+    async startCamera() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { 
+                    facingMode: 'environment',
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 }
+                } 
+            });
+            
+            const video = document.getElementById('cameraStream');
+            video.srcObject = stream;
+            document.getElementById('cameraView').style.display = 'block';
+        } catch (error) {
+            console.error('Error accessing camera:', error);
+            showToast('Failed to access camera', 'error');
+        }
+    },
+
+    capturePhoto() {
+        const video = document.getElementById('cameraStream');
+        const canvas = document.getElementById('cameraCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0);
+        
+        this.capturedImage = canvas.toDataURL('image/jpeg', 0.9);
+        
+        document.getElementById('capturedImage').src = this.capturedImage;
+        document.getElementById('cameraView').style.display = 'none';
+        document.getElementById('capturedView').style.display = 'block';
+        
+        // Stop camera
+        const stream = video.srcObject;
+        stream.getTracks().forEach(track => track.stop());
+    },
+
+    retakePhoto() {
+        document.getElementById('capturedView').style.display = 'none';
+        document.getElementById('cameraView').style.display = 'block';
+        this.startCamera();
+    },
+
+    acceptPhoto() {
+        document.getElementById('uploadStep2Camera').classList.remove('active');
+        document.getElementById('uploadStep2File').classList.add('active');
+        document.getElementById('uploadSubmitBtn').style.display = 'block';
+        this.setCapturedImageAsFile();
+    },
+
+    setCapturedImageAsFile() {
+        fetch(this.capturedImage)
+            .then(res => res.blob())
+            .then(blob => {
+                const file = new File([blob], `capture_${Date.now()}.jpg`, { type: 'image/jpeg' });
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(file);
+                document.getElementById('uploadFile').files = dataTransfer.files;
+                
+                document.getElementById('filePreviewImg').src = this.capturedImage;
+                document.getElementById('filePreviewName').textContent = file.name;
+                document.getElementById('fileDropZone').style.display = 'none';
+                document.getElementById('filePreview').style.display = 'block';
+            });
+    },
+
+    attachDragDrop() {
+        const dropZone = document.getElementById('fileDropZone');
+        if (!dropZone) return;
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            });
+        });
+        
+        dropZone.addEventListener('drop', (e) => {
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                document.getElementById('uploadFile').files = files;
+                this.handleFileSelect(document.getElementById('uploadFile'));
+            }
+        });
+        
+        dropZone.addEventListener('click', () => {
+            document.getElementById('uploadFile').click();
+        });
+    },
+
+    handleFileSelect(input) {
+        const file = input.files[0];
+        if (!file) return;
+        
+        if (file.size > 10 * 1024 * 1024) {
+            showToast('File size must be less than 10MB', 'error');
+            input.value = '';
+            return;
+        }
+        
+        if (file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById('filePreviewImg').src = e.target.result;
+                document.getElementById('filePreviewName').textContent = file.name;
+                document.getElementById('fileDropZone').style.display = 'none';
+                document.getElementById('filePreview').style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        } else {
+            document.getElementById('filePreviewImg').style.display = 'none';
+            document.getElementById('filePreviewName').textContent = file.name;
+            document.getElementById('fileDropZone').style.display = 'none';
+            document.getElementById('filePreview').style.display = 'block';
+        }
+    },
+
+    clearFile() {
+        document.getElementById('uploadFile').value = '';
+        document.getElementById('fileDropZone').style.display = 'block';
+        document.getElementById('filePreview').style.display = 'none';
+    },
+
+    async upload() {
+        const form = document.getElementById('documentUploadForm');
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+        
+        const btn = document.getElementById('uploadSubmitBtn');
+        btn.disabled = true;
+        btn.textContent = 'Uploading...';
+        
+        try {
+            const docTypeId = document.getElementById('uploadDocType').value;
+            const typeOption = document.getElementById('uploadDocType').selectedOptions[0];
+            const title = document.getElementById('uploadDocTitle').value;
+            const staffId = this.currentStaffId || document.getElementById('uploadStaffId').value;
+            const issueDate = document.getElementById('uploadIssueDate').value;
+            const expiryDate = document.getElementById('uploadExpiryDate').value;
+            const notes = document.getElementById('uploadNotes').value;
+            const file = document.getElementById('uploadFile').files[0];
+            
+            if (!file) {
+                showToast('Please select a file', 'error');
+                return;
+            }
+            
+            const typeSlug = typeOption.dataset.slug;
+            const uuid = crypto.randomUUID();
+            const ext = file.name.split('.').pop();
+            const objectPath = `${staffId}/${typeSlug}/${uuid}.${ext}`;
+            
+            const { data: uploadData, error: uploadError } = await supabaseClient.storage
+                .from('documents')
+                .upload(objectPath, file);
+                
+            if (uploadError) throw uploadError;
+            
+            const { data: urlData } = supabaseClient.storage
+                .from('documents')
+                .getPublicUrl(objectPath);
+                
+            const { error: dbError } = await supabaseClient
+                .from('documents')
+                .insert({
+                    entity_type: 'staff',
+                    entity_id: staffId,
+                    document_type_id: docTypeId,
+                    title,
+                    file_url: urlData.publicUrl,
+                    bucket: 'documents',
+                    object_path: objectPath,
+                    issue_date: issueDate || null,
+                    expiry_date: expiryDate || null,
+                    notes: notes || null
+                });
+                
+            if (dbError) throw dbError;
+            
+            showToast('Document uploaded successfully', 'success');
+            this.close();
+            
+            if (window.EnhancedDocumentManager) {
+                window.EnhancedDocumentManager.loadStaffDocuments();
+            }
+            
+        } catch (error) {
+            console.error('Error uploading:', error);
+            showToast('Failed to upload document', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Upload Document';
+        }
+    },
+
+    close() {
+        const modal = document.getElementById('documentUploadModal');
+        if (modal) {
+            const video = document.getElementById('cameraStream');
+            if (video && video.srcObject) {
+                video.srcObject.getTracks().forEach(track => track.stop());
+            }
+            modal.remove();
+        }
+    },
+
+    switchCamera() {
+        showToast('Camera switching not implemented yet', 'info');
+    }
+};
+
+// SIMPLE PERSPECTIVE CORRECTOR - NO EXTERNAL DEPENDENCIES
+const PerspectiveCorrector = {
+    canvas: null,
+    ctx: null,
+    image: null,
+    corners: {},
+    isDragging: false,
+    selectedCorner: null,
+    
+    init(imageSource) {
+        this.createModal();
+        this.image = new Image();
+        this.image.onload = () => this.setupCanvas();
+        this.image.src = imageSource;
+    },
+    
+    createModal() {
+        const modalHtml = `
+            <div id="perspectiveModal" class="modal-overlay" style="display: block; z-index: 10000;">
+                <div class="modal large">
+                    <header class="modal-header">
+                        <h3 class="modal-title">Adjust Document Perspective</h3>
+                        <button class="modal-close" onclick="PerspectiveCorrector.close()">&times;</button>
+                    </header>
+                    <div class="modal-content">
+                        <p style="text-align: center; color: #666;">Drag corners to match document edges</p>
+                        <div style="text-align: center; background: #f0f0f0; padding: 20px;">
+                            <canvas id="perspectiveCanvas" style="border: 2px solid #333; max-width: 100%;"></canvas>
+                        </div>
+                        <div style="margin-top: 20px; text-align: center;">
+                            <button class="btn btn-sm" onclick="PerspectiveCorrector.reset()">Reset</button>
+                        </div>
+                    </div>
+                    <footer class="modal-footer">
+                        <button class="btn btn-outline" onclick="PerspectiveCorrector.close()">Cancel</button>
+                        <button class="btn btn-success" onclick="PerspectiveCorrector.apply()">Apply</button>
+                    </footer>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    },
+    
+    setupCanvas() {
+        this.canvas = document.getElementById('perspectiveCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        
+        // Scale to fit
+        const maxWidth = window.innerWidth * 0.8;
+        const maxHeight = window.innerHeight * 0.6;
+        const scale = Math.min(maxWidth / this.image.width, maxHeight / this.image.height, 1);
+        
+        this.canvas.width = this.image.width * scale;
+        this.canvas.height = this.image.height * scale;
+        this.scale = scale;
+        
+        // Set corners
+        const margin = 40;
+        this.corners = {
+            tl: {x: margin, y: margin},
+            tr: {x: this.canvas.width - margin, y: margin},
+            br: {x: this.canvas.width - margin, y: this.canvas.height - margin},
+            bl: {x: margin, y: this.canvas.height - margin}
+        };
+        
+        this.draw();
+        this.attachHandlers();
+    },
+    
+    draw() {
+        // Clear and draw image
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.drawImage(this.image, 0, 0, this.canvas.width, this.canvas.height);
+        
+        // Draw overlay
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // Clear selected area
+        this.ctx.save();
+        this.ctx.globalCompositeOperation = 'destination-out';
+        this.ctx.beginPath();
+        this.ctx.moveTo(this.corners.tl.x, this.corners.tl.y);
+        this.ctx.lineTo(this.corners.tr.x, this.corners.tr.y);
+        this.ctx.lineTo(this.corners.br.x, this.corners.br.y);
+        this.ctx.lineTo(this.corners.bl.x, this.corners.bl.y);
+        this.ctx.closePath();
+        this.ctx.fill();
+        this.ctx.restore();
+        
+        // Redraw image in selected area
+        this.ctx.save();
+        this.ctx.beginPath();
+        this.ctx.moveTo(this.corners.tl.x, this.corners.tl.y);
+        this.ctx.lineTo(this.corners.tr.x, this.corners.tr.y);
+        this.ctx.lineTo(this.corners.br.x, this.corners.br.y);
+        this.ctx.lineTo(this.corners.bl.x, this.corners.bl.y);
+        this.ctx.closePath();
+        this.ctx.clip();
+        this.ctx.drawImage(this.image, 0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.restore();
+        
+        // Draw border and corners
+        this.ctx.strokeStyle = '#00ff00';
+        this.ctx.lineWidth = 2;
+        this.ctx.beginPath();
+        this.ctx.moveTo(this.corners.tl.x, this.corners.tl.y);
+        this.ctx.lineTo(this.corners.tr.x, this.corners.tr.y);
+        this.ctx.lineTo(this.corners.br.x, this.corners.br.y);
+        this.ctx.lineTo(this.corners.bl.x, this.corners.bl.y);
+        this.ctx.closePath();
+        this.ctx.stroke();
+        
+        // Draw corner handles
+        Object.values(this.corners).forEach(corner => {
+            this.ctx.fillStyle = '#004990';
+            this.ctx.beginPath();
+            this.ctx.arc(corner.x, corner.y, 10, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.strokeStyle = 'white';
+            this.ctx.lineWidth = 2;
+            this.ctx.stroke();
+        });
+    },
+    
+    attachHandlers() {
+        this.canvas.addEventListener('mousedown', (e) => this.startDrag(e));
+        this.canvas.addEventListener('mousemove', (e) => this.drag(e));
+        this.canvas.addEventListener('mouseup', () => this.endDrag());
+        this.canvas.addEventListener('touchstart', (e) => this.startDrag(e));
+        this.canvas.addEventListener('touchmove', (e) => this.drag(e));
+        this.canvas.addEventListener('touchend', () => this.endDrag());
+    },
+    
+    startDrag(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        const x = (e.clientX || e.touches[0].clientX) - rect.left;
+        const y = (e.clientY || e.touches[0].clientY) - rect.top;
+        
+        // Find nearest corner
+        let minDist = Infinity;
+        Object.entries(this.corners).forEach(([key, corner]) => {
+            const dist = Math.hypot(corner.x - x, corner.y - y);
+            if (dist < 30 && dist < minDist) {
+                minDist = dist;
+                this.selectedCorner = key;
+                this.isDragging = true;
+            }
+        });
+    },
+    
+    drag(e) {
+        if (!this.isDragging) return;
+        
+        const rect = this.canvas.getBoundingClientRect();
+        const x = (e.clientX || e.touches[0].clientX) - rect.left;
+        const y = (e.clientY || e.touches[0].clientY) - rect.top;
+        
+        this.corners[this.selectedCorner] = {
+            x: Math.max(0, Math.min(this.canvas.width, x)),
+            y: Math.max(0, Math.min(this.canvas.height, y))
+        };
+        
+        this.draw();
+    },
+    
+    endDrag() {
+        this.isDragging = false;
+        this.selectedCorner = null;
+    },
+    
+    reset() {
+        const margin = 40;
+        this.corners = {
+            tl: {x: margin, y: margin},
+            tr: {x: this.canvas.width - margin, y: margin},
+            br: {x: this.canvas.width - margin, y: this.canvas.height - margin},
+            bl: {x: margin, y: this.canvas.height - margin}
+        };
+        this.draw();
+    },
+    
+    apply() {
+    // Get corners in original coordinates
+    const srcCorners = [
+        this.corners.tl.x / this.scale, this.corners.tl.y / this.scale,
+        this.corners.tr.x / this.scale, this.corners.tr.y / this.scale,
+        this.corners.br.x / this.scale, this.corners.br.y / this.scale,
+        this.corners.bl.x / this.scale, this.corners.bl.y / this.scale
+    ];
+    
+    // Calculate output dimensions
+    const width = Math.round(Math.max(
+        Math.hypot(srcCorners[2] - srcCorners[0], srcCorners[3] - srcCorners[1]),
+        Math.hypot(srcCorners[6] - srcCorners[4], srcCorners[7] - srcCorners[5])
+    ));
+    const height = Math.round(Math.max(
+        Math.hypot(srcCorners[6] - srcCorners[0], srcCorners[7] - srcCorners[1]),
+        Math.hypot(srcCorners[4] - srcCorners[2], srcCorners[5] - srcCorners[3])
+    ));
+    
+    // Create output canvas
+    const output = document.createElement('canvas');
+    output.width = width;
+    output.height = height;
+    const ctx = output.getContext('2d');
+    
+    // Create temp canvas with source image
+    const source = document.createElement('canvas');
+    source.width = this.image.width;
+    source.height = this.image.height;
+    const srcCtx = source.getContext('2d');
+    srcCtx.drawImage(this.image, 0, 0);
+    const srcData = srcCtx.getImageData(0, 0, source.width, source.height);
+    
+    // Create output image data
+    const outData = ctx.createImageData(width, height);
+    
+    // For each output pixel, find corresponding input pixel
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            // Calculate position in source quadrilateral using bilinear interpolation
+            const u = x / (width - 1);
+            const v = y / (height - 1);
+            
+            // Bilinear interpolation of the four corners
+            const top_x = srcCorners[0] * (1 - u) + srcCorners[2] * u;
+            const top_y = srcCorners[1] * (1 - u) + srcCorners[3] * u;
+            const bottom_x = srcCorners[6] * (1 - u) + srcCorners[4] * u;
+            const bottom_y = srcCorners[7] * (1 - u) + srcCorners[5] * u;
+            
+            const src_x = top_x * (1 - v) + bottom_x * v;
+            const src_y = top_y * (1 - v) + bottom_y * v;
+            
+            // Get pixel value with bilinear interpolation
+            const x0 = Math.floor(src_x);
+            const y0 = Math.floor(src_y);
+            const x1 = x0 + 1;
+            const y1 = y0 + 1;
+            
+            if (x0 >= 0 && x1 < source.width && y0 >= 0 && y1 < source.height) {
+                const fx = src_x - x0;
+                const fy = src_y - y0;
+                
+                const dstIdx = (y * width + x) * 4;
+                
+                // Sample the four surrounding pixels
+                const idx00 = (y0 * source.width + x0) * 4;
+                const idx10 = (y0 * source.width + x1) * 4;
+                const idx01 = (y1 * source.width + x0) * 4;
+                const idx11 = (y1 * source.width + x1) * 4;
+                
+                // Bilinear interpolation for each channel
+                for (let c = 0; c < 4; c++) {
+                    const v00 = srcData.data[idx00 + c];
+                    const v10 = srcData.data[idx10 + c];
+                    const v01 = srcData.data[idx01 + c];
+                    const v11 = srcData.data[idx11 + c];
+                    
+                    const v0 = v00 * (1 - fx) + v10 * fx;
+                    const v1 = v01 * (1 - fx) + v11 * fx;
+                    const value = v0 * (1 - fy) + v1 * fy;
+                    
+                    outData.data[dstIdx + c] = Math.round(value);
+                }
+            }
+        }
+    }
+    
+    // Put the warped image data
+    ctx.putImageData(outData, 0, 0);
+    
+    // Convert to data URL
+    DocumentUploadModal.capturedImage = output.toDataURL('image/jpeg', 0.95);
+    document.getElementById('capturedImage').src = DocumentUploadModal.capturedImage;
+    
+    this.close();
+    showToast('Perspective correction applied', 'success');
+},
+
+getBounds(pts) {
+    const minX = Math.min(pts[0].x, pts[1].x, pts[2].x, pts[3].x);
+    const minY = Math.min(pts[0].y, pts[1].y, pts[2].y, pts[3].y);
+    const maxX = Math.max(pts[0].x, pts[1].x, pts[2].x, pts[3].x);
+    const maxY = Math.max(pts[0].y, pts[1].y, pts[2].y, pts[3].y);
+    return {minX, minY, width: maxX - minX, height: maxY - minY};
+},
+
+getHomographyMatrix(src, dst) {
+    // Build the system of equations for homography
+    const A = [];
+    const b = [];
+    
+    for (let i = 0; i < 4; i++) {
+        const j = i * 2;
+        A.push([src[j], src[j+1], 1, 0, 0, 0, -dst[j]*src[j], -dst[j]*src[j+1]]);
+        A.push([0, 0, 0, src[j], src[j+1], 1, -dst[j+1]*src[j], -dst[j+1]*src[j+1]]);
+        b.push(dst[j]);
+        b.push(dst[j+1]);
+    }
+    
+    // Solve using Gaussian elimination
+    const h = this.solve(A, b);
+    return [...h, 1]; // Add h[8] = 1
+},
+
+solve(A, b) {
+    const n = A.length;
+    const aug = A.map((row, i) => [...row, b[i]]);
+    
+    // Forward elimination
+    for (let i = 0; i < n; i++) {
+        // Partial pivoting
+        let max = i;
+        for (let j = i + 1; j < n; j++) {
+            if (Math.abs(aug[j][i]) > Math.abs(aug[max][i])) max = j;
+        }
+        [aug[i], aug[max]] = [aug[max], aug[i]];
+        
+        // Eliminate
+        for (let j = i + 1; j < n; j++) {
+            const ratio = aug[j][i] / aug[i][i];
+            for (let k = i; k <= n; k++) {
+                aug[j][k] -= ratio * aug[i][k];
+            }
+        }
+    }
+    
+    // Back substitution
+    const x = new Array(n);
+    for (let i = n - 1; i >= 0; i--) {
+        x[i] = aug[i][n];
+        for (let j = i + 1; j < n; j++) {
+            x[i] -= aug[i][j] * x[j];
+        }
+        x[i] /= aug[i][i];
+    }
+    
+    return x;
+},
+    close() {
+        document.getElementById('perspectiveModal')?.remove();
+    }
+};
+
+// Make them available globally
+window.DocumentUploadModal = DocumentUploadModal;
+window.PerspectiveCorrector = PerspectiveCorrector;
+//end document camera upload
+
+//Document Type Management Modals
+const DocumentTypeModals = {
+    showAddModal() {
+        const modalHtml = `
+            <div id="addDocTypeModal" class="modal-overlay" style="display: block;">
+                <div class="modal">
+                    <header class="modal-header">
+                        <h3 class="modal-title">Add Document Type</h3>
+                        <button class="modal-close" onclick="DocumentTypeModals.close('addDocTypeModal')">&times;</button>
+                    </header>
+                    <div class="modal-content">
+                        <form id="addDocTypeForm">
+                            <div class="form-group">
+                                <label>Name *</label>
+                                <input type="text" id="newTypeName" class="form-control" required
+                                       placeholder="e.g., Driver's License">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Description</label>
+                                <textarea id="newTypeDescription" class="form-control" rows="2"
+                                          placeholder="Brief description of this document type"></textarea>
+                            </div>
+                            
+                            <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                <div class="form-group">
+                                    <label style="display: flex; align-items: center; gap: 8px;">
+                                        <input type="checkbox" id="newTypeRequiresExpiry" style="width: auto;">
+                                        Requires Expiry Date
+                                    </label>
+                                    <small class="form-help">Document must have an expiry date</small>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label style="display: flex; align-items: center; gap: 8px;">
+                                        <input type="checkbox" id="newTypeRequiresIssue" style="width: auto;">
+                                        Requires Issue Date
+                                    </label>
+                                    <small class="form-help">Document must have an issue date</small>
+                                </div>
+                            </div>
+                            
+                            <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                <div class="form-group">
+                                    <label style="display: flex; align-items: center; gap: 8px;">
+                                        <input type="checkbox" id="newTypeStaffCanDelete" checked style="width: auto;">
+                                        Staff Can Delete
+                                    </label>
+                                    <small class="form-help">Allow staff to delete their own</small>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label style="display: flex; align-items: center; gap: 8px;">
+                                        <input type="checkbox" id="newTypeVisibleToStaff" checked style="width: auto;">
+                                        Visible to Staff
+                                    </label>
+                                    <small class="form-help">Show in staff upload options</small>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Display Order</label>
+                                <input type="number" id="newTypeOrder" class="form-control" value="999"
+                                       min="0" placeholder="Sort order in lists">
+                            </div>
+                        </form>
+                    </div>
+                    <footer class="modal-footer">
+                        <div class="modal-actions">
+                            <button class="btn btn-outline" onclick="DocumentTypeModals.close('addDocTypeModal')">
+                                Cancel
+                            </button>
+                            <button class="btn btn-primary" onclick="DocumentTypeModals.saveNewType()">
+                                Add Document Type
+                            </button>
+                        </div>
+                    </footer>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    },
+
+    async saveNewType() {
+        const form = document.getElementById('addDocTypeForm');
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+        
+        try {
+            const name = document.getElementById('newTypeName').value;
+            const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+            
+            const { error } = await supabaseClient
+                .from('document_types')
+                .insert({
+                    name,
+                    slug,
+                    description: document.getElementById('newTypeDescription').value || null,
+                    requires_expiry: document.getElementById('newTypeRequiresExpiry').checked,
+                    requires_issue_date: document.getElementById('newTypeRequiresIssue').checked,
+                    staff_can_delete: document.getElementById('newTypeStaffCanDelete').checked,
+                    is_visible_to_staff: document.getElementById('newTypeVisibleToStaff').checked,
+                    display_order: parseInt(document.getElementById('newTypeOrder').value) || 999,
+                    is_active: true
+                });
+                
+            if (error) throw error;
+            
+            showToast('Document type added successfully', 'success');
+            this.close('addDocTypeModal');
+            
+            // Refresh the list
+            if (window.EnhancedDocumentManager) {
+                await window.EnhancedDocumentManager.loadDocumentTypes();
+                window.EnhancedDocumentManager.renderDocumentTypes();
+            }
+            
+        } catch (error) {
+            console.error('Error adding document type:', error);
+            if (error.message.includes('duplicate')) {
+                showToast('A document type with this name already exists', 'error');
+            } else {
+                showToast('Failed to add document type', 'error');
+            }
+        }
+    },
+
+    async showEditModal(typeId) {
+        const type = window.EnhancedDocumentManager.documentTypes.find(t => t.id === typeId);
+        if (!type) return;
+        
+        const modalHtml = `
+            <div id="editDocTypeModal" class="modal-overlay" style="display: block;">
+                <div class="modal">
+                    <header class="modal-header">
+                        <h3 class="modal-title">Edit Document Type</h3>
+                        <button class="modal-close" onclick="DocumentTypeModals.close('editDocTypeModal')">&times;</button>
+                    </header>
+                    <div class="modal-content">
+                        <form id="editDocTypeForm">
+                            <div class="form-group">
+                                <label>Name *</label>
+                                <input type="text" id="editTypeName" class="form-control" required
+                                       value="${type.name}">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Description</label>
+                                <textarea id="editTypeDescription" class="form-control" rows="2">${type.description || ''}</textarea>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Advanced Settings</label>
+                                <div style="margin-top: 10px;">
+                                    <label style="display: flex; align-items: center; gap: 8px;">
+                                        <input type="checkbox" id="editHasCommencement" ${type.has_commencement ? 'checked' : ''} 
+                                               style="width: auto;" onchange="DocumentTypeModals.toggleDurationField()">
+                                        Has Commencement Date
+                                    </label>
+                                    <small class="form-help">For certifications with start dates</small>
+                                </div>
+                                
+                                <div id="durationField" style="margin-top: 10px; ${type.has_commencement ? '' : 'display: none;'}">
+                                    <label>Default Duration (months)</label>
+                                    <input type="number" id="editDefaultDuration" class="form-control" 
+                                           value="${type.default_duration_months || ''}" min="1"
+                                           placeholder="Auto-calculate expiry from commencement">
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label style="display: flex; align-items: center; gap: 8px;">
+                                    <input type="checkbox" id="editAllowMultiple" ${type.allow_multiple_active ? 'checked' : ''}
+                                           style="width: auto;">
+                                    Allow Multiple Active Documents
+                                </label>
+                                <small class="form-help">Staff can have multiple valid documents of this type</small>
+                            </div>
+                        </form>
+                    </div>
+                    <footer class="modal-footer">
+                        <div class="modal-actions">
+                            <button class="btn btn-outline" onclick="DocumentTypeModals.close('editDocTypeModal')">
+                                Cancel
+                            </button>
+                            <button class="btn btn-primary" onclick="DocumentTypeModals.saveEditType('${typeId}')">
+                                Save Changes
+                            </button>
+                        </div>
+                    </footer>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    },
+
+    toggleDurationField() {
+        const checkbox = document.getElementById('editHasCommencement');
+        const field = document.getElementById('durationField');
+        field.style.display = checkbox.checked ? 'block' : 'none';
+    },
+
+    async saveEditType(typeId) {
+        try {
+            const name = document.getElementById('editTypeName').value;
+            const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+            const hasCommencement = document.getElementById('editHasCommencement').checked;
+            const duration = document.getElementById('editDefaultDuration').value;
+            
+            const { error } = await supabaseClient
+                .from('document_types')
+                .update({
+                    name,
+                    slug,
+                    description: document.getElementById('editTypeDescription').value || null,
+                    has_commencement: hasCommencement,
+                    default_duration_months: hasCommencement && duration ? parseInt(duration) : null,
+                    allow_multiple_active: document.getElementById('editAllowMultiple').checked
+                })
+                .eq('id', typeId);
+                
+            if (error) throw error;
+            
+            showToast('Document type updated successfully', 'success');
+            this.close('editDocTypeModal');
+            
+            // Refresh the list
+            if (window.EnhancedDocumentManager) {
+                await window.EnhancedDocumentManager.loadDocumentTypes();
+                window.EnhancedDocumentManager.renderDocumentTypes();
+            }
+            
+        } catch (error) {
+            console.error('Error updating document type:', error);
+            showToast('Failed to update document type', 'error');
+        }
+    },
+
+    close(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.remove();
+        }
+    }
+};
+
+// Update EnhancedDocumentManager to use these modals
+EnhancedDocumentManager.showAddDocTypeModal = function() {
+    DocumentTypeModals.showAddModal();
+};
+
+EnhancedDocumentManager.editDocType = function(typeId) {
+    DocumentTypeModals.showEditModal(typeId);
+};
+
+// Export
+window.DocumentTypeModals = DocumentTypeModals;
+window.PerspectiveCorrector = PerspectiveCorrector;
+
+//END Document Type Management Modals
+
+
 
 function addShiftNote() {
     // Clear editing flag
