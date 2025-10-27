@@ -21862,15 +21862,16 @@ const DocumentUploadModal = {
            placeholder="e.g., Driver's License #123456 (optional)">
 </div>
 
-                                ${this.currentStaffId ? '' : `
-                                <div class="form-group">
-                                    <label>Staff Member *</label>
-                                    <select id="uploadStaffId" required>
-                                        <option value="">Select staff...</option>
-                                    </select>
-                                </div>
-                                `}
-
+${this.currentStaffId ? '' : `
+<div class="form-group">
+    <label>Staff Member *</label>
+    <input type="text" class="searchable-input" id="uploadStaffInput" 
+           placeholder="Type to search staff..." 
+           list="uploadStaffList"
+           data-staff-id="">
+    <datalist id="uploadStaffList"></datalist>
+</div>
+`}
                                 <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                                     <div class="form-group" id="issueDateGroup" style="display: none;">
                                         <label>Issue Date</label>
@@ -21986,26 +21987,36 @@ const DocumentUploadModal = {
     },
 
     async loadStaffDropdown() {
-        try {
-            const { data: staff } = await supabaseClient
-                .from('staff')
-                .select('id, first_name, last_name')
-                .eq('is_active', true)
-                .order('first_name');
+    try {
+        const { data: staff } = await supabaseClient
+            .from('staff')
+            .select('id, first_name, last_name')
+            .eq('is_active', true)
+            .order('first_name');
 
-            const select = document.getElementById('uploadStaffId');
-            if (select) {
-                select.innerHTML = '<option value="">Select staff...</option>';
-                staff?.forEach(s => {
-                    select.innerHTML += `
-                        <option value="${s.id}">${s.first_name} ${s.last_name}</option>
-                    `;
-                });
-            }
-        } catch (error) {
-            console.error('Error loading staff:', error);
+        const datalist = document.getElementById('uploadStaffList');
+        if (datalist && staff) {
+            datalist.innerHTML = staff.map(s => 
+                `<option value="${s.first_name} ${s.last_name}" data-id="${s.id}">${s.first_name} ${s.last_name}</option>`
+            ).join('');
         }
-    },
+        
+        // Add event listener to track selection
+        const input = document.getElementById('uploadStaffInput');
+        if (input) {
+            input.addEventListener('change', function() {
+                const selectedOption = Array.from(datalist.options).find(
+                    option => option.value === this.value
+                );
+                if (selectedOption) {
+                    this.setAttribute('data-staff-id', selectedOption.getAttribute('data-id'));
+                }
+            });
+        }
+    } catch (error) {
+        console.error('Error loading staff:', error);
+    }
+},
 
     onTypeChange() {
         const select = document.getElementById('uploadDocType');
@@ -22164,18 +22175,19 @@ const DocumentUploadModal = {
     // Manual validation for required fields only
     const docTypeId = document.getElementById('uploadDocType').value;
     const file = document.getElementById('uploadFile').files[0];
-    const staffId = this.currentStaffId || document.getElementById('uploadStaffId').value;
+    const staffId = this.currentStaffId || document.getElementById('uploadStaffInput')?.getAttribute('data-staff-id');
+
+if (!staffId) {
+    showToast('Please select a staff member', 'error');
+    return;
+}
     
     if (!docTypeId) {
         showToast('Please select a document type', 'error');
         return;
     }
     
-    if (!staffId) {
-        showToast('Please select a staff member', 'error');
-        return;
-    }
-    
+
     if (!file) {
         showToast('Please select a file', 'error');
         return;
