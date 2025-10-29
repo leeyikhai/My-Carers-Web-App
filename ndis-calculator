@@ -1,0 +1,3118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NDIS Budget Calculator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+<style>
+    /* Reset and Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.group-totals {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    margin-right: 1rem;
+}
+
+.group-total {
+    font-weight: 600;
+    color: var(--primary);
+}
+
+.group-weekly {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+
+.group-header-main {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex: 1;
+}
+
+.group-total {
+    font-weight: 600;
+    color: var(--primary);
+    margin-right: 1rem;
+}
+
+.group-panel.collapsed .items-list {
+    display: none;
+}
+
+.group-title-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    flex: 1;
+}
+
+.group-collapse-icon {
+    font-size: 0.75rem;
+    transition: transform 0.2s;
+}
+
+.group-header.clickable:hover {
+    background: var(--gray-50);
+    border-radius: var(--radius-sm);
+}
+/* Daily checkboxes for E items */
+.daily-checkboxes {
+    display: flex;
+    gap: 0.25rem;
+    align-items: center;
+}
+
+.day-checkbox-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.125rem;
+}
+
+.day-checkbox {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.day-label {
+    font-size: 0.625rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.quantity-input-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.quantity-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.quantity-input {
+    width: 60px;
+    padding: 0.375rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
+    text-align: center;
+}
+
+/* Fix item layout for better alignment */
+.item-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 0.75rem;
+    padding: 0.5rem;
+    align-items: center;
+}
+
+.item-inputs {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Hide checkbox and selection for hidden items */
+.item-row.hidden:not(.selected) {
+    display: none;
+}
+
+.item-row.hidden.selected {
+    opacity: 0.6;
+}
+
+.group-search {
+    flex: 1;
+    padding: 0.625rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
+    background: var(--bg-primary);
+}
+
+.group-search-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    max-height: 300px;
+    overflow-y: auto;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin-top: 0.25rem;
+    box-shadow: var(--shadow);
+    z-index: 10;
+}
+
+.group-search-result {
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.group-search-result:hover {
+    background: var(--bg-secondary);
+}
+
+.group-search-result:last-child {
+    border-bottom: none;
+}
+
+.add-group-container {
+    position: relative;
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+:root {
+    /* Neutral Color Palette */
+    --accent:  #0c9852;
+    --primary-dark: #1dd858;
+    --primary: #314eb5;          /* Gentle blue accent (for links/buttons) */
+    --accent-dark: #059669;
+    --danger: #ef4444;
+    --danger-dark: #dc2626;
+    --success: #22c55e;
+    --warning: #f59e0b;
+    
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-300: #d1d5db;
+    --gray-400: #9ca3af;
+    --gray-500: #6b7280;
+    --gray-600: #4b5563;
+    --gray-700: #374151;
+    --gray-800: #1f2937;
+    --gray-900: #111827;
+    
+    --bg-primary: #ffffff;
+    --bg-secondary: #f9fafb;
+    --bg-card: #ffffff;
+    
+    --text-primary: #111827;
+    --text-secondary: #6b7280;
+    --text-muted: #9ca3af;
+    
+    --border: #e5e7eb;
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    
+    --radius: 12px;
+    --radius-sm: 8px;
+    --radius-lg: 16px;
+    
+    --transition: all 0.2s ease;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    color: var(--text-primary);
+    background: var(--bg-secondary);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Top Bar */
+.top-bar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border);
+    padding: 1rem;
+    box-shadow: var(--shadow-sm);
+}
+
+.top-bar h1 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    color: var(--text-primary);
+}
+
+.top-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.state-selector {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.state-selector label {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.state-selector select {
+    padding: 0.375rem 2rem 0.375rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+/* Buttons */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.5rem; /* slightly wider for a pill shape */
+    font-size: 0.875rem;
+    font-weight: 500;
+    border: none;
+    border-radius: 9999px; /* fully rounded edges for pill shape */
+    cursor: pointer;
+    transition: var(--transition);
+    white-space: nowrap;
+}
+
+
+.btn-primary {
+    background: var(--primary);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: var(--primary-dark);
+}
+
+.btn-accent {
+    background: var(--accent);
+    color: white;
+}
+
+.btn-accent:hover {
+    background: var(--accent-dark);
+}
+
+.btn-secondary {
+    background: var(--gray-100);
+    color: var(--text-primary);
+}
+
+.btn-secondary:hover {
+    background: var(--gray-200);
+}
+
+.btn-success {
+    background: var(--success);
+    color: white;
+}
+
+.btn-success:hover {
+    background: #16a34a;
+}
+
+.btn-danger {
+    background: var(--danger);
+    color: white;
+}
+
+.btn-danger:hover {
+    background: var(--danger-dark);
+}
+
+.btn-text {
+    background: transparent;
+    color: var(--primary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    border: none;
+    padding: 0.25rem 0.5rem;
+    cursor: pointer;
+}
+
+.btn-text:hover {
+    text-decoration: underline;
+}
+
+.btn-icon-only {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: var(--transition);
+    color: var(--text-secondary);
+}
+
+.btn-icon-only:hover {
+    background: var(--gray-100);
+    color: var(--text-primary);
+}
+
+.btn-icon {
+    font-size: 1.125rem;
+}
+
+/* Cards Container */
+.cards-container {
+    padding: 1rem;
+    max-width: 800px;
+    margin: 0 auto 2rem;
+}
+
+/* Budget Card */
+.budget-card {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    margin-bottom: 1rem;
+    overflow: hidden;
+    transition: var(--transition);
+}
+
+.budget-card.collapsed .card-body {
+    display: none;
+}
+
+.budget-card.collapsed .collapse-btn svg {
+    transform: rotate(-90deg);
+}
+
+.card-header {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.card-title {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex: 1;
+}
+
+.card-title input {
+    border: 1px solid var(--border);
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
+    transition: var(--transition);
+}
+
+.card-title input:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.participant-name {
+    font-weight: 500;
+}
+
+/* Card Body */
+.card-body {
+    padding: 1rem;
+}
+
+.card-section {
+    margin-bottom: 1.5rem;
+}
+
+.date-range,
+.budget-inputs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.form-group label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.form-group input {
+    padding: 0.625rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
+    transition: var(--transition);
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.form-group input.error {
+    border-color: var(--danger);
+}
+
+/* Totals Section */
+.totals-section {
+    background: var(--bg-secondary);
+    border-radius: var(--radius);
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    justify-content: space-around;
+    gap: 0.5rem;
+}
+
+.total-item {
+    text-align: center;
+}
+
+.total-label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    margin-bottom: 0.25rem;
+}
+
+.total-value {
+    display: block;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.used-amount {
+    color: var(--warning);
+}
+
+.remaining-amount {
+    color: var(--success);
+}
+
+.remaining-amount.negative {
+    color: var(--danger);
+}
+
+.weekly-amount {
+    color: var(--primary);
+}
+
+/* Settings Section */
+.settings-section {
+    margin-bottom: 1.5rem;
+}
+
+.toggle-group {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+/* Toggle Switch */
+.toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+
+.toggle input {
+    position: absolute;
+    opacity: 0;
+}
+
+.toggle-slider {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    background: var(--gray-300);
+    border-radius: 24px;
+    transition: var(--transition);
+}
+
+.toggle-slider::before {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: white;
+    top: 2px;
+    left: 2px;
+    transition: var(--transition);
+    box-shadow: var(--shadow-sm);
+}
+
+.toggle input:checked + .toggle-slider {
+    background: var(--primary);
+}
+
+.toggle input:checked + .toggle-slider::before {
+    transform: translateX(20px);
+}
+
+.toggle-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.uplift-percent {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.uplift-percent input {
+    width: 60px;
+    padding: 0.375rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
+    text-align: center;
+}
+
+/* Groups Section */
+.groups-section h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+}
+
+.add-group-container {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.group-selector {
+    flex: 1;
+    padding: 0.625rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
+    background: var(--bg-primary);
+}
+
+/* Group Panel */
+.group-panel {
+    background: var(--bg-secondary);
+    border-radius: var(--radius);
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.group-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.group-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.group-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Items List */
+.items-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.item-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 0.75rem;
+    padding: 0.5rem;
+    background: var(--bg-card);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    transition: var(--transition);
+}
+
+.item-row.selected {
+    border-color: var(--primary);
+    background: rgba(37, 99, 235, 0.05);
+}
+
+.item-row.hidden {
+    display: none;
+}
+
+.item-checkbox {
+    display: flex;
+    align-items: center;
+}
+
+.item-checkbox input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+
+.item-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.item-name {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    line-height: 1.3;
+}
+
+.item-details {
+    display: flex;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.item-price {
+    font-weight: 500;
+    color: var(--primary);
+}
+
+/* Item Inputs */
+.item-inputs {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.hours-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.hours-label {
+    font-size: 0.625rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+
+.hours-input {
+    width: 70px;
+    padding: 0.375rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
+    text-align: center;
+}
+
+.hours-input:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.hours-input.error {
+    border-color: var(--danger);
+}
+
+.per-day-toggle {
+    font-size: 0.625rem;
+    color: var(--primary);
+    text-decoration: underline;
+    cursor: pointer;
+    margin-top: 0.125rem;
+}
+
+.per-day-inputs {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.25rem;
+    margin-top: 0.5rem;
+}
+
+.per-day-inputs .hours-input-group {
+    text-align: center;
+}
+
+.per-day-inputs .hours-label {
+    font-size: 0.5rem;
+}
+
+.per-day-inputs .hours-input {
+    width: 100%;
+}
+
+/* Card Actions */
+.card-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+}
+
+/* Modal */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    padding: 1rem;
+    overflow-y: auto;
+}
+
+.modal.show {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    width: 100%;
+    max-width: 500px;
+    max-height: 80vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-lg);
+}
+
+.modal-header {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+}
+
+.modal-body {
+    padding: 1rem;
+    overflow-y: auto;
+    flex: 1;
+}
+
+/* Public Holiday List */
+.ph-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.ph-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+}
+
+.ph-checkbox {
+    width: 20px;
+    height: 20px;
+}
+
+.ph-checkbox:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.ph-date {
+    font-weight: 500;
+    font-size: 0.875rem;
+}
+
+.ph-name {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+/* Error List */
+.error-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.error-item {
+    background: var(--bg-secondary);
+    border-left: 4px solid var(--danger);
+    border-radius: var(--radius-sm);
+    padding: 0.75rem;
+}
+
+.error-message {
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+}
+
+.error-action {
+    font-size: 0.75rem;
+    color: var(--primary);
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+/* Loading Overlay */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.9);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.loading-content {
+    text-align: center;
+    padding: 2rem;
+}
+
+.loading-spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid var(--gray-200);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 1rem;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.loading-text {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+}
+
+.loading-progress {
+    width: 200px;
+    height: 6px;
+    background: var(--gray-200);
+    border-radius: 3px;
+    overflow: hidden;
+    margin: 0 auto 0.5rem;
+}
+
+.loading-progress-bar {
+    height: 100%;
+    background: var(--primary);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+.loading-percent {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    .top-bar h1 {
+        font-size: 1.125rem;
+    }
+    
+    .date-range,
+    .budget-inputs {
+        grid-template-columns: 1fr;
+    }
+    
+    .totals-section {
+        flex-wrap: wrap;
+    }
+    
+    .card-actions {
+        flex-wrap: wrap;
+    }
+    
+    .card-actions .btn {
+        flex: 1;
+        justify-content: center;
+    }
+    
+    .item-row {
+        grid-template-columns: auto 1fr;
+    }
+    
+    .item-inputs {
+        grid-column: 1 / -1;
+        margin-top: 0.5rem;
+    }
+}
+
+/* Utility Classes */
+.text-center {
+    text-align: center;
+}
+
+.mt-1 {
+    margin-top: 0.5rem;
+}
+
+.mt-2 {
+    margin-top: 1rem;
+}
+
+.hidden {
+    display: none !important;
+}
+</style>
+</head>
+<body>
+    <!-- Top Bar -->
+    <header class="top-bar">
+        <h1>NDIS Budget Calculator</h1>
+        <div class="top-actions">
+            <label for="csv-import" class="btn btn-primary">
+                Import CSV
+            </label>
+            <input type="file" id="csv-import" accept=".csv" style="display: none;">
+            <button id="new-card-btn" class="btn btn-accent">
+                + New Card
+            </button>
+        </div>
+        
+        <div class="state-selector">
+            <label>State:</label>
+            <select id="default-state">
+                <option value="NSW" selected>NSW</option>
+                <option value="VIC">VIC</option>
+                <option value="QLD">QLD</option>
+                <option value="WA">WA</option>
+                <option value="SA">SA</option>
+                <option value="TAS">TAS</option>
+                <option value="ACT">ACT</option>
+                <option value="NT">NT</option>
+            </select>
+        </div>
+    </header>
+
+    <!-- Cards Container -->
+    <main class="cards-container" id="cards-container">
+        <!-- Cards will be dynamically inserted here -->
+    </main>
+
+    <!-- Card Template -->
+    <template id="card-template">
+        <article class="budget-card" data-card-id="">
+            <div class="card-header">
+                <div class="card-title">
+                    <input type="text" class="participant-name" placeholder="Participant Name" autocomplete="name">
+                    <input type="text" class="ndis-number" placeholder="NDIS Number (optional)" autocomplete="off">
+                </div>
+                <button class="btn-icon-only collapse-btn" aria-label="Collapse card">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M7 10l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="card-body">
+                <!-- Date Range & Budget -->
+                <div class="card-section">
+                    <div class="date-range">
+                        <div class="form-group">
+                            <label>Start Date</label>
+                            <input type="date" class="start-date" required>
+                        </div>
+                        <div class="form-group">
+                            <label>End Date</label>
+                            <input type="date" class="end-date" required>
+                        </div>
+                    </div>
+                    <div class="budget-inputs">
+                        <div class="form-group">
+                            <label>Budget $</label>
+                            <input type="number" class="budget-amount" inputmode="decimal" step="0.01" min="0" placeholder="0.00">
+                        </div>
+                        <div class="form-group">
+                            <label>Excluded $</label>
+                            <input type="number" class="excluded-amount" inputmode="decimal" step="0.01" min="0" placeholder="0.00">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Totals -->
+                <div class="totals-section">
+                    <div class="total-item">
+                        <span class="total-label">Used</span>
+                        <span class="total-value used-amount">$0.00</span>
+                    </div>
+                    <div class="total-item">
+                        <span class="total-label">Remaining</span>
+                        <span class="total-value remaining-amount">$0.00</span>
+                    </div>
+                    <div class="total-item">
+                        <span class="total-label">Weekly</span>
+                        <span class="total-value weekly-amount">$0.00</span>
+                    </div>
+                </div>
+
+                <!-- Settings -->
+                <div class="settings-section">
+                    <div class="toggle-group">
+                        <label class="toggle">
+                            <input type="checkbox" class="include-ph" checked>
+                            <span class="toggle-slider"></span>
+                            <span class="toggle-label">Include Public Holidays</span>
+                        </label>
+                        <button class="btn btn-secondary view-ph-btn">View PH</button>
+                    </div>
+                    <div class="toggle-group">
+                        <label class="toggle">
+                            <input type="checkbox" class="july-uplift" checked>
+                            <span class="toggle-slider"></span>
+                            <span class="toggle-label">July 1 uplift</span>
+                        </label>
+                        <div class="uplift-percent">
+                            <input type="number" class="uplift-rate" inputmode="decimal" step="0.1" value="3.2" min="0" max="100">
+                            <span>%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Registration Groups -->
+                <div class="groups-section">
+                    <h3>Support Items</h3>
+                    <div class="add-group-container">
+                        <input type="text" 
+                               class="group-search" 
+                               placeholder="Search by name, code, or number..."
+                               autocomplete="off">
+                        <div class="group-search-results hidden"></div>
+                        <button class="btn btn-primary add-group-btn">Add Group</button>
+                    </div>
+                    <div class="groups-list">
+                        <!-- Groups will be dynamically added here -->
+                    </div>
+                </div>
+
+                <!-- Card Actions -->
+                <div class="card-actions">
+                    <button class="btn btn-success export-btn">
+                        <span class="btn-icon"></span>
+                        Export CSV
+                    </button>
+                    <button class="btn btn-primary continue-btn">
+                        <span class="btn-icon">+</span>
+                        Continue Card
+                    </button>
+                    <button class="btn btn-danger delete-btn">
+                        <span class="btn-icon"></span>
+                        Delete
+                    </button>
+                </div>
+            </div>
+        </article>
+    </template>
+
+    <!-- Group Template -->
+    <template id="group-template">
+        <div class="group-panel" data-group-number="">
+            <div class="group-header">
+                <h4 class="group-title"></h4>
+                <div class="group-actions">
+                    <button class="btn-text hide-unselected-btn">− Hide unselected</button>
+                    <button class="btn-text show-all-btn" style="display:none;">+ Show all</button>
+                    <button class="btn-icon-only remove-group-btn" aria-label="Remove group">✕</button>
+                </div>
+            </div>
+            <div class="items-list">
+                <!-- Items will be dynamically added here -->
+            </div>
+        </div>
+    </template>
+
+    <!-- Item Template -->
+    <template id="item-template">
+        <div class="item-row" data-item-number="">
+            <div class="item-checkbox">
+                <input type="checkbox" class="item-select">
+            </div>
+            <div class="item-info">
+                <div class="item-name"></div>
+                <div class="item-details">
+                    <span class="item-number"></span>
+                    <span class="item-unit"></span>
+                    <span class="item-price"></span>
+                </div>
+            </div>
+            <div class="item-inputs">
+                <!-- Hours inputs will be dynamically added based on item type -->
+            </div>
+        </div>
+    </template>
+
+    <!-- Public Holiday Modal -->
+    <div class="modal" id="ph-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Public Holidays in Range</h3>
+                <button class="btn-icon-only close-modal" aria-label="Close modal">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="ph-list" id="ph-list">
+                    <!-- PH items will be dynamically added -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loading-overlay" style="display: none;">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <p class="loading-text">Importing catalogue...</p>
+            <div class="loading-progress">
+                <div class="loading-progress-bar" style="width: 0%"></div>
+            </div>
+            <p class="loading-percent">0%</p>
+        </div>
+    </div>
+
+    <!-- Error Modal -->
+    <div class="modal" id="error-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Validation Errors</h3>
+                <button class="btn-icon-only close-modal" aria-label="Close modal">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="error-list" id="error-list">
+                    <!-- Errors will be dynamically added -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Supabase library -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+    // Now you can use createClient
+    const supabaseUrl = 'https://gqchhsayqxttewthcsah.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdxY2hoc2F5cXh0dGV3dGhjc2FoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2OTA0ODksImV4cCI6MjA3MjI2NjQ4OX0.iAGhrDZaHkpLwjJY07o-73l2OiePB2x1ZnnTEfUBd_M';
+    const { createClient } = supabase;
+    const supabaseClient = createClient(supabaseUrl, supabaseKey);
+
+
+// ===== State Management =====
+const state = {
+    catalogue: null, // Parsed NDIS catalogue
+    cards: [],       // Budget cards
+    publicHolidays: [], // Public holidays
+    preferences: {
+        state: 'NSW',
+        upliftPercent: 3.2,
+        continueInterval: 'month'
+    }
+};
+
+// ===== Constants =====
+const STORAGE_KEYS = {
+    CARDS: 'ndisCalc.cards.v1',
+    CATALOGUE: 'ndisCalc.catalogue.v1',
+    PREFERENCES: 'ndisCalc.prefs.v1',
+    PUBLIC_HOLIDAYS: 'ndisCalc.holidays.v1'
+};
+
+async function fetchPublicHolidays() {
+    try {
+        const { data, error } = await supabaseClient
+            .from('public_holidays')
+            .select('date, name')
+            .order('date');
+        
+        if (error) throw error;
+        return data || [];
+    } catch (error) {
+        console.error('Error fetching holidays:', error);
+        return [];
+    }
+}
+// ===== Utility Functions =====
+function generateUUID() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+}
+
+function formatDateDDMMYYYY(date) {
+    const d = new Date(date);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}-${month}-${year}`;
+}
+
+function parseDate(dateStr) {
+    // Handle both yyyy-mm-dd and dd-mm-yyyy formats
+    if (dateStr.includes('-')) {
+        const parts = dateStr.split('-');
+        if (parts[0].length === 4) {
+            // yyyy-mm-dd
+            return new Date(dateStr);
+        } else {
+            // dd-mm-yyyy
+            return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+        }
+    }
+    return new Date(dateStr);
+}
+
+
+
+function getDayOfWeek(date) {
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    return days[date.getDay()];
+}
+
+function isWeekday(date) {
+    const day = date.getDay();
+    return day >= 1 && day <= 5;
+}
+
+function isSaturday(date) {
+    return date.getDay() === 6;
+}
+
+function isSunday(date) {
+    return date.getDay() === 0;
+}
+
+
+
+function validateHours(value) {
+    const num = parseFloat(value);
+    if (isNaN(num) || num < 0) return 0;
+    // Round to nearest 0.5
+    return Math.round(num * 2) / 2;
+}
+
+function sanitizeFilename(filename) {
+    return filename.replace(/[^a-zA-Z0-9_\-]/g, '_');
+}
+
+async function fetchCatalogueFromSupabase() {
+    try {
+        showLoading('Loading NDIS Catalogue...');
+        
+        const { data, error } = await supabaseClient
+            .from('ndis_support_catalogue')
+            .select('*');
+        
+        if (error) {
+            throw error;
+        }
+        
+        if (!data || data.length === 0) {
+            throw new Error('No data found in catalogue');
+        }
+        
+        // Transform Supabase data into the catalogue format
+        const catalogue = {};
+        
+        data.forEach(row => {
+            const regGroupNumber = row['Registration Group Number'];
+            const regGroupName = row['Registration Group Name'];
+            
+            if (!regGroupNumber) return;
+            
+            if (!catalogue[regGroupNumber]) {
+                catalogue[regGroupNumber] = {
+                    regGroupNumber: regGroupNumber.toString(),
+                    regGroupName,
+                    items: []
+                };
+            }
+            
+            // Parse prices
+            const statePrices = {};
+            ['ACT', 'NSW', 'NT', 'QLD', 'SA', 'TAS', 'VIC', 'WA'].forEach(state => {
+                const price = parseFloat(row[state]);
+                if (!isNaN(price)) {
+                    statePrices[state] = price;
+                }
+            });
+            
+            // Get the current state's price for display
+            const statePrice = statePrices[state.preferences.state] || statePrices['NSW'] || 0;
+            
+            const item = {
+                supportItemNumber: row['Support Item Number'],
+                supportItemName: row['Support Item Name'],
+                unit: row['Unit'],
+                statePrices,
+                statePrice, // Add this for easier access
+                remote: parseFloat(row['Remote']) || null,
+                veryRemote: parseFloat(row['Very Remote']) || null,
+                effectiveFrom: row['Start date'],
+                effectiveTo: row['End Date'],
+                flags: {
+                    isPublicHoliday: row['Support Item Name'].toLowerCase().includes('public holiday'),
+                    isSaturday: row['Support Item Name'].toLowerCase().includes('saturday'),
+                    isSunday: row['Support Item Name'].toLowerCase().includes('sunday'),
+                    isWeekday: row['Support Item Name'].toLowerCase().includes('weekday'),
+                    isQuotable: (row['Quote'] || '').toLowerCase() === 'yes'
+                }
+            };
+            
+            catalogue[regGroupNumber].items.push(item);
+        });
+        
+        hideLoading();
+        return catalogue;
+        
+    } catch (error) {
+        hideLoading();
+        throw error;
+    }
+}
+
+function parseCSVLine(line) {
+    const values = [];
+    let current = '';
+    let inQuotes = false;
+    
+    for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        
+        if (char === '"') {
+            inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+            values.push(current.trim());
+            current = '';
+        } else {
+            current += char;
+        }
+    }
+    
+    values.push(current.trim());
+    return values;
+}
+
+// ===== Catalogue Functions =====
+function listRegistrationGroups(catalogue) {
+    if (!catalogue) return [];
+    
+    return Object.keys(catalogue)
+        .map(key => ({
+            number: key,
+            name: catalogue[key].regGroupName
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function getItemsByGroup(catalogue, regGroupNumber) {
+    if (!catalogue || !catalogue[regGroupNumber]) return [];
+    return catalogue[regGroupNumber].items;
+}
+
+// ===== Card Management =====
+function createCard(previousCard = null) {
+    const card = {
+        id: generateUUID(),
+        participant: {
+            name: '',
+            ndisNumber: ''
+        },
+        period: {
+            start: '',
+            end: ''
+        },
+        state: state.preferences.state,
+        budget: {
+            total: 0,
+            excluded: 0,
+            carryIn: 0
+        },
+        settings: {
+            includePH: true,
+            uplift: {
+                enabled: true,
+                percent: state.preferences.upliftPercent
+            }
+        },
+        groups: []
+    };
+    
+    if (previousCard) {
+        // Continue from previous card
+        const startDate = new Date(previousCard.period.end);
+        startDate.setDate(startDate.getDate() + 1);
+        
+        const endDate = new Date(previousCard.period.end);
+        const daysDiff = Math.ceil((new Date(previousCard.period.end) - new Date(previousCard.period.start)) / (1000 * 60 * 60 * 24)) + 1;
+        endDate.setDate(endDate.getDate() + daysDiff);
+        
+        card.period.start = formatDateYYYYMMDD(startDate);
+card.period.end = formatDateYYYYMMDD(endDate);
+        card.participant = { ...previousCard.participant };
+        card.budget.carryIn = calculateRemainingBudget(previousCard);
+        card.settings = JSON.parse(JSON.stringify(previousCard.settings));
+        card.groups = JSON.parse(JSON.stringify(previousCard.groups));
+    }
+    
+    return card;
+}
+
+function formatDateYYYYMMDD(date) {
+    return date.toISOString().split('T')[0];
+}
+
+function calculateUsedBudget(card) {
+    const totals = computeCardTotals(card);
+    return totals.usedCents / 100;
+}
+
+function calculateRemainingBudget(card) {
+    const used = calculateUsedBudget(card);
+    const available = card.budget.total + card.budget.carryIn - card.budget.excluded;
+    return Math.round((available - used) * 100) / 100;
+}
+
+function calculateWeeklyEquivalent(card) {
+    const totals = computeCardTotals(card);
+    return (totals.usedCents / 100) / totals.weeks;
+}
+
+// ===== CSV Export =====
+function buildCsvRows(card) {
+    const rows = [];
+    rows.push('NDISNumber,SupportsDeliveredFrom,SupportsDeliveredTo,SupportNumber,Quantity,UnitPrice,GSTCode');
+    
+    eachDateInclusive(card.period.start, card.period.end, (date) => {
+        const isPH = isPublicHoliday(date, card.state);
+        const dayOfWeek = getDayOfWeek(date);
+        const dateStr = formatDateDDMMYYYY(date);
+        
+        card.groups.forEach(group => {
+            group.items.forEach(item => {
+                if (!item.selected) return;
+                
+                const isSleepover = isSleepoverItem(item);
+                
+                // Main gating logic with sleepover exception
+                if (isPH) {
+                    if (isSleepover) {
+                        // Sleepover allowed on PH at standard rate
+                    } else {
+                        if (!card.settings.includePH) return;
+                        if (!item.flags.isPublicHoliday) return;
+                    }
+                } else {
+                    // Non-PH day
+                    if (item.flags.isPublicHoliday) return;
+                    if (item.flags.isWeekday && !isWeekday(date)) return;
+                    if (item.flags.isSaturday && !isSaturday(date)) return;
+                    if (item.flags.isSunday && !isSunday(date)) return;
+                }
+                
+                const quantity = resolveQuantityForDate(item, date, dayOfWeek, { isPH, isSleepover });
+                if (quantity <= 0) return;
+                
+                const unitPrice = getUnitPrice(item, card, date, { isPH, isSleepover });
+                
+                rows.push([
+                    card.participant.ndisNumber || '',
+                    dateStr,
+                    dateStr,
+                    item.supportItemNumber,
+                    quantity.toFixed(2),
+                    unitPrice.toFixed(2),
+                    'P2'
+                ].join(','));
+            });
+        });
+    });
+    
+    return rows.join('\n');
+}
+
+function downloadCsv(filename, content) {
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    
+    if (navigator.msSaveBlob) {
+        navigator.msSaveBlob(blob, filename);
+    } else {
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+}
+
+// ===== Validation =====
+function validateCard(card) {
+    const errors = [];
+    
+    // Check dates
+    if (!card.period.start || !card.period.end) {
+        errors.push({
+            message: 'Start and end dates are required',
+            field: 'dates'
+        });
+    } else if (new Date(card.period.start) > new Date(card.period.end)) {
+        errors.push({
+            message: 'Start date must be before end date',
+            field: 'dates'
+        });
+    }
+    
+    // Check items for missing prices
+    card.groups.forEach((group, groupIndex) => {
+        group.items.forEach((item, itemIndex) => {
+            if (item.selected) {
+                if (!item.overridePrice && !item.statePrice) {
+                    errors.push({
+                        message: `Missing price for: ${item.supportItemName}`,
+                        field: 'price',
+                        groupIndex,
+                        itemIndex
+                    });
+                }
+                
+                // Check hours are valid
+                if (item.hours) {
+                    Object.entries(item.hours).forEach(([day, hours]) => {
+                        if (hours % 0.5 !== 0) {
+                            errors.push({
+                                message: `Hours must be in 0.5 increments for: ${item.supportItemName}`,
+                                field: 'hours',
+                                groupIndex,
+                                itemIndex
+                            });
+                        }
+                    });
+                }
+            }
+        });
+    });
+    
+    return errors;
+}
+
+// ===== UI Functions =====
+function showLoading(text = 'Loading...') {
+    const overlay = document.getElementById('loading-overlay');
+    const loadingText = overlay.querySelector('.loading-text');
+    loadingText.textContent = text;
+    overlay.style.display = 'flex';
+}
+
+function hideLoading() {
+    document.getElementById('loading-overlay').style.display = 'none';
+}
+
+function updateLoadingProgress(percent) {
+    const progressBar = document.querySelector('.loading-progress-bar');
+    const percentText = document.querySelector('.loading-percent');
+    progressBar.style.width = `${percent}%`;
+    percentText.textContent = `${percent}%`;
+}
+
+function showError(message) {
+    alert(message); // Simple alert for now
+}
+
+function showValidationErrors(errors) {
+    const modal = document.getElementById('error-modal');
+    const errorList = document.getElementById('error-list');
+    
+    errorList.innerHTML = '';
+    
+    errors.forEach(error => {
+        const errorItem = document.createElement('div');
+        errorItem.className = 'error-item';
+        
+        const errorMessage = document.createElement('div');
+        errorMessage.className = 'error-message';
+        errorMessage.textContent = error.message;
+        errorItem.appendChild(errorMessage);
+        
+        if (error.field === 'price' || error.field === 'hours') {
+            const errorAction = document.createElement('div');
+            errorAction.className = 'error-action';
+            errorAction.textContent = 'Jump to item';
+            errorAction.onclick = () => {
+                modal.classList.remove('show');
+                // Scroll to the item
+                const cards = document.querySelectorAll('.budget-card');
+                const card = cards[0]; // For now, assume single card
+                const groups = card.querySelectorAll('.group-panel');
+                const group = groups[error.groupIndex];
+                const items = group.querySelectorAll('.item-row');
+                const item = items[error.itemIndex];
+                item.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                item.classList.add('error');
+                setTimeout(() => item.classList.remove('error'), 3000);
+            };
+            errorItem.appendChild(errorAction);
+        }
+        
+        errorList.appendChild(errorItem);
+    });
+    
+    modal.classList.add('show');
+}
+
+// ===== Card UI Rendering =====
+function renderCard(card) {
+    const template = document.getElementById('card-template');
+    const cardEl = template.content.cloneNode(true).querySelector('.budget-card');
+    
+    cardEl.dataset.cardId = card.id;
+    
+    // Set initial values
+    cardEl.querySelector('.participant-name').value = card.participant.name || '';
+    cardEl.querySelector('.ndis-number').value = card.participant.ndisNumber || '';
+    cardEl.querySelector('.start-date').value = card.period.start || '';
+    cardEl.querySelector('.end-date').value = card.period.end || '';
+    cardEl.querySelector('.budget-amount').value = card.budget.total || '';
+    cardEl.querySelector('.excluded-amount').value = card.budget.excluded || '';
+    cardEl.querySelector('.include-ph').checked = card.settings.includePH;
+    cardEl.querySelector('.july-uplift').checked = card.settings.uplift.enabled;
+    cardEl.querySelector('.uplift-rate').value = card.settings.uplift.percent || 3.2;
+    
+    // Populate group selector
+    const groupSelector = cardEl.querySelector('.group-selector');
+    if (groupSelector) {
+        const groups = listRegistrationGroups(state.catalogue);
+        if (!groups || groups.length === 0) {
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'No groups available';
+            groupSelector.appendChild(option);
+        } else {
+            groups.forEach(group => {
+                const option = document.createElement('option');
+                option.value = group.number;
+                option.textContent = `${group.name} (${group.number})`;
+                groupSelector.appendChild(option);
+            });
+        }
+    }
+    
+    // Render existing groups
+    card.groups.forEach(group => {
+        renderGroup(cardEl, group);
+    });
+    
+    // Update totals
+    updateCardTotals(cardEl, card);
+    
+    // Attach event handlers
+    attachCardEventHandlers(cardEl, card);
+    
+    return cardEl;
+}
+function renderGroup(cardEl, groupData) {
+    const template = document.getElementById('group-template');
+    const groupEl = template.content.cloneNode(true).querySelector('.group-panel');
+    
+    groupEl.dataset.groupNumber = groupData.regGroupNumber;
+    
+    // Create custom header with accordion and total
+    const groupHeader = document.createElement('div');
+groupHeader.className = 'group-header';
+groupHeader.innerHTML = `
+    <div class="group-header-main">
+        <div class="group-title-row">
+            <span class="group-collapse-icon">▼</span>
+            <h4 class="group-title">${groupData.regGroupName} (${groupData.regGroupNumber})</h4>
+        </div>
+        <div class="group-totals">
+            <span class="group-total">$0.00</span>
+            <span class="group-weekly">$0.00/wk</span>
+        </div>
+    </div>
+    <div class="group-actions">
+        <button class="btn-text hide-unselected-btn">− Hide unselected</button>
+        <button class="btn-text show-all-btn" style="display:none;">+ Show all</button>
+        <button class="btn-icon-only remove-group-btn" aria-label="Remove group">✕</button>
+    </div>
+`;
+    
+    const itemsList = document.createElement('div');
+    itemsList.className = 'items-list';
+    
+    // Clear default content and add our custom structure
+    groupEl.innerHTML = '';
+    groupEl.appendChild(groupHeader);
+    groupEl.appendChild(itemsList);
+    
+    // Add items
+    groupData.items.forEach((item, index) => {
+        const itemEl = renderItem(item);
+        itemsList.appendChild(itemEl);
+    });
+    
+    // Accordion toggle
+    groupHeader.querySelector('.group-title-row').onclick = () => {
+        groupEl.classList.toggle('collapsed');
+        const icon = groupHeader.querySelector('.group-collapse-icon');
+        icon.textContent = groupEl.classList.contains('collapsed') ? '►' : '▼';
+    };
+    
+    // Group event handlers
+    groupHeader.querySelector('.hide-unselected-btn').onclick = () => {
+        const unselectedItems = itemsList.querySelectorAll('.item-row:not(.selected)');
+        unselectedItems.forEach(item => {
+            item.classList.add('hidden');
+        });
+        groupHeader.querySelector('.hide-unselected-btn').style.display = 'none';
+        groupHeader.querySelector('.show-all-btn').style.display = 'inline';
+    };
+    
+    groupHeader.querySelector('.show-all-btn').onclick = () => {
+        const hiddenItems = itemsList.querySelectorAll('.item-row.hidden');
+        hiddenItems.forEach(item => item.classList.remove('hidden'));
+        groupHeader.querySelector('.show-all-btn').style.display = 'none';
+        groupHeader.querySelector('.hide-unselected-btn').style.display = 'inline';
+    };
+    
+    groupHeader.querySelector('.remove-group-btn').onclick = () => {
+        if (confirm('Remove this group and all its items?')) {
+            groupEl.remove();
+            updateCardFromDOM(cardEl);
+        }
+    };
+    
+    cardEl.querySelector('.groups-list').appendChild(groupEl);
+    
+    // Update the group total
+    updateGroupTotal(cardEl, groupEl, groupData.regGroupNumber);
+    
+    // Default to hiding unselected items
+    setTimeout(() => {
+        const hideBtn = groupHeader.querySelector('.hide-unselected-btn');
+        if (hideBtn) {
+            hideBtn.click();
+        }
+    }, 0);    
+    // Update the group total
+    updateGroupTotal(cardEl, groupEl, groupData.regGroupNumber);
+}
+
+function updateGroupTotal(cardEl, groupEl, groupNumber) {
+    // This is now handled by updateCardTotals, so just call that
+    const card = state.cards.find(c => c.id === cardEl.dataset.cardId);
+    if (card) {
+        updateCardTotals(cardEl, card);
+    }
+}
+
+
+function renderItem(itemData) {
+    const template = document.getElementById('item-template');
+    const itemEl = template.content.cloneNode(true).querySelector('.item-row');
+    
+    itemEl.dataset.itemNumber = itemData.supportItemNumber;
+    if (itemData.selected) {
+        itemEl.classList.add('selected');
+    }
+    
+    // Set item info
+    const checkbox = itemEl.querySelector('.item-select');
+    checkbox.checked = itemData.selected || false;
+    itemEl.querySelector('.item-name').textContent = itemData.supportItemName;
+    itemEl.querySelector('.item-number').textContent = itemData.supportItemNumber;
+    itemEl.querySelector('.item-unit').textContent = itemData.unit;
+    
+    // Fix price display based on unit type
+    const price = itemData.overridePrice || itemData.statePrice || 0;
+    const priceText = price ? `$${price}${itemData.unit === 'H' ? '/hr' : ''}` : '—';
+    itemEl.querySelector('.item-price').textContent = priceText;
+    
+    // Create hours/quantity inputs based on item type
+    const inputsContainer = itemEl.querySelector('.item-inputs');
+    
+    if (itemData.unit === 'H') {
+        // Hour-based items - existing logic
+        if (itemData.flags.isWeekday) {
+            const weekdayGroup = createWeekdayInputGroup(itemData);
+            inputsContainer.appendChild(weekdayGroup);
+        } else if (itemData.flags.isSaturday) {
+            const saturdayInput = createHoursInput('Saturday', itemData.hours?.saturday || 0);
+            inputsContainer.appendChild(saturdayInput);
+        } else if (itemData.flags.isSunday) {
+            const sundayInput = createHoursInput('Sunday', itemData.hours?.sunday || 0);
+            inputsContainer.appendChild(sundayInput);
+        } else if (itemData.flags.isPublicHoliday) {
+            const phInput = createHoursInput('PH', itemData.hours?.publicHoliday || 0);
+            inputsContainer.appendChild(phInput);
+        }
+    } else if (itemData.unit === 'E') {
+        // Each-based items - new logic
+        const eType = getEItemType(itemData.supportItemName);
+        
+        switch (eType) {
+            case 'daily':
+                const dailyInputs = createDailyCheckboxes(itemData);
+                inputsContainer.appendChild(dailyInputs);
+                break;
+            case 'one-time':
+                const oneTimeInput = createQuantityInput('Quantity', itemData.quantity || 0, true);
+                inputsContainer.appendChild(oneTimeInput);
+                break;
+            case 'per-occurrence':
+                const occurrenceInput = createQuantityInput('Per Day', itemData.quantity || 0, false);
+                inputsContainer.appendChild(occurrenceInput);
+                break;
+            default:
+                const standardInput = createQuantityInput('Quantity', itemData.quantity || 0, true);
+                inputsContainer.appendChild(standardInput);
+        }
+    }
+    
+    // Item selection handler
+    checkbox.onchange = (e) => {
+        if (e.target.checked) {
+            itemEl.classList.add('selected');
+        } else {
+            itemEl.classList.remove('selected');
+        }
+        updateCardFromDOM(itemEl.closest('.budget-card'));
+    };
+    
+    return itemEl;
+}
+
+function getEItemType(itemName) {
+    const name = itemName.toLowerCase();
+    
+    // Check for daily/nightly items
+    if (name.includes('sleepover') || 
+        name.includes('overnight') || 
+        name.includes('night-time') ||
+        name.includes('on-call')) {
+        return 'daily';
+    }
+    
+    // Check for one-time items
+    if (name.includes('establishment') || 
+        name.includes('setup') ||
+        name.includes('initial') ||
+        name.includes('assessment') ||
+        name.includes('fee')) {
+        return 'one-time';
+    }
+    
+    // Check for per-occurrence items
+    if (name.includes('travel') || 
+        name.includes('transport') ||
+        name.includes('kilometre')) {
+        return 'per-occurrence';
+    }
+    
+    // Default
+    return 'standard';
+}
+
+function createDailyCheckboxes(itemData) {
+    const container = document.createElement('div');
+    container.className = 'daily-checkboxes';
+    
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    
+    days.forEach(day => {
+        const dayGroup = document.createElement('div');
+        dayGroup.className = 'day-checkbox-group';
+        
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'day-checkbox';
+        checkbox.checked = itemData.days?.[day] || false;
+        checkbox.dataset.day = day;
+        
+        const label = document.createElement('label');
+        label.className = 'day-label';
+        label.textContent = day.substring(0, 1);
+        
+        // Update immediately when checkbox changes
+        checkbox.onchange = () => {
+            updateCardFromDOM(checkbox.closest('.budget-card'));
+        };
+        
+        dayGroup.appendChild(checkbox);
+        dayGroup.appendChild(label);
+        container.appendChild(dayGroup);
+    });
+    
+    return container;
+}
+
+function createQuantityInput(label, value, isInteger) {
+    const group = document.createElement('div');
+    group.className = 'quantity-input-group';
+    
+    const labelEl = document.createElement('label');
+    labelEl.className = 'quantity-label';
+    labelEl.textContent = label;
+    
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.className = 'quantity-input';
+    input.inputMode = isInteger ? 'numeric' : 'decimal';
+    input.step = isInteger ? '1' : '0.1';
+    input.min = '0';
+    input.value = value;
+    
+    // Use 'input' event for real-time updates
+    input.oninput = (e) => {
+        updateCardFromDOM(e.target.closest('.budget-card'));
+    };
+    
+    // Validate on blur
+    input.onblur = (e) => {
+        if (isInteger) {
+            e.target.value = Math.round(e.target.value) || 0;
+        }
+        updateCardFromDOM(e.target.closest('.budget-card'));
+    };
+    
+    group.appendChild(labelEl);
+    group.appendChild(input);
+    
+    return group;
+}
+function createWeekdayInputGroup(itemData) {
+    const container = document.createElement('div');
+    container.className = 'hours-input-group';
+    
+    const mainInput = createHoursInput('Weekday', itemData.hours?.weekday || 0);
+    container.appendChild(mainInput);
+    
+    const toggle = document.createElement('div');
+    toggle.className = 'per-day-toggle';
+    toggle.textContent = 'Per-day breakdown';
+    
+    const perDayContainer = document.createElement('div');
+    perDayContainer.className = 'per-day-inputs hidden';
+    ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].forEach(day => {
+        const dayInput = createHoursInput(day, itemData.hours?.[day] || 0);
+        perDayContainer.appendChild(dayInput);
+    });
+    
+    toggle.onclick = () => {
+        if (perDayContainer.classList.contains('hidden')) {
+            perDayContainer.classList.remove('hidden');
+            mainInput.classList.add('hidden');
+            toggle.textContent = 'Single value';
+        } else {
+            perDayContainer.classList.add('hidden');
+            mainInput.classList.remove('hidden');
+            toggle.textContent = 'Per-day breakdown';
+        }
+        // Trigger update when switching modes
+        updateCardFromDOM(container.closest('.budget-card'));
+    };
+    
+    container.appendChild(toggle);
+    container.appendChild(perDayContainer);
+    
+    return container;
+}
+
+function createHoursInput(label, value) {
+    const group = document.createElement('div');
+    group.className = 'hours-input-group';
+    
+    const labelEl = document.createElement('label');
+    labelEl.className = 'hours-label';
+    labelEl.textContent = label;
+    
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.className = 'hours-input';
+    input.inputMode = 'decimal';
+    input.step = '0.5';
+    input.min = '0';
+    input.value = value;
+    
+    // Change to use 'input' event for real-time updates
+    input.oninput = (e) => {
+        const validated = validateHours(e.target.value);
+        if (validated % 0.5 !== 0) {
+            e.target.classList.add('error');
+        } else {
+            e.target.classList.remove('error');
+        }
+        // Always update, even during typing
+        updateCardFromDOM(e.target.closest('.budget-card'));
+    };
+    
+    // Also handle blur to ensure final value is validated
+    input.onblur = (e) => {
+        e.target.value = validateHours(e.target.value);
+        updateCardFromDOM(e.target.closest('.budget-card'));
+    };
+    
+    group.appendChild(labelEl);
+    group.appendChild(input);
+    
+    return group;
+}
+
+// Helper functions first
+function parseDDMMYYYY(s) {
+  const [dd, mm, yyyy] = s.split('-').map(Number);
+  return new Date(Date.UTC(yyyy, mm - 1, dd));
+}
+
+function formatDateDDMMYYYY(d) {
+    // Handle both Date objects and date strings
+    const date = typeof d === 'string' ? new Date(d) : d;
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const year = date.getUTCFullYear();
+    return `${day}-${month}-${year}`;
+}
+
+
+function eachDateInclusive(startStr, endStr, cb) {
+  // Dates are yyyy-mm-dd from HTML inputs
+  let d = new Date(startStr + 'T00:00:00Z');
+  const end = new Date(endStr + 'T00:00:00Z');
+  
+  while (d <= end) {
+    cb(new Date(d));
+    d = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1));
+  }
+}
+
+
+function isPublicHoliday(date, stateCode) {
+  const dateStr = date.toISOString().split('T')[0];
+  // Use the global state.publicHolidays, not the parameter
+  return state.publicHolidays.some(ph => 
+    ph.date === dateStr && (!ph.state || ph.state === stateCode)
+  );
+}
+
+
+function isSleepoverItem(item) {
+  return /sleepover/i.test(item.supportItemName);
+}
+
+function applyJulyUplift(basePrice, serviceDate, itemEndDate, upliftPercent) {
+  // Only apply uplift if service date is after the item's end date
+  if (!itemEndDate) return basePrice;
+  
+  // Handle if itemEndDate is already a Date or a string
+  const endDate = typeof itemEndDate === 'string' ? parseDDMMYYYY(itemEndDate) : itemEndDate;
+  if (serviceDate <= endDate) return basePrice;
+  
+  // Count how many price periods have passed
+  const yearsDiff = serviceDate.getUTCFullYear() - endDate.getUTCFullYear();
+  const monthsDiff = serviceDate.getUTCMonth() - endDate.getUTCMonth();
+  
+  // Assuming annual increases, calculate periods
+  let periodsElapsed = yearsDiff;
+  if (monthsDiff > 6) periodsElapsed++; // After July in the year
+  
+  if (periodsElapsed <= 0) return basePrice;
+  
+  // Compound the uplift
+  let price = basePrice;
+  for (let i = 0; i < periodsElapsed; i++) {
+    price = price * (1 + upliftPercent / 100);
+  }
+  
+  return Math.round(price * 100) / 100; // Round to cents
+}
+
+function lookupPriceFromCatalogue(item, state, isSleepover, isPH) {
+  // For sleepover on PH: use standard sleepover price (no PH rate)
+  if (isSleepover && isPH) {
+    return item.statePrices[state] || 0;
+  }
+  
+  // Otherwise use the state price
+  return item.statePrices[state] || 0;
+}
+
+function getUnitPrice(item, card, date, { isPH, isSleepover }) {
+  let base = item.overridePrice || 
+             lookupPriceFromCatalogue(item, card.state, isSleepover, isPH) || 
+             0;
+  
+  if (base <= 0) return 0;
+  
+  if (card.settings.uplift.enabled) {
+    base = applyJulyUplift(base, date, item.effectiveTo, card.settings.uplift.percent);
+  }
+  
+  return base;
+}
+
+function resolveQuantityForDate(item, date, dayOfWeek, { isPH, isSleepover }) {
+  if (item.unit === 'H') {
+    // Hours logic
+    if (item.hours) {
+      // First check for specific day-of-week value (Mon, Tue, etc.)
+      if (item.hours[dayOfWeek] !== undefined) {
+        return item.hours[dayOfWeek];
+      }
+      
+      // Then check for aggregated values
+      if (isPH && item.hours.publicHoliday !== undefined) {
+        return item.hours.publicHoliday;
+      } else if (isSaturday(date) && item.hours.saturday !== undefined) {
+        return item.hours.saturday;
+      } else if (isSunday(date) && item.hours.sunday !== undefined) {
+        return item.hours.sunday;
+      } else if (isWeekday(date) && item.hours.weekday !== undefined) {
+        return item.hours.weekday;
+      }
+    }
+  } else if (item.unit === 'E') {
+    if (isSleepover) {
+      // Sleepover uses days selection
+      return (item.days && item.days[dayOfWeek]) ? 1 : 0;
+    } else if (getEItemType(item.supportItemName) === 'one-time') {
+      // One-time items only on first day
+      if (date.getTime() === new Date(card.period.start).getTime()) {
+        return item.quantity || 0;
+      }
+    } else {
+      // Other E items
+      return item.quantity || 0;
+    }
+  }
+  
+  return 0;
+}
+
+// Main calculation function
+function computeCardTotals(card) {
+  const result = {
+    usedCents: 0,
+    perGroupCents: {},
+    daysCount: 0,
+    phCount: 0,
+    weeks: 0
+  };
+  
+  if (!card.period.start || !card.period.end) return result;
+  
+  // Parse dates - they're yyyy-mm-dd from HTML date inputs
+  const startDate = new Date(card.period.start + 'T00:00:00Z');
+  const endDate = new Date(card.period.end + 'T00:00:00Z');
+  
+  // Initialize group totals
+  card.groups.forEach(group => {
+    result.perGroupCents[group.regGroupNumber] = 0;
+  });
+  
+  // Single pass through dates
+  eachDateInclusive(card.period.start, card.period.end, (date) => {
+    result.daysCount++;
+    
+    const isPH = isPublicHoliday(date, card.state);
+    const dayOfWeek = getDayOfWeek(date);
+    
+    if (isPH) result.phCount++;
+    
+    card.groups.forEach(group => {
+      group.items.forEach(item => {
+        if (!item.selected) return;
+        
+        const isSleepover = isSleepoverItem(item);
+        
+        // Main gating logic with sleepover exception
+        if (isPH) {
+          if (isSleepover) {
+            // Sleepover allowed on PH at standard rate
+          } else {
+            if (!card.settings.includePH) return;
+            if (!item.flags.isPublicHoliday) return;
+          }
+        } else {
+          // Non-PH day
+          if (item.flags.isPublicHoliday) return;
+          if (item.flags.isWeekday && !isWeekday(date)) return;
+          if (item.flags.isSaturday && !isSaturday(date)) return;
+          if (item.flags.isSunday && !isSunday(date)) return;
+        }
+        
+        const quantity = resolveQuantityForDate(item, date, dayOfWeek, { isPH, isSleepover });
+        if (quantity <= 0) return;
+        
+        const unitPrice = getUnitPrice(item, card, date, { isPH, isSleepover });
+        const lineCents = Math.round(quantity * Math.round(unitPrice * 100));
+        
+        result.usedCents += lineCents;
+        result.perGroupCents[group.regGroupNumber] += lineCents;
+      });
+    });
+  });
+  
+  // Calculate weeks
+  result.weeks = Math.max(1, Math.ceil(result.daysCount / 7));
+  
+  return result;
+}
+
+// Update display functions to use the computed totals
+function updateCardTotals(cardEl, card) {
+  const totals = computeCardTotals(card);
+  
+  // Update used amount
+  const used = totals.usedCents / 100;
+  cardEl.querySelector('.used-amount').textContent = `$${used.toFixed(2)}`;
+  
+  // Update remaining
+  const available = card.budget.total + card.budget.carryIn - card.budget.excluded;
+  const remaining = available - used;
+  const remainingEl = cardEl.querySelector('.remaining-amount');
+  remainingEl.textContent = `$${remaining.toFixed(2)}`;
+  remainingEl.classList.toggle('negative', remaining < 0);
+  
+  // Update weekly
+  const weekly = (totals.usedCents / 100) / totals.weeks;
+  cardEl.querySelector('.weekly-amount').textContent = `$${weekly.toFixed(2)}`;
+  
+  // Update all group totals
+  cardEl.querySelectorAll('.group-panel').forEach(groupEl => {
+    const groupNumber = groupEl.dataset.groupNumber;
+    const groupTotal = (totals.perGroupCents[groupNumber] || 0) / 100;
+    const groupWeekly = groupTotal / totals.weeks;
+    
+    const totalEl = groupEl.querySelector('.group-total');
+    if (totalEl) {
+        totalEl.textContent = `$${groupTotal.toFixed(2)}`;
+    }
+    
+    const weeklyEl = groupEl.querySelector('.group-weekly');
+    if (weeklyEl) {
+        weeklyEl.textContent = `($${groupWeekly.toFixed(2)}/wk)`;
+    }
+});
+}
+
+function attachCardEventHandlers(cardEl, card) {
+    // Collapse/expand
+    cardEl.querySelector('.collapse-btn').onclick = () => {
+        cardEl.classList.toggle('collapsed');
+    };
+    
+    // Input changes
+    const inputs = [
+    '.participant-name', '.ndis-number', '.start-date', '.end-date',
+    '.budget-amount', '.excluded-amount', '.include-ph', '.july-uplift', '.uplift-rate'
+];
+
+inputs.forEach(selector => {
+    const el = cardEl.querySelector(selector);
+    if (el) {
+        if (el.type === 'checkbox') {
+            el.addEventListener('change', () => updateCardFromDOM(cardEl));
+        } else {
+            el.addEventListener('input', () => updateCardFromDOM(cardEl));
+        }
+    }
+});
+    
+    // View PH button
+    cardEl.querySelector('.view-ph-btn').onclick = () => {
+        showPublicHolidaysModal(card);
+    };
+    
+    // Setup group search
+    const groupSearch = cardEl.querySelector('.group-search');
+    const searchResults = cardEl.querySelector('.group-search-results');
+    let selectedGroup = null;
+
+    // Only set up search if using search UI
+    if (groupSearch && searchResults) {
+        // Search function
+        const searchGroups = (query) => {
+            if (!state.catalogue || !query) {
+                searchResults.innerHTML = '';
+                searchResults.classList.add('hidden');
+                return;
+            }
+            
+            const lowerQuery = query.toLowerCase();
+            const results = [];
+            
+            // Search through all groups and items
+            Object.entries(state.catalogue).forEach(([groupNumber, group]) => {
+                // Check if group matches
+                if (groupNumber.includes(lowerQuery) || 
+                    group.regGroupName.toLowerCase().includes(lowerQuery)) {
+                    results.push({
+                        type: 'group',
+                        groupNumber,
+                        groupName: group.regGroupName,
+                        display: `${group.regGroupName} (${groupNumber})`
+                    });
+                }
+                
+                // Check if any items match
+                group.items.forEach(item => {
+                    if (item.supportItemNumber.toLowerCase().includes(lowerQuery) ||
+                        item.supportItemName.toLowerCase().includes(lowerQuery)) {
+                        if (!results.find(r => r.groupNumber === groupNumber)) {
+                            results.push({
+                                type: 'group',
+                                groupNumber,
+                                groupName: group.regGroupName,
+                                display: `${group.regGroupName} (${groupNumber})`,
+                                matchedItem: item.supportItemName
+                            });
+                        }
+                    }
+                });
+            });
+            
+            // Display results
+            searchResults.innerHTML = '';
+            if (results.length > 0) {
+                results.slice(0, 20).forEach(result => {
+                    const div = document.createElement('div');
+                    div.className = 'group-search-result';
+                    div.innerHTML = `
+                        <div>${result.display}</div>
+                        ${result.matchedItem ? `<div style="font-size: 0.75rem; color: var(--text-muted)">Contains: ${result.matchedItem}</div>` : ''}
+                    `;
+                    div.onclick = () => {
+                        selectedGroup = result;
+                        groupSearch.value = result.display;
+                        searchResults.classList.add('hidden');
+                    };
+                    searchResults.appendChild(div);
+                });
+                searchResults.classList.remove('hidden');
+            } else {
+                const div = document.createElement('div');
+                div.className = 'group-search-result';
+                div.textContent = 'No results found';
+                searchResults.appendChild(div);
+                searchResults.classList.remove('hidden');
+            }
+        };
+
+        // Search input handler
+        groupSearch.oninput = (e) => {
+            searchGroups(e.target.value);
+        };
+
+        // Hide results when clicking outside
+        const hideHandler = (e) => {
+            if (!cardEl.contains(e.target)) {
+                searchResults.classList.add('hidden');
+            }
+        };
+        document.addEventListener('click', hideHandler);
+        
+        // Clean up event listener when card is removed
+        const observer = new MutationObserver((mutations) => {
+            if (!document.body.contains(cardEl)) {
+                document.removeEventListener('click', hideHandler);
+                observer.disconnect();
+            }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+
+        // Add group button handler
+        cardEl.querySelector('.add-group-btn').onclick = () => {
+            if (!selectedGroup) {
+                showError('Please select a group first');
+                return;
+            }
+            
+            const groupNumber = selectedGroup.groupNumber;
+            const catalogueGroup = state.catalogue[groupNumber];
+            if (!catalogueGroup) return;
+            
+            // Check if group already added
+            if (card.groups.some(g => g.regGroupNumber === groupNumber)) {
+                showError('This group has already been added');
+                return;
+            }
+            
+            // Create group data with state price
+            const groupData = {
+                regGroupNumber: groupNumber,
+                regGroupName: catalogueGroup.regGroupName,
+                items: catalogueGroup.items.map(item => ({
+                    ...item,
+                    selected: false,
+                    overridePrice: null,
+                    statePrice: item.statePrices[card.state] || item.statePrices['NSW'] || 0,
+                    hours: {},
+                    days: {},
+                    quantity: 0
+                }))
+            };
+            
+            card.groups.push(groupData);
+            renderGroup(cardEl, groupData);
+            updateCardTotals(cardEl, card);
+            
+            // Clear search
+            groupSearch.value = '';
+            selectedGroup = null;
+            searchResults.classList.add('hidden');
+        };
+    } else {
+        // Fallback for old dropdown UI
+        cardEl.querySelector('.add-group-btn').onclick = () => {
+            const selector = cardEl.querySelector('.group-selector');
+            const groupNumber = selector.value;
+            if (!groupNumber) return;
+            
+            const catalogueGroup = state.catalogue[groupNumber];
+            if (!catalogueGroup) return;
+            
+            // Check if group already added
+            if (card.groups.some(g => g.regGroupNumber === groupNumber)) {
+                showError('This group has already been added');
+                return;
+            }
+            
+            // Create group data with state price
+            const groupData = {
+                regGroupNumber: groupNumber,
+                regGroupName: catalogueGroup.regGroupName,
+                items: catalogueGroup.items.map(item => ({
+                    ...item,
+                    selected: false,
+                    overridePrice: null,
+                    statePrice: item.statePrices[card.state] || item.statePrices['NSW'] || 0,
+                    hours: {},
+                    days: {},
+                    quantity: 0
+                }))
+            };
+            
+            card.groups.push(groupData);
+            renderGroup(cardEl, groupData);
+            updateCardTotals(cardEl, card);
+            
+            selector.value = '';
+        };
+    }
+    
+    // Export button
+    cardEl.querySelector('.export-btn').onclick = () => {
+        const errors = validateCard(card);
+        if (errors.length > 0) {
+            showValidationErrors(errors);
+            return;
+        }
+        
+        const csv = buildCsvRows(card);
+        const filename = generateFilename(card);
+        downloadCsv(filename, csv);
+    };
+    
+    // Continue button
+    cardEl.querySelector('.continue-btn').onclick = () => {
+        const newCard = createCard(card);
+        state.cards.push(newCard);
+        const newCardEl = renderCard(newCard);
+        document.getElementById('cards-container').appendChild(newCardEl);
+        newCardEl.scrollIntoView({ behavior: 'smooth' });
+        saveState();
+    };
+    
+    // Delete button
+    cardEl.querySelector('.delete-btn').onclick = () => {
+        if (confirm('Delete this card? This cannot be undone.')) {
+            const index = state.cards.findIndex(c => c.id === card.id);
+            if (index >= 0) {
+                state.cards.splice(index, 1);
+                cardEl.remove();
+                saveState();
+            }
+        }
+    };
+}
+async function parseExportedCsv(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        
+        reader.onload = (e) => {
+            try {
+                const text = e.target.result;
+                const lines = text.split('\n');
+                const headers = parseCSVLine(lines[0]);
+                
+                // Verify it's our format
+                if (headers.join(',') !== 'NDISNumber,SupportsDeliveredFrom,SupportsDeliveredTo,SupportNumber,Quantity,UnitPrice,GSTCode') {
+                    throw new Error('Invalid CSV format');
+                }
+                
+                // Parse all lines
+                const rows = [];
+                for (let i = 1; i < lines.length; i++) {
+                    if (!lines[i].trim()) continue;
+                    const values = parseCSVLine(lines[i]);
+                    rows.push({
+                        ndisNumber: values[0],
+                        dateFrom: values[1],
+                        dateTo: values[2],
+                        supportNumber: values[3],
+                        quantity: parseFloat(values[4]),
+                        unitPrice: parseFloat(values[5]),
+                        gstCode: values[6]
+                    });
+                }
+                
+                resolve(rows);
+            } catch (error) {
+                reject(error);
+            }
+        };
+        
+        reader.onerror = reject;
+        reader.readAsText(file);
+    });
+}
+
+function createCardFromCsvRows(rows) {
+    if (!rows || rows.length === 0) return null;
+    
+    // Get date range and participant info from first/last rows
+    const firstRow = rows[0];
+    const lastRow = rows[rows.length - 1];
+    
+    // Parse dates (convert dd-mm-yyyy to yyyy-mm-dd)
+    const parseToISODate = (dateStr) => {
+        const [day, month, year] = dateStr.split('-');
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    };
+    
+    const card = {
+        id: generateUUID(),
+        participant: {
+            name: '', // Will need to be entered manually
+            ndisNumber: firstRow.ndisNumber
+        },
+        period: {
+            start: parseToISODate(firstRow.dateFrom),
+            end: parseToISODate(lastRow.dateTo)
+        },
+        state: state.preferences.state,
+        budget: {
+            total: 0, // Will need to be entered manually
+            excluded: 0,
+            carryIn: 0
+        },
+        settings: {
+            includePH: true,
+            uplift: {
+                enabled: true,
+                percent: state.preferences.upliftPercent
+            }
+        },
+        groups: []
+    };
+    
+    // Group items by support number AND track which groups are used
+    const itemsByNumber = new Map();
+    const usedGroupNumbers = new Set();
+    
+    rows.forEach(row => {
+        const supportNumber = row.supportNumber;
+        const quantity = row.quantity;
+        const date = parseToISODate(row.dateFrom);
+        const dayOfWeek = getDayOfWeek(new Date(date));
+        
+        // Find which item this is
+        let catalogueItem = null;
+        for (const [groupNumber, group] of Object.entries(state.catalogue)) {
+            catalogueItem = group.items.find(i => i.supportItemNumber === supportNumber);
+            if (catalogueItem) {
+                usedGroupNumbers.add(groupNumber);
+                break;
+            }
+        }
+        
+        if (!catalogueItem) return;
+        
+        if (!itemsByNumber.has(supportNumber)) {
+            itemsByNumber.set(supportNumber, {
+                hours: {},
+                days: {},
+                quantities: {}, // Track individual day quantities
+                unitPrice: row.unitPrice,
+                isHourly: catalogueItem.unit === 'H',
+                isSleepover: isSleepoverItem(catalogueItem)
+            });
+        }
+        
+        const itemData = itemsByNumber.get(supportNumber);
+        
+        if (itemData.isHourly) {
+            // Store each day's hours separately first
+            itemData.hours[dayOfWeek] = quantity;
+            
+            // For weekday items, check if all weekdays have the same value
+            if (catalogueItem.flags.isWeekday) {
+                if (!itemData.quantities[date]) {
+                    itemData.quantities[date] = quantity;
+                }
+            }
+        } else if (itemData.isSleepover) {
+            // For sleepover, just mark the day as selected
+            itemData.days[dayOfWeek] = true;
+        } else {
+            // Other E items
+            itemData.quantity = quantity; // Use the last value found
+        }
+    });
+    
+    // Post-process to determine if weekday items should use single value or per-day
+    itemsByNumber.forEach((itemData, supportNumber) => {
+        if (itemData.isHourly) {
+            // Check if this is a weekday item
+            const catalogueItem = findCatalogueItem(supportNumber);
+            if (catalogueItem?.flags.isWeekday) {
+                // Check if Mon-Fri all have the same value
+                const weekdayHours = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
+                    .map(day => itemData.hours[day])
+                    .filter(h => h !== undefined);
+                
+                if (weekdayHours.length > 0) {
+                    const allSame = weekdayHours.every(h => h === weekdayHours[0]);
+                    if (allSame) {
+                        // Use single weekday value
+                        itemData.hours = { weekday: weekdayHours[0] };
+                    }
+                    // Otherwise keep per-day values
+                }
+            }
+        }
+    });
+    
+    // Build complete groups from catalogue (not just used items)
+    if (state.catalogue) {
+        usedGroupNumbers.forEach(groupNumber => {
+            const catalogueGroup = state.catalogue[groupNumber];
+            if (!catalogueGroup) return;
+            
+            const groupData = {
+                regGroupNumber: groupNumber,
+                regGroupName: catalogueGroup.regGroupName,
+                items: []
+            };
+            
+            // Add ALL items from the group, not just used ones
+            catalogueGroup.items.forEach(catalogueItem => {
+                const importedData = itemsByNumber.get(catalogueItem.supportItemNumber);
+                
+                const itemData = {
+                    ...catalogueItem,
+                    selected: !!importedData, // Only select if it was in the CSV
+                    overridePrice: null,
+                    statePrice: catalogueItem.statePrices[card.state] || catalogueItem.statePrices['NSW'] || 0,
+                    hours: importedData?.hours || {},
+                    days: importedData?.days || {},
+                    quantity: importedData?.quantity || 0
+                };
+                
+                // Check if imported price differs from catalogue price
+                if (importedData && importedData.unitPrice !== itemData.statePrice) {
+                    itemData.overridePrice = importedData.unitPrice;
+                }
+                
+                groupData.items.push(itemData);
+            });
+            
+            card.groups.push(groupData);
+        });
+    }
+    
+    return card;
+}
+
+function findCatalogueItem(supportNumber) {
+    for (const [groupNumber, group] of Object.entries(state.catalogue)) {
+        const item = group.items.find(i => i.supportItemNumber === supportNumber);
+        if (item) return item;
+    }
+    return null;
+}
+function updateCardFromDOM(cardEl) {
+    const cardId = cardEl.dataset.cardId;
+    const card = state.cards.find(c => c.id === cardId);
+    if (!card) return;
+    
+    // Update card data from DOM
+    card.participant.name = cardEl.querySelector('.participant-name').value;
+    card.participant.ndisNumber = cardEl.querySelector('.ndis-number').value;
+    card.period.start = cardEl.querySelector('.start-date').value;
+    card.period.end = cardEl.querySelector('.end-date').value;
+    card.budget.total = parseFloat(cardEl.querySelector('.budget-amount').value) || 0;
+    card.budget.excluded = parseFloat(cardEl.querySelector('.excluded-amount').value) || 0;
+    card.settings.includePH = cardEl.querySelector('.include-ph').checked;
+    card.settings.uplift.enabled = cardEl.querySelector('.july-uplift').checked;
+    card.settings.uplift.percent = parseFloat(cardEl.querySelector('.uplift-rate').value) || 3.2;
+    
+    // Update groups and items
+    const groupEls = cardEl.querySelectorAll('.group-panel');
+    card.groups = [];
+    
+    groupEls.forEach(groupEl => {
+        const groupNumber = groupEl.dataset.groupNumber;
+        const catalogueGroup = state.catalogue[groupNumber];
+        if (!catalogueGroup) return;
+        
+        const groupData = {
+            regGroupNumber: groupNumber,
+            regGroupName: catalogueGroup.regGroupName,
+            items: []
+        };
+        
+        const itemEls = groupEl.querySelectorAll('.item-row');
+        itemEls.forEach((itemEl, index) => {
+            const itemNumber = itemEl.dataset.itemNumber;
+            const catalogueItem = catalogueGroup.items.find(i => i.supportItemNumber === itemNumber);
+            if (!catalogueItem) return;
+            
+            const itemData = {
+                ...catalogueItem,
+                selected: itemEl.querySelector('.item-select').checked,
+                overridePrice: null,
+                statePrice: catalogueItem.statePrices[card.state] || catalogueItem.statePrices['NSW'] || 0,
+                hours: {},
+                days: {},
+                quantity: 0
+            };
+            
+            // Read hours/quantity from inputs
+            if (catalogueItem.unit === 'H') {
+                if (catalogueItem.flags.isWeekday) {
+                    const perDayInputs = itemEl.querySelector('.per-day-inputs');
+                    if (perDayInputs && !perDayInputs.classList.contains('hidden')) {
+                        // Per-day values
+                        ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].forEach((day, i) => {
+                            const input = perDayInputs.children[i].querySelector('.hours-input');
+                            itemData.hours[day] = validateHours(input.value);
+                        });
+                    } else {
+                        // Single weekday value
+                        const weekdayInput = itemEl.querySelector('.hours-input');
+                        itemData.hours.weekday = validateHours(weekdayInput.value);
+                    }
+                } else {
+                    const input = itemEl.querySelector('.hours-input');
+                    if (input) {
+                        if (catalogueItem.flags.isSaturday) {
+                            itemData.hours.saturday = validateHours(input.value);
+                        } else if (catalogueItem.flags.isSunday) {
+                            itemData.hours.sunday = validateHours(input.value);
+                        } else if (catalogueItem.flags.isPublicHoliday) {
+                            itemData.hours.publicHoliday = validateHours(input.value);
+                        }
+                    }
+                }
+            } else if (catalogueItem.unit === 'E') {
+                const eType = getEItemType(catalogueItem.supportItemName);
+                
+                if (eType === 'daily') {
+                    // Read checkbox states
+                    itemData.days = {};
+                    const checkboxes = itemEl.querySelectorAll('.day-checkbox');
+                    checkboxes.forEach(cb => {
+                        itemData.days[cb.dataset.day] = cb.checked;
+                    });
+                } else {
+                    // Read quantity
+                    const quantityInput = itemEl.querySelector('.quantity-input');
+                    if (quantityInput) {
+                        itemData.quantity = parseFloat(quantityInput.value) || 0;
+                    }
+                }
+            }
+            
+            groupData.items.push(itemData);
+        });
+        
+        card.groups.push(groupData);
+    });
+    
+    // IMPORTANT: Update the totals after reading all the data
+    updateCardTotals(cardEl, card);
+    saveState();
+}
+
+function generateFilename(card) {
+    const parts = [];
+    
+    if (card.participant.name) {
+        parts.push(sanitizeFilename(card.participant.name));
+    }
+    
+    if (card.participant.ndisNumber) {
+        parts.push(card.participant.ndisNumber);
+    }
+    
+    if (card.period.start) {
+        // card.period.start is yyyy-mm-dd string, convert to dd-mm-yyyy
+        const startDate = new Date(card.period.start);
+        parts.push(formatDateDDMMYYYY(startDate));
+    }
+    
+    if (card.period.end) {
+        const endDate = new Date(card.period.end);
+        parts.push(formatDateDDMMYYYY(endDate));
+    }
+    
+    return parts.join('_') + '.csv';
+}
+
+function showPublicHolidaysModal(card) {
+    const modal = document.getElementById('ph-modal');
+    const list = document.getElementById('ph-list');
+    
+    list.innerHTML = '';
+    
+    const startDate = new Date(card.period.start);
+    const endDate = new Date(card.period.end);
+    
+    state.publicHolidays.forEach(ph => {
+        const phDate = new Date(ph.date);
+        if (phDate >= startDate && phDate <= endDate) {
+            const item = document.createElement('div');
+            item.className = 'ph-item';
+            
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'ph-checkbox';
+            checkbox.checked = card.settings.includePH;
+            checkbox.disabled = true;
+            
+            const dateEl = document.createElement('span');
+            dateEl.className = 'ph-date';
+            dateEl.textContent = formatDateDDMMYYYY(ph.date);
+            
+            const nameEl = document.createElement('span');
+            nameEl.className = 'ph-name';
+            nameEl.textContent = ph.name;
+            
+            item.appendChild(checkbox);
+            item.appendChild(dateEl);
+            item.appendChild(nameEl);
+            
+            list.appendChild(item);
+        }
+    });
+    
+    modal.classList.add('show');
+}
+
+// ===== Storage Functions =====
+function saveState() {
+    localStorage.setItem(STORAGE_KEYS.CARDS, JSON.stringify(state.cards));
+    localStorage.setItem(STORAGE_KEYS.PREFERENCES, JSON.stringify(state.preferences));
+    if (state.catalogue) {
+        localStorage.setItem(STORAGE_KEYS.CATALOGUE, JSON.stringify(state.catalogue));
+    }
+}
+
+async function loadState() {
+    try {
+        const cards = localStorage.getItem(STORAGE_KEYS.CARDS);
+        if (cards) {
+            state.cards = JSON.parse(cards);
+        }
+        
+        const prefs = localStorage.getItem(STORAGE_KEYS.PREFERENCES);
+        if (prefs) {
+            state.preferences = { ...state.preferences, ...JSON.parse(prefs) };
+        }
+        
+        // Try to load catalogue from cache, or fetch from Supabase
+        const cachedCatalogue = localStorage.getItem(STORAGE_KEYS.CATALOGUE);
+        if (cachedCatalogue) {
+            state.catalogue = JSON.parse(cachedCatalogue);
+        } else {
+            try {
+                state.catalogue = await fetchCatalogueFromSupabase();
+                localStorage.setItem(STORAGE_KEYS.CATALOGUE, JSON.stringify(state.catalogue));
+            } catch (error) {
+                state.catalogue = null;
+                throw error; // Re-throw to be caught by init()
+            }
+        }
+        
+        // Always fetch holidays from Supabase
+        try {
+            state.publicHolidays = await fetchPublicHolidays();
+        } catch (error) {
+            state.publicHolidays = [];
+        }
+        
+    } catch (error) {
+        throw error; // Re-throw for init to handle
+    }
+}
+
+async function init() {
+    try {
+        await loadState();
+    } catch (error) {
+        console.error('Init error:', error);
+        // Show the actual error message
+        alert(`Error: ${error.message}\n\nCheck the browser console for details.`);
+    }
+    
+    if (!state.catalogue || Object.keys(state.catalogue).length === 0) {
+        // Don't show the generic message if we already showed an error
+        if (!state.catalogue) {
+            console.error('Catalogue is null');
+        } else {
+            console.error('Catalogue is empty');
+        }
+    }
+    
+    // Set default state
+    document.getElementById('default-state').value = state.preferences.state;
+    
+    // Render existing cards
+    const container = document.getElementById('cards-container');
+    state.cards.forEach(card => {
+        container.appendChild(renderCard(card));
+    });
+    document.getElementById('new-card-btn').onclick = () => {
+        if (!state.catalogue) {
+            showError('Catalogue is still loading, please wait...');
+            return;
+        }
+        
+        const card = createCard();
+        state.cards.push(card);
+        const cardEl = renderCard(card);
+        container.appendChild(cardEl);
+        cardEl.scrollIntoView({ behavior: 'smooth' });
+        saveState();
+    };
+    
+    document.getElementById('default-state').onchange = (e) => {
+        state.preferences.state = e.target.value;
+        saveState();
+    };
+    
+    // Modal close buttons
+    document.querySelectorAll('.close-modal').forEach(btn => {
+        btn.onclick = (e) => {
+            e.target.closest('.modal').classList.remove('show');
+        };
+    });
+    
+    // Click outside modal to close
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.onclick = (e) => {
+            if (e.target === modal) {
+                modal.classList.remove('show');
+            }
+        };
+    });
+    // Add this handler in your init function
+document.getElementById('csv-import').onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    try {
+        showLoading('Importing CSV...');
+        const rows = await parseExportedCsv(file);
+        const card = createCardFromCsvRows(rows);
+        
+        if (card) {
+            state.cards.push(card);
+            const cardEl = renderCard(card);
+            document.getElementById('cards-container').appendChild(cardEl);
+            cardEl.scrollIntoView({ behavior: 'smooth' });
+            saveState();
+            hideLoading();
+            showError('CSV imported successfully! Please enter participant name and budget.');
+        } else {
+            hideLoading();
+            showError('No data found in CSV');
+        }
+    } catch (error) {
+        hideLoading();
+        showError('Error importing CSV: ' + error.message);
+    }
+};
+}
+
+// Start the app
+document.addEventListener('DOMContentLoaded', () => init());
+</script>
+</body>
+</html>
