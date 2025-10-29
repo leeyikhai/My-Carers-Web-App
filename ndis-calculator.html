@@ -6,8 +6,180 @@
     <title>NDIS Budget Calculator</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
 
-<style>
+.notes-section {
+    margin-bottom: 1.5rem;
+}
+
+.notes-section h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.notes-input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
+    font-family: inherit;
+    resize: vertical;
+    min-height: 80px;
+    font: arial;
+}
+/* Settings Accordion */
+.settings-accordion {
+    background: var(--bg-secondary);
+    border-radius: var(--radius);
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+}
+
+.accordion-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    background: var(--bg-secondary);
+    transition: background 0.2s;
+}
+
+.accordion-header:hover {
+    background: var(--gray-100);
+}
+
+.accordion-icon {
+    font-size: 0.75rem;
+    transition: transform 0.2s;
+}
+
+.settings-accordion.collapsed .accordion-icon {
+    transform: rotate(-90deg);
+}
+
+.settings-accordion.collapsed .accordion-content {
+    display: none;
+}
+
+.accordion-title {
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+}
+
+.accordion-content {
+    padding: 1rem;
+}
+
+/* Fix toggle layout */
+.toggle-group {
+    margin-bottom: 0.75rem;
+}
+
+.toggle-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    flex: 1;
+}
+
+.toggle-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+/* Responsive toggle layout */
+@media (max-width: 640px) {
+    .toggle-label {
+        font-size: 0.8rem;
+    }
+    
+    .toggle-wrapper {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .view-ph-btn {
+        margin-top: 0.5rem;
+    }
+}
+
+/* Global actions for groups */
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+
+.global-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.ph-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+}
+
+.ph-date {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.ph-note {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+.ph-note strong {
+    color: var(--primary);
+}
+.action-help {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+    margin-bottom: 0;
+}
+
+.uplift-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin-left: 2rem;
+}
+
+.uplift-help {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin: 0;
+}
     /* Reset and Base Styles */
 * {
     margin: 0;
@@ -180,22 +352,24 @@
 }
 
 .add-group-container {
-    position: relative;
     display: flex;
     gap: 0.5rem;
     margin-bottom: 1rem;
+    position: relative;
 }
+
 :root {
-    /* Neutral Color Palette */
-    --accent:  #0c9852;
-    --primary-dark: #1dd858;
-    --primary: #314eb5;          /* Gentle blue accent (for links/buttons) */
-    --accent-dark: #059669;
-    --danger: #ef4444;
+    /* Harmonious Color Palette */
+    --primary: #2563eb;          /* Clear blue */
+    --primary-dark: #1d4ed8;     /* Deeper blue */
+    --accent: #10b981;           /* Emerald green */
+    --accent-dark: #059669;      /* Deeper emerald */
+    --danger: #ef4444;           /* Keep the red as is */
     --danger-dark: #dc2626;
-    --success: #22c55e;
-    --warning: #f59e0b;
+    --success: #10b981;          /* Match accent for harmony */
+    --warning: #f59e0b;          /* Keep the amber */
     
+    /* Rest stays the same */
     --gray-50: #f9fafb;
     --gray-100: #f3f4f6;
     --gray-200: #e5e7eb;
@@ -227,6 +401,24 @@
     --transition: all 0.2s ease;
 }
 
+.btn-link {
+    background: transparent;
+    color: var(--primary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    border: none;
+    padding: 0;
+    text-decoration: underline;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-link:hover {
+    color: var(--primary-dark);
+    text-decoration: none;
+}
+
+
 body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     font-size: 16px;
@@ -237,7 +429,6 @@ body {
     -webkit-font-smoothing: antialiased;
 }
 
-/* Top Bar */
 .top-bar {
     position: sticky;
     top: 0;
@@ -246,6 +437,72 @@ body {
     border-bottom: 1px solid var(--border);
     padding: 1rem;
     box-shadow: var(--shadow-sm);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.header-brand {
+    display: flex;
+    align-items: center;
+}
+
+.logo {
+    max-height: 50px;
+    width: auto;
+}
+
+/* Settings styles */
+.setting-group {
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.setting-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+}
+
+.state-select {
+    padding: 0.5rem 2rem 0.5rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    width: auto;
+    min-width: 120px;
+}
+
+.setting-help {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+    margin-bottom: 0;
+}
+
+/* Mobile responsive */
+@media (max-width: 640px) {
+    .top-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .header-brand {
+        margin-bottom: 0.5rem;
+    }
+    
+    .top-actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
 }
 
 .top-bar h1 {
@@ -535,6 +792,7 @@ body {
 /* Settings Section */
 .settings-section {
     margin-bottom: 1.5rem;
+    padding-top: 0.5rem;
 }
 
 .toggle-group {
@@ -1023,34 +1281,23 @@ body {
 </style>
 </head>
 <body>
-    <!-- Top Bar -->
     <header class="top-bar">
-        <h1>NDIS Budget Calculator</h1>
+        <div class="header-brand">
+            <img src="https://gqchhsayqxttewthcsah.supabase.co/storage/v1/object/public/Branding/LOGO%20No%20Background.png" 
+                 alt="My Carers Logo" 
+                 class="logo"
+                 width="200">
+        </div>
         <div class="top-actions">
             <label for="csv-import" class="btn btn-primary">
                 Import CSV
             </label>
             <input type="file" id="csv-import" accept=".csv" style="display: none;">
             <button id="new-card-btn" class="btn btn-accent">
-                + New Card
-            </button>
-        </div>
-        
-        <div class="state-selector">
-            <label>State:</label>
-            <select id="default-state">
-                <option value="NSW" selected>NSW</option>
-                <option value="VIC">VIC</option>
-                <option value="QLD">QLD</option>
-                <option value="WA">WA</option>
-                <option value="SA">SA</option>
-                <option value="TAS">TAS</option>
-                <option value="ACT">ACT</option>
-                <option value="NT">NT</option>
-            </select>
+                + New Funding Period
+            </button>            
         </div>
     </header>
-
     <!-- Cards Container -->
     <main class="cards-container" id="cards-container">
         <!-- Cards will be dynamically inserted here -->
@@ -1094,6 +1341,12 @@ body {
                             <input type="number" class="excluded-amount" inputmode="decimal" step="0.01" min="0" placeholder="0.00">
                         </div>
                     </div>
+                    <div class="notes-section">
+                        <h3>Notes & Assumptions</h3>
+                        <textarea class="notes-input" 
+                                  placeholder="Enter any notes or assumptions for this funding period..." 
+                                  rows="4"></textarea>
+                    </div>
                 </div>
 
                 <!-- Live Totals -->
@@ -1112,64 +1365,115 @@ body {
                     </div>
                 </div>
 
-                <!-- Settings -->
-                <div class="settings-section">
-                    <div class="toggle-group">
-                        <label class="toggle">
-                            <input type="checkbox" class="include-ph" checked>
-                            <span class="toggle-slider"></span>
-                            <span class="toggle-label">Include Public Holidays</span>
-                        </label>
-                        <button class="btn btn-secondary view-ph-btn">View PH</button>
-                    </div>
-                    <div class="toggle-group">
-                        <label class="toggle">
-                            <input type="checkbox" class="july-uplift" checked>
-                            <span class="toggle-slider"></span>
-                            <span class="toggle-label">July 1 uplift</span>
-                        </label>
-                        <div class="uplift-percent">
-                            <input type="number" class="uplift-rate" inputmode="decimal" step="0.1" value="3.2" min="0" max="100">
-                            <span>%</span>
-                        </div>
-                    </div>
+<div class="settings-accordion">
+    <div class="accordion-header">
+        <span class="accordion-icon">▼</span>
+        <span class="accordion-title">Settings</span>
+    </div>
+    <div class="accordion-content">
+        <div class="settings-section">
+            <!-- State selector as first item -->
+            <div class="setting-group">
+                <label class="setting-label">State:</label>
+                <select class="card-state state-select">
+                    <option value="NSW">NSW</option>
+                    <option value="VIC">VIC</option>
+                    <option value="QLD">QLD</option>
+                    <option value="WA">WA</option>
+                    <option value="SA">SA</option>
+                    <option value="TAS">TAS</option>
+                    <option value="ACT">ACT</option>
+                    <option value="NT">NT</option>
+                </select>
+                <p class="setting-help">Prices are based on the selected state</p>
+            </div>            
+            
+            <!-- Public Holiday toggle -->
+            <div class="toggle-group">
+                <div class="toggle-wrapper">
+                    <label class="toggle">
+                        <input type="checkbox" class="include-ph" checked>
+                        <span class="toggle-slider"></span>
+                        <span class="toggle-label">Include Public Holidays</span>
+                    </label>
+                    <button class="btn-link view-ph-btn">View Public Holidays</button>
                 </div>
+            </div>
+            
+            <!-- Pricing uplift toggle -->
+            <div class="toggle-group">
+                <div class="toggle-wrapper">
+                    <label class="toggle">
+                        <input type="checkbox" class="july-uplift" checked>
+                        <span class="toggle-slider"></span>
+                        <span class="toggle-label">Account for unreleased pricing</span>
+                    </label>
+                </div>
+                <div class="uplift-info">
+                    <div class="uplift-percent">
+                        <input type="number" class="uplift-rate" inputmode="decimal" step="0.1" value="3.2" min="0" max="100">
+                        <span>% annual increase</span>
+                    </div>
+                    <p class="uplift-help">Estimates future pricing with compounding increases</p>
+                </div>
+            </div>
+            <button class="btn btn-success export-btn">
+                <span class="btn-icon"></span>
+                Export CSV
+            </button>
+            <button class="btn btn-secondary generate-report-btn">
+                <span class="btn-icon"></span>
+                Generate Report
+            </button>
+            <button class="btn btn-danger delete-btn">
+                <span class="btn-icon"></span>
+                Delete
+            </button>
+        </div>
+    </div>
+</div>
 
-                <!-- Registration Groups -->
-                <div class="groups-section">
-                    <h3>Support Items</h3>
-                    <div class="add-group-container">
-                        <input type="text" 
-                               class="group-search" 
-                               placeholder="Search by name, code, or number..."
-                               autocomplete="off">
-                        <div class="group-search-results hidden"></div>
-                        <button class="btn btn-primary add-group-btn">Add Group</button>
-                    </div>
-                    <div class="groups-list">
-                        <!-- Groups will be dynamically added here -->
-                    </div>
+<!-- Add global hide/show buttons before the groups section -->
+<div class="groups-section">
+    <div class="section-header">
+        <div class="groups-section">
+            <div class="section-header">
+                <h3>Support Items</h3>
+                <div class="global-actions">
+                    <button class="btn-text global-hide-unselected">Hide all unselected</button>
+                    <button class="btn-text global-show-all" style="display:none;">Show all items</button>
                 </div>
+            </div>
+            
+            <div class="add-group-container">
+                <input type="text" 
+                       class="group-search" 
+                       placeholder="Search by name, code, or number..."
+                       autocomplete="off">
+                <div class="group-search-results hidden"></div>
+                <button class="btn btn-primary add-group-btn">Add Group</button>
+            </div>
+            
+            <div class="groups-list">
+                <!-- Groups will be dynamically added here -->
+            </div>
+
 
                 <!-- Card Actions -->
                 <div class="card-actions">
-                    <button class="btn btn-success export-btn">
-                        <span class="btn-icon"></span>
-                        Export CSV
-                    </button>
                     <button class="btn btn-primary continue-btn">
-                        <span class="btn-icon">+</span>
-                        Continue Card
-                    </button>
-                    <button class="btn btn-danger delete-btn">
                         <span class="btn-icon"></span>
-                        Delete
+                         + Next Funding Period
                     </button>
+                    <p class="action-help">Duplicates current setup with sequential dates</p>
+                    
+                    
                 </div>
             </div>
         </article>
     </template>
 
+    
     <!-- Group Template -->
     <template id="group-template">
         <div class="group-panel" data-group-number="">
@@ -1262,15 +1566,422 @@ body {
 
 // ===== State Management =====
 const state = {
-    catalogue: null, // Parsed NDIS catalogue
-    cards: [],       // Budget cards
-    publicHolidays: [], // Public holidays
+    catalogue: null,
+    cards: [],
+    publicHolidays: [],
     preferences: {
-        state: 'NSW',
+        state: 'NSW',  // This is already set as default
         upliftPercent: 3.2,
         continueInterval: 'month'
     }
 };
+let isSaving = false;
+
+
+//REPORT START
+
+// Add this function to your code
+function getItemUsageDescription(item) {
+    if (item.unit === 'H') {
+        const hours = [];
+        if (item.hours.weekday !== undefined) {
+            hours.push(`Weekdays: ${item.hours.weekday}h`);
+        } else if (item.hours.Mon || item.hours.Tue || item.hours.Wed || item.hours.Thu || item.hours.Fri) {
+            const dayHours = [];
+            ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach(day => {
+                if (item.hours[day] !== undefined) dayHours.push(`${day}: ${item.hours[day]}h`);
+            });
+            hours.push(dayHours.join(', '));
+        }
+        if (item.hours.saturday !== undefined) hours.push(`Sat: ${item.hours.saturday}h`);
+        if (item.hours.sunday !== undefined) hours.push(`Sun: ${item.hours.sunday}h`);
+        if (item.hours.publicHoliday !== undefined) hours.push(`PH: ${item.hours.publicHoliday}h`);
+        return hours.join(' | ') || 'No hours set';
+    } else if (item.unit === 'E') {
+        if (item.days) {
+            const selectedDays = Object.entries(item.days)
+                .filter(([day, selected]) => selected)
+                .map(([day]) => day);
+            return selectedDays.length ? `Days: ${selectedDays.join(', ')}` : 'No days selected';
+        }
+        return item.quantity ? `Quantity: ${item.quantity}` : 'No quantity set';
+    }
+    return '';
+}
+
+function generatePDFReport(card) {
+    // Create new PDF document
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    
+    // Calculate data
+    const totals = computeCardTotals(card);
+    const used = totals.usedCents / 100;
+    const available = card.budget.total + card.budget.carryIn - card.budget.excluded;
+    const remaining = available - used;
+    const weekly = used / totals.weeks;
+    
+    // Page settings
+    let y = 15;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 20;
+    
+    // Add logo and company header
+    try {
+        // Add logo (you might need to convert to base64 or use a different method)
+        doc.text('My Carers', margin, y);
+        y += 5;
+    } catch (e) {
+        // Fallback if logo fails
+        doc.setFontSize(16);
+        doc.text('My Carers', margin, y);
+        y += 7;
+    }
+    
+    // Company details
+    doc.setFontSize(8);
+    doc.text('ABN: 34 787 739 579', pageWidth - margin - 80, 15);
+    doc.text('Email: admin@mycarers.com.au', pageWidth - margin - 80, 20);
+    doc.text('Address: S2, Lvl 6, 12 Railway Pde, Burwood, NSW 2134', pageWidth - margin - 80, 25);
+    
+    y = 35;
+    
+    // Title
+    doc.setFontSize(18);
+    doc.setFont(undefined, 'bold');
+    doc.text('NDIS Funding Report', pageWidth / 2, y, { align: 'center' });
+    y += 12;
+    
+    // Date - formatted nicely
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'normal');
+    const today = new Date();
+    const dateStr = today.toLocaleDateString('en-AU', { 
+        day: 'numeric', 
+        month: 'long', 
+        year: 'numeric' 
+    });
+    doc.text('Generated: ' + dateStr, pageWidth / 2, y, { align: 'center' });
+    y += 15;
+    
+    // Participant Info Section
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.text('Participant Information', margin, y);
+    y += 10;
+    
+    doc.setFontSize(11);
+    doc.setFont(undefined, 'normal');
+    doc.text('Name: ' + (card.participant.name || 'Not specified'), margin, y);
+    y += 7;
+    doc.text('NDIS Number: ' + (card.participant.ndisNumber || 'Not specified'), margin, y);
+    y += 7;
+    
+    // Format period dates nicely
+    const startDate = new Date(card.period.start);
+    const endDate = new Date(card.period.end);
+    const periodStart = startDate.toLocaleDateString('en-AU', { 
+        day: 'numeric', 
+        month: 'long', 
+        year: 'numeric' 
+    });
+    const periodEnd = endDate.toLocaleDateString('en-AU', { 
+        day: 'numeric', 
+        month: 'long', 
+        year: 'numeric' 
+    });
+    
+    doc.text('Period: ' + periodStart + ' to ' + periodEnd, margin, y);
+    y += 7;
+    doc.text('Duration: ' + totals.daysCount + ' days (' + totals.weeks + ' weeks)', margin, y);
+    y += 7;
+    doc.text('State: ' + card.state, margin, y);
+    y += 15;
+    
+    // Budget Summary
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.text('Budget Summary', margin, y);
+    y += 10;
+    
+    doc.setFontSize(11);
+    doc.setFont(undefined, 'normal');
+    const budgetData = [
+        ['Total Budget:', formatCurrency(card.budget.total)],
+        ['Carry In:', formatCurrency(card.budget.carryIn)],
+        ['Excluded:', formatCurrency(card.budget.excluded)],
+        ['Available:', formatCurrency(available)],
+        ['Forecasted Usage:', formatCurrency(used)],
+        ['Remaining:', formatCurrency(remaining)],
+        ['Weekly Average:', formatCurrency(weekly)]
+    ];
+    
+    budgetData.forEach(row => {
+        doc.text(row[0], margin, y);
+        doc.text(row[1], margin + 80, y);
+        y += 7;
+    });
+    y += 10;
+    
+    // Weekly Breakdown Section
+    if (y > 200) {
+        doc.addPage();
+        y = 20;
+    }
+    
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.text('Weekly Cost Breakdown', margin, y);
+    y += 10;
+    
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'normal');
+    
+    // Calculate weekly breakdown for each item
+    let weeklyTotal = 0;
+    card.groups.forEach(group => {
+        group.items.forEach(item => {
+            if (!item.selected) return;
+            
+            // Calculate this item's weekly cost
+            let itemWeeklyHours = 0;
+            
+            if (item.unit === 'H' && item.hours) {
+                if (item.hours.weekday > 0) itemWeeklyHours += item.hours.weekday * 5;
+                if (item.hours.saturday > 0) itemWeeklyHours += item.hours.saturday;
+                if (item.hours.sunday > 0) itemWeeklyHours += item.hours.sunday;
+                
+                // Or if using per-day breakdown
+                ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach(day => {
+                    if (item.hours[day] > 0) {
+                        itemWeeklyHours += item.hours[day];
+                    }
+                });
+                
+                if (itemWeeklyHours > 0) {
+                    const weeklyItemCost = itemWeeklyHours * (item.statePrice || 0);
+                    weeklyTotal += weeklyItemCost;
+                    
+                    if (y > 270) {
+                        doc.addPage();
+                        y = 20;
+                    }
+                    
+                    doc.text('• ' + item.supportItemName, margin, y);
+                    doc.text(formatCurrency(weeklyItemCost) + '/week', pageWidth - margin - 40, y);
+                    y += 5;
+                }
+            }
+        });
+    });
+    
+    doc.setFont(undefined, 'bold');
+    doc.text('Total Weekly Cost:', margin, y);
+    doc.text(formatCurrency(weeklyTotal) + '/week', pageWidth - margin - 40, y);
+    y += 15;
+    
+    // Overall Support Groups Breakdown
+    if (y > 200) {
+        doc.addPage();
+        y = 20;
+    }
+    
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.text('Support Groups Breakdown', margin, y);
+    y += 10;
+
+    let hasGroups = false;
+
+    card.groups.forEach(group => {
+        const groupTotal = (totals.perGroupCents[group.regGroupNumber] || 0) / 100;
+        let groupHasItems = false;
+        
+        group.items.forEach(item => {
+            if (!item.selected) return;
+            
+            let hasData = false;
+            if (item.unit === 'H' && item.hours) {
+                if (item.hours.weekday > 0 || 
+                    item.hours.saturday > 0 || 
+                    item.hours.sunday > 0 || 
+                    item.hours.publicHoliday > 0 ||
+                    item.hours.Mon > 0 ||
+                    item.hours.Tue > 0 ||
+                    item.hours.Wed > 0 ||
+                    item.hours.Thu > 0 ||
+                    item.hours.Fri > 0) {
+                    hasData = true;
+                }
+            } else if (item.unit === 'E') {
+                if (item.quantity > 0) {
+                    hasData = true;
+                } else if (item.days) {
+                    hasData = Object.values(item.days).some(day => day === true);
+                }
+            }
+            
+            if (hasData) {
+                groupHasItems = true;
+            }
+        });
+        
+        if (groupHasItems) {
+            hasGroups = true;
+            
+            if (y > 250) {
+                doc.addPage();
+                y = 20;
+            }
+            
+            doc.setFont(undefined, 'bold');
+            doc.setFontSize(12);
+            doc.text(group.regGroupName, margin, y);
+            doc.text(formatCurrency(groupTotal), pageWidth - margin - 40, y);
+            y += 7;
+            
+            doc.setFont(undefined, 'normal');
+            doc.setFontSize(10);
+            doc.text('(' + group.regGroupNumber + ')', margin, y);
+            y += 8;
+            
+            group.items.forEach(item => {
+                if (!item.selected) return;
+                
+                if (y > 270) {
+                    doc.addPage();
+                    y = 20;
+                }
+                
+                doc.setFontSize(10);
+                doc.text('• ' + item.supportItemName, margin + 5, y);
+                y += 5;
+                
+                doc.setFontSize(9);
+                doc.text('  Code: ' + item.supportItemNumber, margin + 10, y);
+                y += 4;
+                
+                const usage = getItemUsageDescription(item);
+                if (usage && usage !== 'No hours set' && usage !== 'No days selected' && usage !== 'No quantity set') {
+                    doc.text('  ' + usage, margin + 10, y);
+                    y += 4;
+                }
+                
+                y += 3;
+            });
+            
+            y += 5;
+        }
+    });
+
+    if (!hasGroups) {
+        doc.setFontSize(11);
+        doc.setFont(undefined, 'normal');
+        doc.text('No support items with hours/quantities entered', margin, y);
+        y += 10;
+    }
+
+    // Notes & Assumptions Section
+    if (card.notes && card.notes.trim()) {
+        if (y > 220) {
+            doc.addPage();
+            y = 20;
+        }
+        
+        doc.setFontSize(14);
+        doc.setFont(undefined, 'bold');
+        doc.text('Notes & Assumptions', margin, y);
+        y += 10;
+        
+        doc.setFontSize(10);
+        doc.setFont(undefined, 'normal');
+        
+        // Word wrap the notes
+        const lines = doc.splitTextToSize(card.notes, pageWidth - (margin * 2));
+        lines.forEach(line => {
+            if (y > 270) {
+                doc.addPage();
+                y = 20;
+            }
+            doc.text(line, margin, y);
+            y += 5;
+        });
+        y += 10;
+    }
+    
+    // Settings at the end
+    if (y > 220) {
+        doc.addPage();
+        y = 20;
+    }
+    
+    // Public holidays section
+    const phInPeriod = state.publicHolidays.filter(ph => {
+        const phDate = new Date(ph.date);
+        return phDate >= startDate && phDate <= endDate;
+    });
+    
+    doc.setFontSize(12);
+    doc.setFont(undefined, 'bold');
+    doc.text('Public Holidays ' + (card.settings.includePH ? 'Included' : 'Excluded'), margin, y);
+    y += 7;
+    
+    if (phInPeriod.length > 0) {
+        doc.setFontSize(10);
+        doc.setFont(undefined, 'normal');
+        doc.text('Public holidays in this period:', margin, y);
+        y += 5;
+        
+        phInPeriod.forEach(ph => {
+            if (y > 270) {
+                doc.addPage();
+                y = 20;
+            }
+            const phDate = new Date(ph.date);
+            const phDateStr = phDate.toLocaleDateString('en-AU', { 
+                day: 'numeric', 
+                month: 'long', 
+                year: 'numeric' 
+            });
+            doc.text('  • ' + phDateStr + ' - ' + ph.name, margin, y);
+            y += 5;
+        });
+        y += 5;
+    }
+    
+    // Price uplift - only show if it applies to this period
+    if (card.settings.uplift.enabled) {
+        // Check if any items have end dates before the service period
+        let hasUplift = false;
+        card.groups.forEach(group => {
+            group.items.forEach(item => {
+                if (item.selected && item.effectiveTo) {
+                    const itemEndDate = new Date(item.effectiveTo);
+                    if (startDate > itemEndDate) {
+                        hasUplift = true;
+                    }
+                }
+            });
+        });
+        
+        if (hasUplift) {
+            doc.setFontSize(12);
+            doc.setFont(undefined, 'bold');
+            doc.text('Price Adjustments Applied', margin, y);
+            y += 7;
+            
+            doc.setFontSize(10);
+            doc.setFont(undefined, 'normal');
+            doc.text('Annual increase of ' + card.settings.uplift.percent + '% applied to items with expired pricing', margin, y);
+            y += 10;
+        }
+    }
+    
+    // Save the PDF
+    const filename = 'NDIS_Report_' + (card.participant.name || 'Participant').replace(/[^a-zA-Z0-9]/g, '_') + '.pdf';
+    doc.save(filename);
+}
+//REPORT END
 
 // ===== Constants =====
 const STORAGE_KEYS = {
@@ -1486,6 +2197,7 @@ function createCard(previousCard = null) {
             start: '',
             end: ''
         },
+
         state: state.preferences.state,
         budget: {
             total: 0,
@@ -1499,6 +2211,7 @@ function createCard(previousCard = null) {
                 percent: state.preferences.upliftPercent
             }
         },
+        notes: '',
         groups: []
     };
     
@@ -1512,11 +2225,12 @@ function createCard(previousCard = null) {
         endDate.setDate(endDate.getDate() + daysDiff);
         
         card.period.start = formatDateYYYYMMDD(startDate);
-card.period.end = formatDateYYYYMMDD(endDate);
+        card.period.end = formatDateYYYYMMDD(endDate);
         card.participant = { ...previousCard.participant };
         card.budget.carryIn = calculateRemainingBudget(previousCard);
         card.settings = JSON.parse(JSON.stringify(previousCard.settings));
         card.groups = JSON.parse(JSON.stringify(previousCard.groups));
+        card.notes = previousCard.notes;
     }
     
     return card;
@@ -1545,8 +2259,26 @@ function calculateWeeklyEquivalent(card) {
 // ===== CSV Export =====
 function buildCsvRows(card) {
     const rows = [];
+    
+    // Add metadata rows at the top
+    rows.push('Metadata,Value');
+    rows.push('ParticipantName,' + (card.participant.name || ''));
+    rows.push('NDISNumber,' + (card.participant.ndisNumber || ''));
+    rows.push('StartDate,' + card.period.start);
+    rows.push('EndDate,' + card.period.end);
+    rows.push('Budget,' + card.budget.total);
+    rows.push('Excluded,' + card.budget.excluded);
+    rows.push('State,' + card.state);
+    rows.push('IncludePublicHolidays,' + card.settings.includePH);
+    rows.push('PriceUplift,' + card.settings.uplift.enabled);
+    rows.push('UpliftPercent,' + card.settings.uplift.percent);
+    rows.push('Notes,' + '"' + (card.notes || '').replace(/"/g, '""') + '"');
+    rows.push(''); // Empty row separator
+    
+    // Original CSV headers
     rows.push('NDISNumber,SupportsDeliveredFrom,SupportsDeliveredTo,SupportNumber,Quantity,UnitPrice,GSTCode');
     
+    // Keep all your existing logic for generating rows
     eachDateInclusive(card.period.start, card.period.end, (date) => {
         const isPH = isPublicHoliday(date, card.state);
         const dayOfWeek = getDayOfWeek(date);
@@ -1742,7 +2474,12 @@ function renderCard(card) {
     cardEl.querySelector('.include-ph').checked = card.settings.includePH;
     cardEl.querySelector('.july-uplift').checked = card.settings.uplift.enabled;
     cardEl.querySelector('.uplift-rate').value = card.settings.uplift.percent || 3.2;
-    
+    cardEl.querySelector('.notes-input').value = card.notes || '';
+
+    const stateSelect = cardEl.querySelector('.card-state');
+    if (stateSelect) {
+        stateSelect.value = card.state || state.preferences.state;
+    }
     // Populate group selector
     const groupSelector = cardEl.querySelector('.group-selector');
     if (groupSelector) {
@@ -1775,6 +2512,7 @@ function renderCard(card) {
     
     return cardEl;
 }
+
 function renderGroup(cardEl, groupData) {
     const template = document.getElementById('group-template');
     const groupEl = template.content.cloneNode(true).querySelector('.group-panel');
@@ -1851,16 +2589,6 @@ groupHeader.innerHTML = `
     
     // Update the group total
     updateGroupTotal(cardEl, groupEl, groupData.regGroupNumber);
-    
-    // Default to hiding unselected items
-    setTimeout(() => {
-        const hideBtn = groupHeader.querySelector('.hide-unselected-btn');
-        if (hideBtn) {
-            hideBtn.click();
-        }
-    }, 0);    
-    // Update the group total
-    updateGroupTotal(cardEl, groupEl, groupData.regGroupNumber);
 }
 
 function updateGroupTotal(cardEl, groupEl, groupNumber) {
@@ -1871,6 +2599,14 @@ function updateGroupTotal(cardEl, groupEl, groupNumber) {
     }
 }
 
+function formatCurrency(amount) {
+    return new Intl.NumberFormat('en-AU', {
+        style: 'currency',
+        currency: 'AUD',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }).format(amount);
+}
 
 function renderItem(itemData) {
     const template = document.getElementById('item-template');
@@ -1934,18 +2670,24 @@ function renderItem(itemData) {
         }
     }
     
-    // Item selection handler
+    // Item selection handler - FIXED VERSION
     checkbox.onchange = (e) => {
-        if (e.target.checked) {
-            itemEl.classList.add('selected');
-        } else {
-            itemEl.classList.remove('selected');
-        }
-        updateCardFromDOM(itemEl.closest('.budget-card'));
-    };
+    if (e.target.checked) {
+        itemEl.classList.add('selected');
+    } else {
+        itemEl.classList.remove('selected');
+    }
     
+    setTimeout(() => {
+        const cardEl = itemEl.closest('.budget-card');
+        updateCardFromDOM(cardEl);
+        saveState(); // Add this
+    }, 10);
+};
+  
     return itemEl;
 }
+
 
 function getEItemType(itemName) {
     const name = itemName.toLowerCase();
@@ -2165,20 +2907,45 @@ function isSleepoverItem(item) {
 }
 
 function applyJulyUplift(basePrice, serviceDate, itemEndDate, upliftPercent) {
-  // Only apply uplift if service date is after the item's end date
+  // If no end date, assume it's current pricing (no uplift needed)
   if (!itemEndDate) return basePrice;
   
-  // Handle if itemEndDate is already a Date or a string
-  const endDate = typeof itemEndDate === 'string' ? parseDDMMYYYY(itemEndDate) : itemEndDate;
+  // Handle both string and date formats
+  let endDate;
+  if (typeof itemEndDate === 'string') {
+    // Handle dd-mm-yyyy format from the catalogue
+    if (itemEndDate.match(/^\d{2}[-/]\d{2}[-/]\d{4}$/)) {
+      const [day, month, year] = itemEndDate.split(/[-/]/);
+      endDate = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day)));
+    } else {
+      endDate = new Date(itemEndDate);
+    }
+  } else {
+    endDate = itemEndDate;
+  }
+  
+  if (isNaN(endDate.getTime())) return basePrice;
+  
+  // Only apply uplift if service date is after the item's end date
   if (serviceDate <= endDate) return basePrice;
   
-  // Count how many price periods have passed
-  const yearsDiff = serviceDate.getUTCFullYear() - endDate.getUTCFullYear();
-  const monthsDiff = serviceDate.getUTCMonth() - endDate.getUTCMonth();
+  // Calculate how many July 1st periods have passed since the end date
+  const endYear = endDate.getUTCFullYear();
+  const serviceYear = serviceDate.getUTCFullYear();
   
-  // Assuming annual increases, calculate periods
-  let periodsElapsed = yearsDiff;
-  if (monthsDiff > 6) periodsElapsed++; // After July in the year
+  let periodsElapsed = 0;
+  for (let year = endYear; year < serviceYear; year++) {
+    const july1 = new Date(Date.UTC(year, 6, 1)); // July 1st
+    if (serviceDate > july1 && july1 > endDate) {
+      periodsElapsed++;
+    }
+  }
+  
+  // Check current year July 1st
+  const currentYearJuly1 = new Date(Date.UTC(serviceYear, 6, 1));
+  if (serviceDate >= currentYearJuly1 && currentYearJuly1 > endDate) {
+    periodsElapsed++;
+  }
   
   if (periodsElapsed <= 0) return basePrice;
   
@@ -2188,8 +2955,9 @@ function applyJulyUplift(basePrice, serviceDate, itemEndDate, upliftPercent) {
     price = price * (1 + upliftPercent / 100);
   }
   
-  return Math.round(price * 100) / 100; // Round to cents
+  return Math.round(price * 100) / 100;
 }
+
 
 function lookupPriceFromCatalogue(item, state, isSleepover, isPH) {
   // For sleepover on PH: use standard sleepover price (no PH rate)
@@ -2329,18 +3097,18 @@ function updateCardTotals(cardEl, card) {
   
   // Update used amount
   const used = totals.usedCents / 100;
-  cardEl.querySelector('.used-amount').textContent = `$${used.toFixed(2)}`;
+  cardEl.querySelector('.used-amount').textContent = formatCurrency(used);
   
   // Update remaining
   const available = card.budget.total + card.budget.carryIn - card.budget.excluded;
   const remaining = available - used;
   const remainingEl = cardEl.querySelector('.remaining-amount');
-  remainingEl.textContent = `$${remaining.toFixed(2)}`;
+  remainingEl.textContent = formatCurrency(remaining);
   remainingEl.classList.toggle('negative', remaining < 0);
   
   // Update weekly
   const weekly = (totals.usedCents / 100) / totals.weeks;
-  cardEl.querySelector('.weekly-amount').textContent = `$${weekly.toFixed(2)}`;
+cardEl.querySelector('.weekly-amount').textContent = formatCurrency(weekly);
   
   // Update all group totals
   cardEl.querySelectorAll('.group-panel').forEach(groupEl => {
@@ -2350,12 +3118,12 @@ function updateCardTotals(cardEl, card) {
     
     const totalEl = groupEl.querySelector('.group-total');
     if (totalEl) {
-        totalEl.textContent = `$${groupTotal.toFixed(2)}`;
+        totalEl.textContent = formatCurrency(groupTotal);
     }
     
     const weeklyEl = groupEl.querySelector('.group-weekly');
     if (weeklyEl) {
-        weeklyEl.textContent = `($${groupWeekly.toFixed(2)}/wk)`;
+        weeklyEl.textContent = `${formatCurrency(groupWeekly)}/wk`;
     }
 });
 }
@@ -2369,19 +3137,28 @@ function attachCardEventHandlers(cardEl, card) {
     // Input changes
     const inputs = [
     '.participant-name', '.ndis-number', '.start-date', '.end-date',
-    '.budget-amount', '.excluded-amount', '.include-ph', '.july-uplift', '.uplift-rate'
+    '.budget-amount', '.excluded-amount', '.include-ph', '.july-uplift', '.uplift-rate',
+    '.card-state' // Add this
 ];
 
 inputs.forEach(selector => {
     const el = cardEl.querySelector(selector);
     if (el) {
         if (el.type === 'checkbox') {
-            el.addEventListener('change', () => updateCardFromDOM(cardEl));
+            el.addEventListener('change', () => {
+                updateCardFromDOM(cardEl);
+                saveState(); // Add this
+            });
         } else {
-            el.addEventListener('input', () => updateCardFromDOM(cardEl));
+            el.addEventListener('input', () => {
+                updateCardFromDOM(cardEl);
+                saveState(); // Add this
+            });
         }
     }
 });
+
+
     
     // View PH button
     cardEl.querySelector('.view-ph-btn').onclick = () => {
@@ -2567,17 +3344,21 @@ inputs.forEach(selector => {
     
     // Export button
     cardEl.querySelector('.export-btn').onclick = () => {
-        const errors = validateCard(card);
-        if (errors.length > 0) {
-            showValidationErrors(errors);
-            return;
-        }
-        
-        const csv = buildCsvRows(card);
-        const filename = generateFilename(card);
-        downloadCsv(filename, csv);
-    };
+    // Update and save the current state before exporting
+    updateCardFromDOM(cardEl);
+    saveState();
     
+    const errors = validateCard(card);
+    if (errors.length > 0) {
+        showValidationErrors(errors);
+        return;
+    }
+    
+    const csv = buildCsvRows(card);
+    const filename = generateFilename(card);
+    downloadCsv(filename, csv);
+};
+
     // Continue button
     cardEl.querySelector('.continue-btn').onclick = () => {
         const newCard = createCard(card);
@@ -2590,7 +3371,7 @@ inputs.forEach(selector => {
     
     // Delete button
     cardEl.querySelector('.delete-btn').onclick = () => {
-        if (confirm('Delete this card? This cannot be undone.')) {
+        if (confirm('Delete this funding period? This cannot be undone.')){
             const index = state.cards.findIndex(c => c.id === card.id);
             if (index >= 0) {
                 state.cards.splice(index, 1);
@@ -2599,6 +3380,57 @@ inputs.forEach(selector => {
             }
         }
     };
+
+    const reportBtn = cardEl.querySelector('.generate-report-btn');
+if (reportBtn) {
+    reportBtn.onclick = function() {
+        generatePDFReport(card);
+    };
+}
+    // In attachCardEventHandlers, add:
+
+// Settings accordion
+const settingsAccordion = cardEl.querySelector('.settings-accordion');
+if (settingsAccordion) {
+    settingsAccordion.querySelector('.accordion-header').onclick = () => {
+        settingsAccordion.classList.toggle('collapsed');
+    };
+}
+
+// Global hide/show buttons
+const globalHide = cardEl.querySelector('.global-hide-unselected');
+const globalShow = cardEl.querySelector('.global-show-all');
+
+if (globalHide) {
+    globalHide.onclick = () => {
+        // Hide unselected items in all groups
+        cardEl.querySelectorAll('.group-panel').forEach(groupEl => {
+            const hideBtn = groupEl.querySelector('.hide-unselected-btn');
+            if (hideBtn && hideBtn.style.display !== 'none') {
+                hideBtn.click();
+            }
+        });
+        
+        globalHide.style.display = 'none';
+        globalShow.style.display = 'inline';
+    };
+}
+
+if (globalShow) {
+    globalShow.onclick = () => {
+        // Show all items in all groups
+        cardEl.querySelectorAll('.group-panel').forEach(groupEl => {
+            const showBtn = groupEl.querySelector('.show-all-btn');
+            if (showBtn && showBtn.style.display !== 'none') {
+                showBtn.click();
+            }
+        });
+        
+        globalShow.style.display = 'none';
+        globalHide.style.display = 'inline';
+    };
+}
+
 }
 async function parseExportedCsv(file) {
     return new Promise((resolve, reject) => {
@@ -2608,30 +3440,76 @@ async function parseExportedCsv(file) {
             try {
                 const text = e.target.result;
                 const lines = text.split('\n');
-                const headers = parseCSVLine(lines[0]);
                 
-                // Verify it's our format
-                if (headers.join(',') !== 'NDISNumber,SupportsDeliveredFrom,SupportsDeliveredTo,SupportNumber,Quantity,UnitPrice,GSTCode') {
-                    throw new Error('Invalid CSV format');
+                // Check if this is the new format with metadata
+                if (lines[0] === 'Metadata,Value') {
+                    const metadata = {};
+                    let dataStartIndex = 0;
+                    
+                    // Read metadata
+                    for (let i = 1; i < lines.length; i++) {
+                        if (lines[i].trim() === '') {
+                            dataStartIndex = i + 2; // Skip empty line and header
+                            break;
+                        }
+                        const parts = lines[i].split(',');
+                        const key = parts[0];
+                        const value = parts.slice(1).join(',').replace(/^"|"$/g, '').replace(/""/g, '"');
+                        metadata[key] = value;
+                    }
+                    
+                    // Parse the data rows
+                    const headers = parseCSVLine(lines[dataStartIndex - 1]);
+                    
+                    // Verify it's our format
+                    if (headers.join(',') !== 'NDISNumber,SupportsDeliveredFrom,SupportsDeliveredTo,SupportNumber,Quantity,UnitPrice,GSTCode') {
+                        throw new Error('Invalid CSV format');
+                    }
+                    
+                    const rows = [];
+                    for (let i = dataStartIndex; i < lines.length; i++) {
+                        if (!lines[i].trim()) continue;
+                        const values = parseCSVLine(lines[i]);
+                        rows.push({
+                            ndisNumber: values[0],
+                            dateFrom: values[1],
+                            dateTo: values[2],
+                            supportNumber: values[3],
+                            quantity: parseFloat(values[4]),
+                            unitPrice: parseFloat(values[5]),
+                            gstCode: values[6]
+                        });
+                    }
+                    
+                    resolve({ metadata, rows });
+                    
+                } else {
+                    // Old format - use your existing logic
+                    const headers = parseCSVLine(lines[0]);
+                    
+                    // Verify it's our format
+                    if (headers.join(',') !== 'NDISNumber,SupportsDeliveredFrom,SupportsDeliveredTo,SupportNumber,Quantity,UnitPrice,GSTCode') {
+                        throw new Error('Invalid CSV format');
+                    }
+                    
+                    // Parse all lines
+                    const rows = [];
+                    for (let i = 1; i < lines.length; i++) {
+                        if (!lines[i].trim()) continue;
+                        const values = parseCSVLine(lines[i]);
+                        rows.push({
+                            ndisNumber: values[0],
+                            dateFrom: values[1],
+                            dateTo: values[2],
+                            supportNumber: values[3],
+                            quantity: parseFloat(values[4]),
+                            unitPrice: parseFloat(values[5]),
+                            gstCode: values[6]
+                        });
+                    }
+                    
+                    resolve({ rows }); // No metadata for old format
                 }
-                
-                // Parse all lines
-                const rows = [];
-                for (let i = 1; i < lines.length; i++) {
-                    if (!lines[i].trim()) continue;
-                    const values = parseCSVLine(lines[i]);
-                    rows.push({
-                        ndisNumber: values[0],
-                        dateFrom: values[1],
-                        dateTo: values[2],
-                        supportNumber: values[3],
-                        quantity: parseFloat(values[4]),
-                        unitPrice: parseFloat(values[5]),
-                        gstCode: values[6]
-                    });
-                }
-                
-                resolve(rows);
             } catch (error) {
                 reject(error);
             }
@@ -2642,7 +3520,10 @@ async function parseExportedCsv(file) {
     });
 }
 
-function createCardFromCsvRows(rows) {
+function createCardFromCsvRows(data) {
+    const rows = data.rows;
+    const metadata = data.metadata || {};
+    
     if (!rows || rows.length === 0) return null;
     
     // Get date range and participant info from first/last rows
@@ -2658,30 +3539,31 @@ function createCardFromCsvRows(rows) {
     const card = {
         id: generateUUID(),
         participant: {
-            name: '', // Will need to be entered manually
-            ndisNumber: firstRow.ndisNumber
+            name: metadata.ParticipantName || '', 
+            ndisNumber: metadata.NDISNumber || firstRow.ndisNumber
         },
         period: {
-            start: parseToISODate(firstRow.dateFrom),
-            end: parseToISODate(lastRow.dateTo)
+            start: metadata.StartDate || parseToISODate(firstRow.dateFrom),
+            end: metadata.EndDate || parseToISODate(lastRow.dateTo)
         },
-        state: state.preferences.state,
+        state: metadata.State || state.preferences.state,
         budget: {
-            total: 0, // Will need to be entered manually
-            excluded: 0,
+            total: parseFloat(metadata.Budget) || 0,
+            excluded: parseFloat(metadata.Excluded) || 0,
             carryIn: 0
         },
         settings: {
-            includePH: true,
+            includePH: metadata.IncludePublicHolidays ? metadata.IncludePublicHolidays === 'true' : true,
             uplift: {
-                enabled: true,
-                percent: state.preferences.upliftPercent
+                enabled: metadata.PriceUplift ? metadata.PriceUplift === 'true' : true,
+                percent: metadata.UpliftPercent ? parseFloat(metadata.UpliftPercent) : state.preferences.upliftPercent
             }
         },
+        notes: metadata.Notes || '',
         groups: []
     };
     
-    // Group items by support number AND track which groups are used
+    // Keep all your existing logic for processing rows
     const itemsByNumber = new Map();
     const usedGroupNumbers = new Set();
     
@@ -2821,6 +3703,12 @@ function updateCardFromDOM(cardEl) {
     card.settings.includePH = cardEl.querySelector('.include-ph').checked;
     card.settings.uplift.enabled = cardEl.querySelector('.july-uplift').checked;
     card.settings.uplift.percent = parseFloat(cardEl.querySelector('.uplift-rate').value) || 3.2;
+    card.notes = cardEl.querySelector('.notes-input').value || '';
+
+    const stateSelect = cardEl.querySelector('.card-state');
+    if (stateSelect) {
+        card.state = stateSelect.value;
+    }
     
     // Update groups and items
     const groupEls = cardEl.querySelectorAll('.group-panel');
@@ -2843,9 +3731,12 @@ function updateCardFromDOM(cardEl) {
             const catalogueItem = catalogueGroup.items.find(i => i.supportItemNumber === itemNumber);
             if (!catalogueItem) return;
             
+            // THIS IS THE KEY FIX - properly read the checkbox state
+            const isSelected = itemEl.querySelector('.item-select').checked;
+            
             const itemData = {
                 ...catalogueItem,
-                selected: itemEl.querySelector('.item-select').checked,
+                selected: isSelected,  // Use the actual checkbox state
                 overridePrice: null,
                 statePrice: catalogueItem.statePrices[card.state] || catalogueItem.statePrices['NSW'] || 0,
                 hours: {},
@@ -2853,48 +3744,55 @@ function updateCardFromDOM(cardEl) {
                 quantity: 0
             };
             
-            // Read hours/quantity from inputs
-            if (catalogueItem.unit === 'H') {
-                if (catalogueItem.flags.isWeekday) {
-                    const perDayInputs = itemEl.querySelector('.per-day-inputs');
-                    if (perDayInputs && !perDayInputs.classList.contains('hidden')) {
-                        // Per-day values
-                        ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].forEach((day, i) => {
-                            const input = perDayInputs.children[i].querySelector('.hours-input');
-                            itemData.hours[day] = validateHours(input.value);
-                        });
+            // Only read hours/quantity if item is selected
+            if (isSelected) {
+                // Read hours/quantity from inputs
+                if (catalogueItem.unit === 'H') {
+                    if (catalogueItem.flags.isWeekday) {
+                        const perDayInputs = itemEl.querySelector('.per-day-inputs');
+                        if (perDayInputs && !perDayInputs.classList.contains('hidden')) {
+                            // Per-day values
+                            ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].forEach((day, i) => {
+                                const input = perDayInputs.children[i].querySelector('.hours-input');
+                                if (input) {
+                                    itemData.hours[day] = validateHours(input.value);
+                                }
+                            });
+                        } else {
+                            // Single weekday value
+                            const weekdayInput = itemEl.querySelector('.hours-input');
+                            if (weekdayInput) {
+                                itemData.hours.weekday = validateHours(weekdayInput.value);
+                            }
+                        }
                     } else {
-                        // Single weekday value
-                        const weekdayInput = itemEl.querySelector('.hours-input');
-                        itemData.hours.weekday = validateHours(weekdayInput.value);
-                    }
-                } else {
-                    const input = itemEl.querySelector('.hours-input');
-                    if (input) {
-                        if (catalogueItem.flags.isSaturday) {
-                            itemData.hours.saturday = validateHours(input.value);
-                        } else if (catalogueItem.flags.isSunday) {
-                            itemData.hours.sunday = validateHours(input.value);
-                        } else if (catalogueItem.flags.isPublicHoliday) {
-                            itemData.hours.publicHoliday = validateHours(input.value);
+                        const input = itemEl.querySelector('.hours-input');
+                        if (input) {
+                            if (catalogueItem.flags.isSaturday) {
+                                itemData.hours.saturday = validateHours(input.value);
+                            } else if (catalogueItem.flags.isSunday) {
+                                itemData.hours.sunday = validateHours(input.value);
+                            } else if (catalogueItem.flags.isPublicHoliday) {
+                                itemData.hours.publicHoliday = validateHours(input.value);
+                            }
                         }
                     }
-                }
-            } else if (catalogueItem.unit === 'E') {
-                const eType = getEItemType(catalogueItem.supportItemName);
-                
-                if (eType === 'daily') {
-                    // Read checkbox states
-                    itemData.days = {};
-                    const checkboxes = itemEl.querySelectorAll('.day-checkbox');
-                    checkboxes.forEach(cb => {
-                        itemData.days[cb.dataset.day] = cb.checked;
-                    });
-                } else {
-                    // Read quantity
-                    const quantityInput = itemEl.querySelector('.quantity-input');
-                    if (quantityInput) {
-                        itemData.quantity = parseFloat(quantityInput.value) || 0;
+                } else if (catalogueItem.unit === 'E') {
+                    const eType = getEItemType(catalogueItem.supportItemName);
+                    
+                    if (eType === 'daily') {
+                        // Read checkbox states
+                        itemData.days = {};
+                        const checkboxes = itemEl.querySelectorAll('.day-checkbox');
+                        checkboxes.forEach(cb => {
+                            itemData.days[cb.dataset.day] = cb.checked;
+                        });
+                    } else {
+                        // Read quantity
+                        const quantityInput = itemEl.querySelector('.quantity-input');
+                        if (quantityInput) {
+                            itemData.quantity = parseFloat(quantityInput.value) || 0;
+                        }
                     }
                 }
             }
@@ -2905,11 +3803,10 @@ function updateCardFromDOM(cardEl) {
         card.groups.push(groupData);
     });
     
-    // IMPORTANT: Update the totals after reading all the data
+    // Update the totals after reading all the data
     updateCardTotals(cardEl, card);
     saveState();
 }
-
 function generateFilename(card) {
     const parts = [];
     
@@ -2944,27 +3841,24 @@ function showPublicHolidaysModal(card) {
     const startDate = new Date(card.period.start);
     const endDate = new Date(card.period.end);
     
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                       'July', 'August', 'September', 'October', 'November', 'December'];
+    
     state.publicHolidays.forEach(ph => {
         const phDate = new Date(ph.date);
         if (phDate >= startDate && phDate <= endDate) {
             const item = document.createElement('div');
             item.className = 'ph-item';
             
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.className = 'ph-checkbox';
-            checkbox.checked = card.settings.includePH;
-            checkbox.disabled = true;
-            
             const dateEl = document.createElement('span');
             dateEl.className = 'ph-date';
-            dateEl.textContent = formatDateDDMMYYYY(ph.date);
+            // Format as "5 July, 2025"
+            dateEl.textContent = `${phDate.getDate()} ${monthNames[phDate.getMonth()]}, ${phDate.getFullYear()}`;
             
             const nameEl = document.createElement('span');
             nameEl.className = 'ph-name';
             nameEl.textContent = ph.name;
             
-            item.appendChild(checkbox);
             item.appendChild(dateEl);
             item.appendChild(nameEl);
             
@@ -2972,17 +3866,32 @@ function showPublicHolidaysModal(card) {
         }
     });
     
+    // Add a note about what happens on these days
+    const note = document.createElement('p');
+    note.className = 'ph-note';
+    note.innerHTML = card.settings.includePH 
+        ? '<strong>Public holidays included:</strong> Only public holiday items will be billed on these days (except sleepover at designated rate).'
+        : '<strong>Public holidays excluded:</strong> No items will be billed on these days (except sleepover at standard rate).';
+    list.appendChild(note);
+    
     modal.classList.add('show');
 }
 
 // ===== Storage Functions =====
 function saveState() {
+    if (isSaving) return;
+    isSaving = true;
+    
     localStorage.setItem(STORAGE_KEYS.CARDS, JSON.stringify(state.cards));
     localStorage.setItem(STORAGE_KEYS.PREFERENCES, JSON.stringify(state.preferences));
     if (state.catalogue) {
         localStorage.setItem(STORAGE_KEYS.CATALOGUE, JSON.stringify(state.catalogue));
     }
+    
+    isSaving = false;
 }
+
+
 
 async function loadState() {
     try {
@@ -3040,14 +3949,25 @@ async function init() {
         }
     }
     
-    // Set default state
-    document.getElementById('default-state').value = state.preferences.state;
+    // Remove these lines - state is now per-card, not global
+    // document.getElementById('default-state').value = state.preferences.state;
     
     // Render existing cards
     const container = document.getElementById('cards-container');
-    state.cards.forEach(card => {
-        container.appendChild(renderCard(card));
+state.cards.forEach(card => {
+    container.appendChild(renderCard(card));
+});
+
+
+// Add this to sync the data after rendering
+setTimeout(() => {
+    const cardEls = container.querySelectorAll('.budget-card');
+    cardEls.forEach(cardEl => {
+        updateCardFromDOM(cardEl);
     });
+}, 100);
+
+    
     document.getElementById('new-card-btn').onclick = () => {
         if (!state.catalogue) {
             showError('Catalogue is still loading, please wait...');
@@ -3062,10 +3982,11 @@ async function init() {
         saveState();
     };
     
-    document.getElementById('default-state').onchange = (e) => {
-        state.preferences.state = e.target.value;
-        saveState();
-    };
+    // Remove this handler - state is now per-card
+    // document.getElementById('default-state').onchange = (e) => {
+    //     state.preferences.state = e.target.value;
+    //     saveState();
+    // };
     
     // Modal close buttons
     document.querySelectorAll('.close-modal').forEach(btn => {
@@ -3082,15 +4003,16 @@ async function init() {
             }
         };
     });
-    // Add this handler in your init function
-document.getElementById('csv-import').onchange = async (e) => {
+    
+    // CSV import handler
+    document.getElementById('csv-import').onchange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     
     try {
         showLoading('Importing CSV...');
-        const rows = await parseExportedCsv(file);
-        const card = createCardFromCsvRows(rows);
+        const data = await parseExportedCsv(file); // Now returns {metadata, rows}
+        const card = createCardFromCsvRows(data);
         
         if (card) {
             state.cards.push(card);
@@ -3099,7 +4021,13 @@ document.getElementById('csv-import').onchange = async (e) => {
             cardEl.scrollIntoView({ behavior: 'smooth' });
             saveState();
             hideLoading();
-            showError('CSV imported successfully! Please enter participant name and budget.');
+            
+            // Update message based on whether metadata was found
+            if (data.metadata) {
+                showError('CSV imported successfully with all details!');
+            } else {
+                showError('CSV imported successfully! Please enter participant name and budget.');
+            }
         } else {
             hideLoading();
             showError('No data found in CSV');
@@ -3110,7 +4038,6 @@ document.getElementById('csv-import').onchange = async (e) => {
     }
 };
 }
-
 // Start the app
 document.addEventListener('DOMContentLoaded', () => init());
 </script>
