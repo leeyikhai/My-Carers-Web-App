@@ -86,6 +86,32 @@
     justify-content: space-between;
     gap: 0.75rem;
     flex-wrap: wrap;
+    width: 100%;
+}
+
+.uplift-info {
+    width: 100%;
+    padding-left: 0;
+    margin-left: 0;
+    margin-top: 0.5rem;
+}
+
+@media (max-width: 640px) {
+    .toggle-group {
+        width: 100%;
+    }
+    
+    .uplift-percent {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        width: 100%;
+    }
+    
+    .uplift-percent input {
+        flex: 1;
+        max-width: 100px;
+    }
 }
 
 .toggle {
@@ -102,6 +128,29 @@
     white-space: nowrap;
 }
 
+@media (max-width: 640px) {
+    .group-header {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .group-header-main {
+        width: 100%;
+    }
+    
+    .group-actions {
+        width: 100%;
+        display: flex;
+        justify-content: flex-start;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+    
+    .group-totals {
+        margin-right: 0;
+        margin-left: auto;
+    }
+}
 /* Responsive toggle layout */
 @media (max-width: 640px) {
     .toggle-label {
@@ -162,11 +211,13 @@
     color: var(--primary);
 }
 .action-help {
+    width: 100%;
+    text-align: center;
+    margin: 0;
     font-size: 0.75rem;
     color: var(--text-muted);
-    margin-top: 0.25rem;
-    margin-bottom: 0;
 }
+
 
 .uplift-info {
     display: flex;
@@ -308,6 +359,15 @@
     display: none;
 }
 
+.items-list.hide-unselected .item-row:not(.selected) .item-checkbox {
+    display: none;
+}
+
+.items-list.hide-unselected .item-row:not(.selected) .item-info {
+    grid-column: 1 / -1; /* Expand to full width when checkbox hidden */
+}
+
+
 .item-row.hidden.selected {
     opacity: 0.6;
 }
@@ -326,14 +386,26 @@
     top: 100%;
     left: 0;
     right: 0;
-    max-height: 300px;
+    max-height: 200px; /* Reduce from 300px */
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
     background: var(--bg-primary);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     margin-top: 0.25rem;
     box-shadow: var(--shadow);
-    z-index: 10;
+    z-index: 1000; /* Increase z-index */
+}
+
+@media (max-width: 640px) {
+    .group-search-results {
+        position: fixed;
+        left: 1rem;
+        right: 1rem;
+        top: auto;
+        bottom: 1rem;
+        max-height: 50vh;
+    }
 }
 
 .group-search-result {
@@ -1045,11 +1117,13 @@ body {
 /* Card Actions */
 .card-actions {
     display: flex;
-    gap: 0.5rem;
+    gap: 0.75rem;
     margin-top: 1.5rem;
     padding-top: 1rem;
     border-top: 1px solid var(--border);
+    flex-wrap: wrap;
 }
+
 
 /* Modal */
 .modal {
@@ -1242,6 +1316,17 @@ body {
     .totals-section {
         flex-wrap: wrap;
     }
+    @media (max-width: 640px) {
+    .card-actions {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .card-actions .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
     
     .card-actions {
         flex-wrap: wrap;
@@ -1250,6 +1335,7 @@ body {
     .card-actions .btn {
         flex: 1;
         justify-content: center;
+        margin: 0;
     }
     
     .item-row {
@@ -2563,21 +2649,23 @@ groupHeader.innerHTML = `
     
     // Group event handlers
     groupHeader.querySelector('.hide-unselected-btn').onclick = () => {
-        const unselectedItems = itemsList.querySelectorAll('.item-row:not(.selected)');
-        unselectedItems.forEach(item => {
-            item.classList.add('hidden');
-        });
-        groupHeader.querySelector('.hide-unselected-btn').style.display = 'none';
-        groupHeader.querySelector('.show-all-btn').style.display = 'inline';
-    };
-    
-    groupHeader.querySelector('.show-all-btn').onclick = () => {
-        const hiddenItems = itemsList.querySelectorAll('.item-row.hidden');
-        hiddenItems.forEach(item => item.classList.remove('hidden'));
-        groupHeader.querySelector('.show-all-btn').style.display = 'none';
-        groupHeader.querySelector('.hide-unselected-btn').style.display = 'inline';
-    };
-    
+    const unselectedItems = itemsList.querySelectorAll('.item-row:not(.selected)');
+    unselectedItems.forEach(item => {
+        item.classList.add('hidden');
+    });
+    itemsList.classList.add('hide-unselected'); // Add this
+    groupHeader.querySelector('.hide-unselected-btn').style.display = 'none';
+    groupHeader.querySelector('.show-all-btn').style.display = 'inline';
+};
+
+groupHeader.querySelector('.show-all-btn').onclick = () => {
+    const hiddenItems = itemsList.querySelectorAll('.item-row.hidden');
+    hiddenItems.forEach(item => item.classList.remove('hidden'));
+    itemsList.classList.remove('hide-unselected'); // Add this
+    groupHeader.querySelector('.show-all-btn').style.display = 'none';
+    groupHeader.querySelector('.hide-unselected-btn').style.display = 'inline';
+};
+
     groupHeader.querySelector('.remove-group-btn').onclick = () => {
         if (confirm('Remove this group and all its items?')) {
             groupEl.remove();
@@ -4043,3 +4131,4 @@ document.addEventListener('DOMContentLoaded', () => init());
 </script>
 </body>
 </html>
+    
