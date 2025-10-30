@@ -2427,12 +2427,11 @@ function createCard(previousCard = null) {
             start: '',
             end: ''
         },
-
         state: state.preferences.state,
         budget: {
             total: 0,
             excluded: 0,
-            carryIn: 0
+            carryIn: 0  // This should be 0 for new cards
         },
         settings: {
             includePH: true,
@@ -2446,6 +2445,7 @@ function createCard(previousCard = null) {
     };
     
     if (previousCard) {
+
         // Continue from previous card
         const startDate = new Date(previousCard.period.end);
         startDate.setDate(startDate.getDate() + 1);
