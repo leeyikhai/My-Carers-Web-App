@@ -2003,8 +2003,8 @@ function getItemUsageDescription(item) {
 }
 
 function formatNumberWithCommas(value) {
-    // Remove all non-numeric characters except decimal point
-    const cleanValue = value.replace(/[^\d.]/g, '');
+    // Remove all commas first
+    const cleanValue = value.replace(/,/g, '').replace(/[^\d.]/g, '');
     
     // Split into whole and decimal parts
     const parts = cleanValue.split('.');
@@ -2016,23 +2016,27 @@ function formatNumberWithCommas(value) {
     return parts.join('.');
 }
 
-// Add this event listener to your budget inputs
 function attachCommaFormatting(input) {
     input.addEventListener('input', (e) => {
         const cursorPosition = e.target.selectionStart;
-        const oldLength = e.target.value.length;
+        const oldValue = e.target.value;
+        const oldLength = oldValue.length;
+        
+        // Get the raw number without commas
+        const rawValue = oldValue.replace(/,/g, '');
         
         // Format the value
-        const formattedValue = formatNumberWithCommas(e.target.value);
+        const formattedValue = formatNumberWithCommas(oldValue);
         e.target.value = formattedValue;
         
-        // Adjust cursor position after formatting
+        // Maintain cursor position
         const newLength = formattedValue.length;
         const diff = newLength - oldLength;
-        e.target.setSelectionRange(cursorPosition + diff, cursorPosition + diff);
+        const newPosition = Math.max(0, cursorPosition + diff);
+        e.target.setSelectionRange(newPosition, newPosition);
     });
     
-    // Also format on blur to ensure proper formatting
+    // Format on blur
     input.addEventListener('blur', (e) => {
         e.target.value = formatNumberWithCommas(e.target.value);
     });
@@ -3032,8 +3036,8 @@ function renderCard(card) {
     cardEl.querySelector('.ndis-number').value = card.participant.ndisNumber || '';
     cardEl.querySelector('.start-date').value = card.period.start || '';
     cardEl.querySelector('.end-date').value = card.period.end || '';
-    cardEl.querySelector('.budget-amount').value = card.budget.total || '';
-    cardEl.querySelector('.excluded-amount').value = card.budget.excluded || '';
+    cardEl.querySelector('.budget-amount').value = card.budget.total ? formatNumberWithCommas(card.budget.total.toString()) : '';
+    cardEl.querySelector('.excluded-amount').value = card.budget.excluded ? formatNumberWithCommas(card.budget.excluded.toString()) : '';
     cardEl.querySelector('.include-ph').checked = card.settings.includePH;
     cardEl.querySelector('.july-uplift').checked = card.settings.uplift.enabled;
     cardEl.querySelector('.uplift-rate').value = card.settings.uplift.percent || 3.2;
