@@ -1255,19 +1255,13 @@ body {
 /* Modal */
 @media (max-width: 640px) {
     .modal {
-        padding: 1rem 0.5rem; /* Reduce padding on mobile */
+        padding: 1rem; /* Smaller padding on mobile */
     }
     
     .modal-content {
-        max-width: calc(100% - 1rem); /* Ensure space on sides */
-        max-height: 90vh; /* More height on mobile */
+        max-width: calc(100% - 2rem); /* Match the padding */
+        max-height: calc(100vh - 2rem);
     }
-}
-
-.modal.show {
-    display: flex;
-    align-items: center;
-    justify-content: center;
 }
 
 .modal {
@@ -1279,23 +1273,29 @@ body {
     height: 100%;
     background: rgba(0, 0, 0, 0.5);
     z-index: 1000;
-    padding: 1rem; /* This is already there */
+    padding: 1rem; /* Increase padding */
     overflow-y: auto;
+    box-sizing: border-box; /* Important: include padding in width calculation */
+}
+
+.modal.show {
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .modal-content {
     background: var(--bg-card);
     border-radius: var(--radius-lg);
     width: 100%;
-    max-width: 500px;
-    max-height: 80vh;
+    max-width: min(500px, calc(100% - 2rem)); /* Ensure it's never wider than viewport minus padding */
+    max-height: calc(100vh - 4rem); /* Account for modal padding */
     overflow: hidden;
     display: flex;
     flex-direction: column;
     box-shadow: var(--shadow-lg);
-    margin: 0 auto; /* Center it */
+    margin: 0 auto;
 }
-
 
 .modal-header {
     padding: 1rem;
