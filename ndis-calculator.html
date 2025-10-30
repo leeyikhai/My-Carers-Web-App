@@ -2002,45 +2002,6 @@ function getItemUsageDescription(item) {
     return '';
 }
 
-function formatNumberWithCommas(value) {
-    // Remove all commas first
-    const cleanValue = value.replace(/,/g, '').replace(/[^\d.]/g, '');
-    
-    // Split into whole and decimal parts
-    const parts = cleanValue.split('.');
-    
-    // Format the whole number part with commas
-    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-    
-    // Rejoin with decimal if present
-    return parts.join('.');
-}
-
-function attachCommaFormatting(input) {
-    input.addEventListener('input', (e) => {
-        const cursorPosition = e.target.selectionStart;
-        const oldValue = e.target.value;
-        const oldLength = oldValue.length;
-        
-        // Get the raw number without commas
-        const rawValue = oldValue.replace(/,/g, '');
-        
-        // Format the value
-        const formattedValue = formatNumberWithCommas(oldValue);
-        e.target.value = formattedValue;
-        
-        // Maintain cursor position
-        const newLength = formattedValue.length;
-        const diff = newLength - oldLength;
-        const newPosition = Math.max(0, cursorPosition + diff);
-        e.target.setSelectionRange(newPosition, newPosition);
-    });
-    
-    // Format on blur
-    input.addEventListener('blur', (e) => {
-        e.target.value = formatNumberWithCommas(e.target.value);
-    });
-}
 
 // Add this function to convert image URL to base64
 async function getBase64FromUrl(url) {
@@ -3029,6 +2990,7 @@ function showValidationErrors(errors) {
 function renderCard(card) {
     const template = document.getElementById('card-template');
     const cardEl = template.content.cloneNode(true).querySelector('.budget-card');
+    
     cardEl.dataset.cardId = card.id;
     
     // Set initial values
@@ -3036,8 +2998,8 @@ function renderCard(card) {
     cardEl.querySelector('.ndis-number').value = card.participant.ndisNumber || '';
     cardEl.querySelector('.start-date').value = card.period.start || '';
     cardEl.querySelector('.end-date').value = card.period.end || '';
-    cardEl.querySelector('.budget-amount').value = card.budget.total ? formatNumberWithCommas(card.budget.total.toString()) : '';
-    cardEl.querySelector('.excluded-amount').value = card.budget.excluded ? formatNumberWithCommas(card.budget.excluded.toString()) : '';
+    cardEl.querySelector('.budget-amount').value = card.budget.total || '';
+    cardEl.querySelector('.excluded-amount').value = card.budget.excluded || '';
     cardEl.querySelector('.include-ph').checked = card.settings.includePH;
     cardEl.querySelector('.july-uplift').checked = card.settings.uplift.enabled;
     cardEl.querySelector('.uplift-rate').value = card.settings.uplift.percent || 3.2;
@@ -3077,12 +3039,6 @@ function renderCard(card) {
     // Attach event handlers
     attachCardEventHandlers(cardEl, card);
     
-    const budgetInput = cardEl.querySelector('.budget-amount');
-    const excludedInput = cardEl.querySelector('.excluded-amount');
-    
-    if (budgetInput) attachCommaFormatting(budgetInput);
-    if (excludedInput) attachCommaFormatting(excludedInput);
-
     return cardEl;
 }
 
@@ -3874,36 +3830,21 @@ function attachCardEventHandlers(cardEl, card) {
     ];
 
     inputs.forEach(selector => {
-    const el = cardEl.querySelector(selector);
-    if (el) {
-        if (el.type === 'checkbox') {
-            el.addEventListener('change', () => {
-                updateCardFromDOM(cardEl);
-                saveState();
-            });
-        } else if (selector === '.budget-amount' || selector === '.excluded-amount') {
-            // Special handling for budget inputs
-            el.addEventListener('blur', (e) => {
-                // Format on blur (when user leaves the field)
-                const rawValue = e.target.value.replace(/,/g, '');
-                const numValue = parseFloat(rawValue) || 0;
-                e.target.value = numValue ? numValue.toLocaleString() : '';
-                updateCardFromDOM(cardEl);
-                saveState();
-            });
-            el.addEventListener('focus', (e) => {
-                // Remove formatting on focus (when user clicks into field)
-                e.target.value = e.target.value.replace(/,/g, '');
-            });
-        } else {
-            el.addEventListener('input', () => {
-                updateCardFromDOM(cardEl);
-                saveState();
-            });
+        const el = cardEl.querySelector(selector);
+        if (el) {
+            if (el.type === 'checkbox') {
+                el.addEventListener('change', () => {
+                    updateCardFromDOM(cardEl);
+                    saveState();
+                });
+            } else {
+                el.addEventListener('input', () => {
+                    updateCardFromDOM(cardEl);
+                    saveState();
+                });
+            }
         }
-    }
-});
-
+    });
     
     // View PH button
     cardEl.querySelector('.view-ph-btn').onclick = () => {
@@ -4451,8 +4392,8 @@ function updateCardFromDOM(cardEl) {
     card.period.end = cardEl.querySelector('.end-date').value;
     
     // Ensure budget values are numbers, not strings
-    card.budget.total = parseFloat(cardEl.querySelector('.budget-amount').value.replace(/,/g, '')) || 0;
-card.budget.excluded = parseFloat(cardEl.querySelector('.excluded-amount').value.replace(/,/g, '')) || 0;
+    card.budget.total = parseFloat(cardEl.querySelector('.budget-amount').value) || 0;
+    card.budget.excluded = parseFloat(cardEl.querySelector('.excluded-amount').value) || 0;
     
     // Only set carryOver if the element exists
     const carryOverEl = cardEl.querySelector('.carry-in-amount');
