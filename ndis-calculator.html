@@ -1865,437 +1865,464 @@ async function getBase64FromUrl(url) {
 }
 
 
-
 async function generatePDFReport(card) {
-    // Create new PDF document
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     
-    // Calculate data
+    // Page settings
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 20;
+    const contentWidth = pageWidth - (margin * 2);
+    const yLimit = pageHeight - 25; // Leave space for footer
+    
+    let y = margin; // Start at top margin
+    
+    // Helper functions
+    const ensureSpace = (needed = 10) => {
+        if (y + needed > yLimit) {
+            addPageNumber();
+            doc.addPage();
+            y = margin;
+            return true; // Indicates new page was created
+        }
+        return false;
+    };
+    
+    const addPageNumber = () => {
+        const pageNum = doc.internal.getCurrentPageInfo().pageNumber;
+        doc.setFontSize(9);
+        doc.setFont(undefined, 'normal');
+        doc.setTextColor(128, 128, 128);
+        doc.text(`Page ${pageNum}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+        doc.setTextColor(0, 0, 0);
+    };
+    
+    // Calculate data with safe numbers
     const totals = computeCardTotals(card);
     const used = totals.usedCents / 100;
-    const available = card.budget.total + card.budget.carryOver - card.budget.excluded;
+    const totalBudget = parseFloat(card.budget.total) || 0;
+    const carryOver = parseFloat(card.budget.carryOver) || 0;
+    const excluded = parseFloat(card.budget.excluded) || 0;
+    const available = totalBudget + carryOver - excluded;
     const remaining = available - used;
-    const weekly = used / totals.weeks;
+    const weeks = Math.max(1, totals.weeks);
+    const weekly = used / weeks;
     
-    // Page settings
-    let y = 15;
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const margin = 20;
+    // Colors
+    const primaryColor = [37, 99, 235];
+    const grayColor = [128, 128, 128];
+    const errorColor = [239, 68, 68];
+    const lightGray = [248, 249, 250];
     
-    // Add logo
+    // HEADER SECTION
+    // Logo on left
     try {
         const logoBase64 = await getBase64FromUrl('https://gqchhsayqxttewthcsah.supabase.co/storage/v1/object/public/Branding/LOGO%20No%20Background.png');
-        doc.addImage(logoBase64, 'PNG', margin, 10, 40, 15); // x, y, width, height
-        y = 30; // Adjust y position after logo
+        const logoHeight = 20;
+        const logoWidth = logoHeight * 4; // Adjust ratio as needed
+        doc.addImage(logoBase64, 'PNG', margin, y, logoWidth, logoHeight, undefined, 'FAST');
     } catch (e) {
-        // Fallback to text if logo fails
-        doc.setFontSize(16);
+        doc.setFontSize(20);
         doc.setFont(undefined, 'bold');
+        doc.setTextColor(...primaryColor);
         doc.text('MY CARERS', margin, y + 10);
+        doc.setTextColor(0, 0, 0);
     }
     
-    // Company details - RIGHT ALIGNED
-    doc.setFontSize(8);
+    // Company details on right
+    doc.setFontSize(9);
     doc.setFont(undefined, 'normal');
+    doc.setTextColor(...grayColor);
     const rightX = pageWidth - margin;
-    doc.text('ABN: 34 787 739 579', rightX, 15, { align: 'right' });
-    doc.text('Email: admin@mycarers.com.au', rightX, 20, { align: 'right' });
-    doc.text('Address: S2, Lvl 6, 12 Railway Pde, Burwood, NSW 2134', rightX, 25, { align: 'right' });
+    doc.text('ABN: 34 787 739 579', rightX, y, { align: 'right' });
+    doc.text('Email: admin@mycarers.com.au', rightX, y + 5, { align: 'right' });
+    doc.text('S2, Lvl 6, 12 Railway Pde, Burwood, NSW 2134', rightX, y + 10, { align: 'right' });
+    doc.setTextColor(0, 0, 0);
     
-    y = 40;
+    // Move down past header elements
+    y += 35;
     
-    // Title
-    doc.setFontSize(18);
+    // Separator line
+    doc.setDrawColor(...grayColor);
+    doc.setLineWidth(0.5);
+    doc.line(margin, y, pageWidth - margin, y);
+    
+    y += 15; // Space after line
+    
+    // TITLE SECTION
+    doc.setFontSize(24);
     doc.setFont(undefined, 'bold');
     doc.text('NDIS Funding Report', pageWidth / 2, y, { align: 'center' });
     y += 12;
     
-    // Date
-    doc.setFontSize(10);
+    doc.setFontSize(11);
     doc.setFont(undefined, 'normal');
-    const today = new Date();
-    const dateStr = today.toLocaleDateString('en-AU', { 
+    doc.setTextColor(...grayColor);
+    const dateStr = new Date().toLocaleDateString('en-AU', { 
         day: 'numeric', 
         month: 'long', 
         year: 'numeric' 
     });
-    doc.text('Generated: ' + dateStr, pageWidth / 2, y, { align: 'center' });
-    y += 15;
+    doc.text(`Created: ${dateStr}`, pageWidth / 2, y, { align: 'center' });
+    doc.setTextColor(0, 0, 0);
+    y += 20;
     
-    // Participant Info Section
-    doc.setFontSize(14);
+    // PARTICIPANT INFO SECTION
+    ensureSpace(50);
+    
+    // Background box
+    doc.setFillColor(...lightGray);
+    doc.roundedRect(margin - 5, y - 5, contentWidth + 10, 45, 3, 3, 'F');
+    
+    doc.setFontSize(12);
     doc.setFont(undefined, 'bold');
-    doc.text('Participant Information', margin, y);
-    y += 10;
+    doc.text('PARTICIPANT INFORMATION', margin, y + 3);
+    y += 12;
     
-    doc.setFontSize(11);
+    doc.setFontSize(10);
     doc.setFont(undefined, 'normal');
-    doc.text('Name: ' + (card.participant.name || 'Not specified'), margin, y);
-    y += 7;
-    doc.text('NDIS Number: ' + (card.participant.ndisNumber || 'Not specified'), margin, y);
-    y += 7;
+    const participantName = card.participant.name || 'Not specified';
     
-    // Format period dates nicely
+    // Handle long names
+    const nameLines = doc.splitTextToSize(`Name: ${participantName}`, contentWidth - 10);
+    nameLines.forEach(line => {
+        doc.text(line, margin, y);
+        y += 6;
+    });
+    
+    doc.text(`NDIS Number: ${card.participant.ndisNumber || 'Not specified'}`, margin, y);
+    y += 6;
+    
+    // Period dates
     const startDate = new Date(card.period.start);
     const endDate = new Date(card.period.end);
-    const periodStart = startDate.toLocaleDateString('en-AU', { 
-        day: 'numeric', 
-        month: 'long', 
-        year: 'numeric' 
-    });
-    const periodEnd = endDate.toLocaleDateString('en-AU', { 
-        day: 'numeric', 
-        month: 'long', 
-        year: 'numeric' 
-    });
+    const periodText = `Period: ${startDate.toLocaleDateString('en-AU', { 
+        day: 'numeric', month: 'long', year: 'numeric' 
+    })} to ${endDate.toLocaleDateString('en-AU', { 
+        day: 'numeric', month: 'long', year: 'numeric' 
+    })}`;
     
-    doc.text('Period: ' + periodStart + ' to ' + periodEnd, margin, y);
-    y += 7;
-    doc.text('Duration: ' + totals.daysCount + ' days (' + totals.weeks + ' weeks)', margin, y);
-    y += 7;
+    doc.text(periodText, margin, y);
+    y += 6;
+    doc.text(`State: ${card.state}`, margin, y);
+    y += 20; // Extra space after section
     
-    // Day breakdown
-    const dayCount = countDaysInPeriod(startDate, endDate);
-    const phInPeriod = state.publicHolidays.filter(ph => {
-        const phDate = new Date(ph.date);
-        return phDate >= startDate && phDate <= endDate;
-    });
+    // PERIOD BREAKDOWN SECTION
+    ensureSpace(50);
+doc.setFontSize(12);
+doc.setFont(undefined, 'bold');
+doc.text('PERIOD BREAKDOWN', margin, y);
+y += 10;
+
+const dayCount = countDaysInPeriod(startDate, endDate);
+const phInPeriod = state.publicHolidays.filter(ph => {
+    const phDate = new Date(ph.date);
+    return phDate >= startDate && phDate <= endDate;
+});
+
+// Day grid with better spacing
+doc.setFontSize(10);
+const gridStartY = y;
+const colWidth = contentWidth / 4;
+const rowHeight = 15;
+
+const dayData = [
+    ['Monday', dayCount.Mon], 
+    ['Tuesday', dayCount.Tue], 
+    ['Wednesday', dayCount.Wed], 
+    ['Thursday', dayCount.Thu],
+    ['Friday', dayCount.Fri], 
+    ['Saturday', dayCount.Sat], 
+    ['Sunday', dayCount.Sun], 
+    ['Public Holidays', phInPeriod.length]
+];
+
+dayData.forEach((item, index) => {
+    const col = index % 4;
+    const row = Math.floor(index / 4);
+    const xPos = margin + (col * colWidth);
+    const yPos = gridStartY + (row * rowHeight);
     
-    doc.text('Day Breakdown:', margin, y);
-    y += 5;
-    doc.setFontSize(10);
-    doc.text(`  Mondays: ${dayCount.Mon}, Tuesdays: ${dayCount.Tue}, Wednesdays: ${dayCount.Wed}`, margin + 5, y);
-    y += 5;
-    doc.text(`  Thursdays: ${dayCount.Thu}, Fridays: ${dayCount.Fri}, Saturdays: ${dayCount.Sat}, Sundays: ${dayCount.Sun}`, margin + 5, y);
-    if (phInPeriod.length > 0) {
-        y += 5;
-        doc.text(`  Public Holidays: ${phInPeriod.length}`, margin + 5, y);
-    }
-    y += 7;
+    // Draw the label
+    doc.setFont(undefined, 'normal');
+    doc.text(`${item[0]}:`, xPos, yPos);
     
-    doc.setFontSize(11);
-    doc.text('State: ' + card.state, margin, y);
-    y += 15;
+    // Calculate where to place the number - use text width
+    const labelWidth = doc.getTextWidth(`${item[0]}:`);
+    const numberX = xPos + labelWidth + 3; // 3px spacing after colon
     
-    // Budget Summary
-    doc.setFontSize(14);
     doc.setFont(undefined, 'bold');
-    doc.text('Budget Summary', margin, y);
+    doc.setTextColor(...primaryColor);
+    doc.text(item[1].toString(), numberX, yPos);
+    doc.setTextColor(0, 0, 0);
+});
+
+y = gridStartY + (2 * rowHeight) + 15; // Move past grid with spacing
+
+    
+    // BUDGET SUMMARY SECTION
+    ensureSpace(80);
+    doc.setFontSize(12);
+    doc.setFont(undefined, 'bold');
+    doc.text('BUDGET SUMMARY', margin, y);
     y += 10;
     
-    doc.setFontSize(11);
-    doc.setFont(undefined, 'normal');
     const budgetData = [
-        ['Total Budget:', formatCurrency(card.budget.total)],
-        ['Carry Over:', formatCurrency(card.budget.carryOver || 0)], // Changed from Carry In
-        ['Excluded:', formatCurrency(card.budget.excluded)],
-        ['Available:', formatCurrency(available)],
-        ['Forecasted Usage:', formatCurrency(used)],
-        ['Remaining:', formatCurrency(remaining)],
-        ['Weekly Average:', formatCurrency(weekly)]
+        ['Total Budget', formatCurrency(totalBudget)],
+        ['Carry Over', formatCurrency(carryOver)],
+        ['Excluded', formatCurrency(excluded)],
+        ['Available', formatCurrency(available)],
+        ['Forecasted Usage', formatCurrency(used)],
+        ['Remaining', formatCurrency(remaining), remaining < 0],
+        ['Weekly Average', formatCurrency(weekly)]
     ];
     
-    // Use a table-like layout to prevent overlap
-    const labelX = margin;
-    const valueX = margin + 100; // Fixed position for values
-    
-    budgetData.forEach(row => {
-        doc.text(row[0], labelX, y);
-        doc.text(row[1], valueX, y);
-        y += 7;
+    doc.setFontSize(10);
+    const rowHeight2 = 8;
+    budgetData.forEach((row, index) => {
+        // Alternating backgrounds
+        if (index % 2 === 0) {
+            doc.setFillColor(...lightGray);
+            doc.rect(margin - 5, y - 5, contentWidth + 10, rowHeight2, 'F');
+        }
+        
+        doc.setFont(undefined, 'normal');
+        doc.text(row[0], margin, y);
+        
+        // Handle negative remaining
+        if (row[2]) {
+            doc.setTextColor(...errorColor);
+        }
+        
+        doc.setFont(undefined, 'bold');
+        doc.text(row[1], pageWidth - margin - 5, y, { align: 'right' });
+        doc.setTextColor(0, 0, 0);
+        
+        y += rowHeight2 + 1;
     });
-    y += 10;
     
-    // Weekly Breakdown Section
-    if (y > 200) {
-        doc.addPage();
-        y = 20;
-    }
+    y += 15; // Section spacing
     
-    doc.setFontSize(14);
+    // WEEKLY BREAKDOWN SECTION
+    ensureSpace(30);
+    doc.setFontSize(12);
     doc.setFont(undefined, 'bold');
-    doc.text('Weekly Cost Breakdown', margin, y);
+    doc.text('WEEKLY COST BREAKDOWN', margin, y);
     y += 10;
     
     doc.setFontSize(10);
     doc.setFont(undefined, 'normal');
     
-    // Calculate weekly breakdown for each item
     let weeklyTotal = 0;
     card.groups.forEach(group => {
         group.items.forEach(item => {
-            if (!item.selected) return;
+            if (!item.selected || item.unit !== 'H' || !item.hours) return;
             
-            if (item.unit === 'H' && item.hours) {
-                let weeklyBreakdown = [];
-                let itemWeeklyTotal = 0;
-                
-                // Handle weekday hours
-                if (item.hours.weekday > 0) {
-                    // If weekday is set, show breakdown for each day
-                    ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].forEach(day => {
-                        weeklyBreakdown.push(`${day}: ${item.hours.weekday}h`);
-                        itemWeeklyTotal += item.hours.weekday;
-                    });
-                } else {
-                    // Check individual days
-                    ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach(day => {
-                        if (item.hours[day] > 0) {
-                            weeklyBreakdown.push(`${day}: ${item.hours[day]}h`);
-                            itemWeeklyTotal += item.hours[day];
-                        }
-                    });
-                }
-                
-                if (item.hours.saturday > 0) {
-                    weeklyBreakdown.push(`Sat: ${item.hours.saturday}h`);
-                    itemWeeklyTotal += item.hours.saturday;
-                }
-                
-                if (item.hours.sunday > 0) {
-                    weeklyBreakdown.push(`Sun: ${item.hours.sunday}h`);
-                    itemWeeklyTotal += item.hours.sunday;
-                }
-                
-                if (itemWeeklyTotal > 0) {
-                    const weeklyItemCost = itemWeeklyTotal * (item.statePrice || 0);
-                    weeklyTotal += weeklyItemCost;
-                    
-                    if (y > 250) {
-                        doc.addPage();
-                        y = 20;
+            let weeklyBreakdown = [];
+            let itemWeeklyTotal = 0;
+            
+            // Collect hours
+            if (item.hours.weekday > 0) {
+                ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].forEach(day => {
+                    weeklyBreakdown.push(`${day}: ${item.hours.weekday}h`);
+                    itemWeeklyTotal += item.hours.weekday;
+                });
+            } else {
+                ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach(day => {
+                    if (item.hours[day] > 0) {
+                        weeklyBreakdown.push(`${day}: ${item.hours[day]}h`);
+                        itemWeeklyTotal += item.hours[day];
                     }
-                    
-                    // Item name
-                    doc.setFont(undefined, 'bold');
-                    doc.text(item.supportItemName, margin, y);
+                });
+            }
+            
+            if (item.hours.saturday > 0 && !item.hours.weekday) {
+                weeklyBreakdown.push(`Sat: ${item.hours.saturday}h`);
+                itemWeeklyTotal += item.hours.saturday;
+            }
+            
+            if (item.hours.sunday > 0 && !item.hours.weekday) {
+                weeklyBreakdown.push(`Sun: ${item.hours.sunday}h`);
+                itemWeeklyTotal += item.hours.sunday;
+            }
+            
+            if (itemWeeklyTotal > 0) {
+                ensureSpace(20);
+                
+                const weeklyItemCost = itemWeeklyTotal * (item.statePrice || 0);
+                weeklyTotal += weeklyItemCost;
+                
+                // Item name
+                doc.setFont(undefined, 'bold');
+                const itemNameLines = doc.splitTextToSize(item.supportItemName, contentWidth - 10);
+                itemNameLines.forEach(line => {
+                    doc.text(line, margin, y);
                     y += 5;
-                    
-                    // Hours breakdown
-                    doc.setFont(undefined, 'normal');
-                    doc.setFontSize(9);
-                    doc.text('  ' + weeklyBreakdown.join(', '), margin, y);
-                    y += 5;
-                    
-                    // Cost
-                    doc.text('  Weekly cost: ' + formatCurrency(weeklyItemCost), margin, y);
-                    y += 7;
-                }
+                });
+                
+                // Hours
+                doc.setFont(undefined, 'normal');
+                doc.setFontSize(9);
+                const hoursText = doc.splitTextToSize(weeklyBreakdown.join(', '), contentWidth - 15);
+                hoursText.forEach(line => {
+                    doc.text(line, margin + 5, y);
+                    y += 4;
+                });
+                
+                // Cost
+                doc.text(`Weekly cost: ${formatCurrency(weeklyItemCost)}`, margin + 5, y);
+                y += 8;
             }
         });
     });
     
-    doc.setFont(undefined, 'bold');
-    doc.setFontSize(11);
-    doc.text('Total Weekly Cost: ' + formatCurrency(weeklyTotal), margin, y);
-    y += 15;
-    
-    // Overall Support Groups Breakdown
-    if (y > 200) {
-        doc.addPage();
-        y = 20;
+    if (weeklyTotal > 0) {
+        doc.setFont(undefined, 'bold');
+        doc.setFontSize(11);
+        doc.text(`Total Weekly Cost: ${formatCurrency(weeklyTotal)}`, margin, y);
+        y += 15;
     }
     
-    doc.setFontSize(14);
+    // SUPPORT GROUPS SECTION
+    ensureSpace(30);
+    doc.setFontSize(12);
     doc.setFont(undefined, 'bold');
-    doc.text('Support Groups Breakdown', margin, y);
+    doc.text('SUPPORT GROUPS BREAKDOWN', margin, y);
     y += 10;
-
+    
     let hasGroups = false;
     
-// This part is missing after "let hasGroups = false;"
-card.groups.forEach(group => {
-    const groupTotal = (totals.perGroupCents[group.regGroupNumber] || 0) / 100;
-    let groupHasItems = false;
-    
-    // First pass - check if this group has any items with data
-    group.items.forEach(item => {
-        if (!item.selected) return;
+    card.groups.forEach(group => {
+        const groupTotal = (totals.perGroupCents[group.regGroupNumber] || 0) / 100;
+        let groupHasItems = false;
         
-        let hasData = false;
-        
-        if (item.unit === 'H' && item.hours) {
-            if (item.hours.weekday > 0 || 
-                item.hours.saturday > 0 || 
-                item.hours.sunday > 0 || 
-                item.hours.publicHoliday > 0 ||
-                item.hours.Mon > 0 ||
-                item.hours.Tue > 0 ||
-                item.hours.Wed > 0 ||
-                item.hours.Thu > 0 ||
-                item.hours.Fri > 0) {
-                hasData = true;
-            }
-        } else if (item.unit === 'E') {
-            if (item.quantity > 0) {
-                hasData = true;
-            } else if (item.days) {
-                hasData = Object.values(item.days).some(day => day === true);
-            }
-        }
-        
-        if (hasData) {
-            groupHasItems = true;
-        }
-    });
-    
-    // Only show group if it has items with data
-    if (groupHasItems) {
-        hasGroups = true;
-        
-        if (y > 250) {
-            doc.addPage();
-            y = 20;
-        }
-        
-        // Group header
-        doc.setFont(undefined, 'bold');
-        doc.setFontSize(12);
-        doc.text(group.regGroupName, margin, y);
-        doc.text(formatCurrency(groupTotal), pageWidth - margin - 40, y);
-        y += 7;
-        
-        // Group number
-        doc.setFont(undefined, 'normal');
-        doc.setFontSize(10);
-        doc.text('(' + group.regGroupNumber + ')', margin, y);
-        y += 8;
-        
-        // List items that have data
+        // Check if group has selected items with data
         group.items.forEach(item => {
             if (!item.selected) return;
             
-            // Show item details
-            if (y > 270) {
-                doc.addPage();
-                y = 20;
+            let hasData = false;
+            if (item.unit === 'H' && item.hours) {
+                const hasHours = Object.keys(item.hours).some(key => item.hours[key] > 0);
+                if (hasHours) hasData = true;
+            } else if (item.unit === 'E') {
+                if (item.quantity > 0) hasData = true;
+                else if (item.days && Object.values(item.days).some(v => v)) hasData = true;
             }
             
-            doc.setFontSize(10);
-            doc.text('• ' + item.supportItemName, margin + 5, y);
-            y += 5;
-            
-            doc.setFontSize(9);
-            doc.text('  Code: ' + item.supportItemNumber, margin + 10, y);
-            y += 4;
-            
-            // Show usage
-            const usage = getItemUsageDescription(item);
-            if (usage && usage !== 'No hours set' && usage !== 'No days selected' && usage !== 'No quantity set') {
-                doc.text('  ' + usage, margin + 10, y);
-                y += 4;
-            }
-            
-            y += 3;
+            if (hasData) groupHasItems = true;
         });
         
-        y += 5;
-    }
-});
-
-if (!hasGroups) {
-    doc.setFontSize(11);
-    doc.setFont(undefined, 'normal');
-    doc.text('No support items with hours/quantities entered', margin, y);
-    y += 10;
-}    
-    // Notes & Assumptions Section
-    if (card.notes && card.notes.trim()) {
-        if (y > 220) {
-            doc.addPage();
-            y = 20;
+        if (groupHasItems) {
+            hasGroups = true;
+            ensureSpace(30);
+            
+            // Group header with total on separate line
+            doc.setFont(undefined, 'bold');
+            doc.setFontSize(11);
+            doc.text(group.regGroupName, margin, y);
+            y += 6;
+            
+            doc.setFont(undefined, 'normal');
+            doc.setFontSize(10);
+            doc.text(`Total: ${formatCurrency(groupTotal)}`, margin, y);
+            y += 5;
+            doc.text(`(${group.regGroupNumber})`, margin, y);
+            y += 8;
+            
+            // List items
+            group.items.forEach(item => {
+                if (!item.selected) return;
+                
+                ensureSpace(15);
+                
+                doc.setFontSize(9);
+                const itemLines = doc.splitTextToSize(`• ${item.supportItemName}`, contentWidth - 15);
+                itemLines.forEach(line => {
+                    doc.text(line, margin + 5, y);
+                    y += 4;
+                });
+                
+                doc.text(`Code: ${item.supportItemNumber}`, margin + 10, y);
+                y += 4;
+                
+                const usage = getItemUsageDescription(item);
+                if (usage && !['No hours set', 'No days selected', 'No quantity set'].includes(usage)) {
+                    const usageLines = doc.splitTextToSize(usage, contentWidth - 20);
+                    usageLines.forEach(line => {
+                        doc.text(line, margin + 10, y);
+                        y += 4;
+                    });
+                }
+                
+                y += 3;
+            });
+            
+            y += 5;
         }
-        
-        doc.setFontSize(14);
+    });
+    
+    if (!hasGroups) {
+        doc.setFontSize(10);
+        doc.setFont(undefined, 'normal');
+        doc.text('No support items with hours/quantities entered', margin, y);
+        y += 15;
+    }
+    
+    // NOTES SECTION
+    if (card.notes && card.notes.trim()) {
+        ensureSpace(30);
+        doc.setFontSize(12);
         doc.setFont(undefined, 'bold');
-        doc.text('Notes & Assumptions', margin, y);
-        y += 10;
+        doc.text('NOTES & ASSUMPTIONS', margin, y);
+        y += 8;
         
         doc.setFontSize(10);
         doc.setFont(undefined, 'normal');
-        
-        const lines = doc.splitTextToSize(card.notes, pageWidth - (margin * 2));
-        lines.forEach(line => {
-            if (y > 270) {
-                doc.addPage();
-                y = 20;
-            }
+        const noteLines = doc.splitTextToSize(card.notes, contentWidth);
+        noteLines.forEach(line => {
+            ensureSpace(6);
             doc.text(line, margin, y);
             y += 5;
         });
         y += 10;
     }
     
-    // Public holidays section
-    if (y > 220) {
-        doc.addPage();
-        y = 20;
-    }
-    
+    // PUBLIC HOLIDAYS SECTION
+    ensureSpace(30);
     doc.setFontSize(12);
     doc.setFont(undefined, 'bold');
-    doc.text('Public Holidays ' + (card.settings.includePH ? 'Included' : 'Excluded'), margin, y);
-    y += 7;
+    doc.text(`PUBLIC HOLIDAYS ${card.settings.includePH ? 'INCLUDED' : 'EXCLUDED'}`, margin, y);
+    y += 8;
     
     doc.setFontSize(10);
     doc.setFont(undefined, 'normal');
     
     if (phInPeriod.length > 0) {
         doc.text('Public holidays in this period:', margin, y);
-        y += 5;
+        y += 6;
         
         phInPeriod.forEach(ph => {
-            if (y > 270) {
-                doc.addPage();
-                y = 20;
-            }
+            ensureSpace(6);
             const phDate = new Date(ph.date);
             const phDateStr = phDate.toLocaleDateString('en-AU', { 
                 day: 'numeric', 
                 month: 'long', 
                 year: 'numeric' 
             });
-            doc.text('  • ' + phDateStr + ' - ' + ph.name, margin, y);
+            doc.text(`• ${phDateStr} - ${ph.name}`, margin + 5, y);
             y += 5;
         });
     } else {
         doc.text('No public holidays within this period', margin, y);
     }
-    y += 10;
-
     
-    // Price uplift - only show if it applies to this period
-    if (card.settings.uplift.enabled) {
-        // Check if any items have end dates before the service period
-        let hasUplift = false;
-        card.groups.forEach(group => {
-            group.items.forEach(item => {
-                if (item.selected && item.effectiveTo) {
-                    const itemEndDate = new Date(item.effectiveTo);
-                    if (startDate > itemEndDate) {
-                        hasUplift = true;
-                    }
-                }
-            });
-        });
-        
-        if (hasUplift) {
-            doc.setFontSize(12);
-            doc.setFont(undefined, 'bold');
-            doc.text('Price Adjustments Applied', margin, y);
-            y += 7;
-            
-            doc.setFontSize(10);
-            doc.setFont(undefined, 'normal');
-            doc.text('Annual increase of ' + card.settings.uplift.percent + '% applied to items with expired pricing', margin, y);
-            y += 10;
-        }
-    }
+    // Add page number to final page
+    addPageNumber();
     
-    // Save the PDF
-    const filename = 'NDIS_Report_' + (card.participant.name || 'Participant').replace(/[^a-zA-Z0-9]/g, '_') + '.pdf';
-    doc.save(filename);
+    // Save PDF with sanitized filename
+    const safeName = participantName.replace(/[^a-zA-Z0-9]/g, '_');
+    doc.save(`NDIS_Report_${safeName}.pdf`);
 }
 //REPORT END
 
