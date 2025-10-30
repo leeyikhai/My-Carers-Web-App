@@ -2002,7 +2002,6 @@ function getItemUsageDescription(item) {
     return '';
 }
 
-// Add this function to format numbers with commas
 function formatNumberWithCommas(value) {
     // Remove all non-numeric characters except decimal point
     const cleanValue = value.replace(/[^\d.]/g, '');
@@ -2039,12 +2038,6 @@ function attachCommaFormatting(input) {
     });
 }
 
-// In your renderCard function, after creating the inputs:
-const budgetInput = cardEl.querySelector('.budget-amount');
-const excludedInput = cardEl.querySelector('.excluded-amount');
-
-attachCommaFormatting(budgetInput);
-attachCommaFormatting(excludedInput);
 // Add this function to convert image URL to base64
 async function getBase64FromUrl(url) {
     const response = await fetch(url);
@@ -3032,7 +3025,6 @@ function showValidationErrors(errors) {
 function renderCard(card) {
     const template = document.getElementById('card-template');
     const cardEl = template.content.cloneNode(true).querySelector('.budget-card');
-    
     cardEl.dataset.cardId = card.id;
     
     // Set initial values
@@ -3081,6 +3073,12 @@ function renderCard(card) {
     // Attach event handlers
     attachCardEventHandlers(cardEl, card);
     
+    const budgetInput = cardEl.querySelector('.budget-amount');
+    const excludedInput = cardEl.querySelector('.excluded-amount');
+    
+    if (budgetInput) attachCommaFormatting(budgetInput);
+    if (excludedInput) attachCommaFormatting(excludedInput);
+
     return cardEl;
 }
 
