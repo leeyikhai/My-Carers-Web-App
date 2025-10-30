@@ -3323,41 +3323,52 @@ function computeCardTotals(card) {
   return result;
 }
 
-// Update display functions to use the computed totals
 function updateCardTotals(cardEl, card) {
-  const totals = computeCardTotals(card);
-  
-  // Update used amount
-  const used = totals.usedCents / 100;
-  cardEl.querySelector('.used-amount').textContent = formatCurrency(used);
-  
-  // Update remaining
-  const available = card.budget.total + card.budget.carryIn - card.budget.excluded;
-  const remaining = available - used;
-  const remainingEl = cardEl.querySelector('.remaining-amount');
-  remainingEl.textContent = formatCurrency(remaining);
-  remainingEl.classList.toggle('negative', remaining < 0);
-  
-  // Update weekly
-  const weekly = (totals.usedCents / 100) / totals.weeks;
-cardEl.querySelector('.weekly-amount').textContent = formatCurrency(weekly);
-  
-  // Update all group totals
-  cardEl.querySelectorAll('.group-panel').forEach(groupEl => {
-    const groupNumber = groupEl.dataset.groupNumber;
-    const groupTotal = (totals.perGroupCents[groupNumber] || 0) / 100;
-    const groupWeekly = groupTotal / totals.weeks;
+    const totals = computeCardTotals(card);
     
-    const totalEl = groupEl.querySelector('.group-total');
-    if (totalEl) {
-        totalEl.textContent = formatCurrency(groupTotal);
+    // Update used amount
+    const used = totals.usedCents / 100;
+    cardEl.querySelector('.used-amount').textContent = formatCurrency(used);
+    
+    // Calculate available budget
+    const totalBudget = parseFloat(card.budget.total) || 0;
+    const carryIn = parseFloat(card.budget.carryIn) || 0;
+    const excluded = parseFloat(card.budget.excluded) || 0;
+    const available = totalBudget + carryIn - excluded;
+    
+    // Update remaining
+    const remaining = available - used;
+    const remainingEl = cardEl.querySelector('.remaining-amount');
+    
+    // If no budget is set, show a dash or message instead of negative number
+    if (totalBudget === 0 && carryIn === 0) {
+        remainingEl.textContent = '—';
+        remainingEl.classList.remove('negative');
+    } else {
+        remainingEl.textContent = formatCurrency(remaining);
+        remainingEl.classList.toggle('negative', remaining < 0);
     }
     
-    const weeklyEl = groupEl.querySelector('.group-weekly');
-    if (weeklyEl) {
-        weeklyEl.textContent = `${formatCurrency(groupWeekly)}/wk`;
-    }
-});
+    // Update weekly
+    const weekly = totals.weeks > 0 ? (totals.usedCents / 100) / totals.weeks : 0;
+    cardEl.querySelector('.weekly-amount').textContent = formatCurrency(weekly);
+    
+    // Update all group totals
+    cardEl.querySelectorAll('.group-panel').forEach(groupEl => {
+        const groupNumber = groupEl.dataset.groupNumber;
+        const groupTotal = (totals.perGroupCents[groupNumber] || 0) / 100;
+        const groupWeekly = totals.weeks > 0 ? groupTotal / totals.weeks : 0;
+        
+        const totalEl = groupEl.querySelector('.group-total');
+        if (totalEl) {
+            totalEl.textContent = formatCurrency(groupTotal);
+        }
+        
+        const weeklyEl = groupEl.querySelector('.group-weekly');
+        if (weeklyEl) {
+            weeklyEl.textContent = `${formatCurrency(groupWeekly)}/wk`;
+        }
+    });
 }
 
 function attachCardEventHandlers(cardEl, card) {
