@@ -11,6 +11,7 @@
 
 .notes-section {
     margin-bottom: 1.5rem;
+    padding-right: 0; /* Remove any default padding */
 }
 
 .notes-section h3 {
@@ -20,7 +21,7 @@
 }
 
 .notes-input {
-    width: 100%;
+    width: calc(100% - 1.5rem); /* Account for padding */
     padding: 0.75rem;
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
@@ -28,15 +29,71 @@
     font-family: inherit;
     resize: vertical;
     min-height: 80px;
+    max-height: 300px;
+    overflow-y: auto;
+    line-height: 1.4;
+    box-sizing: border-box; /* Include padding in width calculation */
     font: arial;
 }
-/* Settings Accordion */
-.settings-accordion {
-    background: var(--bg-secondary);
-    border-radius: var(--radius);
-    margin-bottom: 1.5rem;
-    overflow: hidden;
+
+/* Mobile responsive */
+@media (max-width: 640px) {
+    .notes-input {
+        width: 100%;
+    }
 }
+
+/* Actions dropdown menu */
+.actions-menu {
+    position: relative;
+}
+
+.actions-dropdown {
+    position: absolute;
+    bottom: 100%;
+    right: 0;
+    margin-bottom: 0.5rem;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    min-width: 160px;
+    z-index: 10;
+}
+
+.dropdown-item {
+    width: 100%;
+    padding: 0.5rem 1rem;
+    text-align: left;
+    background: none;
+    border: none;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.dropdown-item:hover {
+    background: var(--bg-secondary);
+}
+
+.dropdown-item.danger {
+    color: var(--danger);
+}
+
+.dropdown-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 0.25rem 0;
+}
+
+
+.group-search-primary:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+
+/* Settings Accordion */
 
 .accordion-header {
     display: flex;
@@ -71,30 +128,6 @@
     color: var(--text-primary);
 }
 
-.accordion-content {
-    padding: 1rem;
-}
-
-/* Fix toggle layout */
-.toggle-group {
-    margin-bottom: 0.75rem;
-}
-
-.toggle-wrapper {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-    width: 100%;
-}
-
-.uplift-info {
-    width: 100%;
-    padding-left: 0;
-    margin-left: 0;
-    margin-top: 0.5rem;
-}
 
 @media (max-width: 640px) {
     .toggle-group {
@@ -114,19 +147,14 @@
     }
 }
 
-.toggle {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    cursor: pointer;
-    flex: 1;
-}
+
 
 .toggle-label {
-    font-size: 0.875rem;
-    font-weight: 500;
-    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap; /* Prevent text from wrapping */
 }
+
 
 @media (max-width: 640px) {
     .group-header {
@@ -149,6 +177,134 @@
     .group-totals {
         margin-right: 0;
         margin-left: auto;
+    }
+}
+
+.settings-accordion {
+    background: var(--bg-secondary);
+    border-radius: var(--radius);
+    margin-bottom: 1.5rem;
+    overflow: visible;
+}
+
+
+.accordion-content {
+    padding: 1rem;
+}
+
+.settings-section {
+    padding-top: 0.5rem;
+}
+
+.toggle-group {
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+}
+.toggle-group:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.toggle-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: nowrap;
+    width: 100%;
+}
+
+.toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    flex: 0 1 auto;
+}
+
+
+/* Fix uplift info layout */
+.uplift-info {
+    width: 100%;
+    padding-left: 0;
+    margin-left: 0;
+    margin-top: 0.75rem;
+}
+
+.uplift-percent {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.uplift-help {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+    margin: 0;
+    word-wrap: break-word;
+}
+
+
+@media (max-width: 768px) {
+    .toggle-wrapper {
+        flex-wrap: wrap;
+    }
+    
+    .toggle {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    
+    .view-ph-btn {
+        width: auto;
+        align-self: flex-start;
+    }
+    
+    .uplift-info {
+        margin-top: 0.5rem;
+    }
+    
+    .uplift-help {
+        font-size: 0.7rem;
+        line-height: 1.3;
+    }
+}
+
+@media (max-width: 640px) {
+    .card-actions {
+        flex-direction: column;
+    }
+    
+    .card-actions .btn {
+        width: 100%;
+        justify-content: center;
+        margin: 0.25rem 0;
+    }
+    
+    .action-help {
+        margin: 0.5rem 0;
+    }
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .toggle-wrapper {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+    }
+    
+    .toggle {
+        width: 100%;
+    }
+    
+    .view-ph-btn {
+        align-self: flex-start;
+        margin-top: 0;
     }
 }
 /* Responsive toggle layout */
@@ -216,26 +372,6 @@
     margin: 0;
     font-size: 0.75rem;
     color: var(--text-muted);
-}
-
-
-.uplift-info {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-    margin-left: 2rem;
-}
-
-.uplift-help {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-    margin: 0;
-}
-    /* Reset and Base Styles */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
 }
 
 .group-totals {
@@ -432,14 +568,14 @@
 
 :root {
     /* Harmonious Color Palette */
-    --primary: #2563eb;          /* Clear blue */
-    --primary-dark: #1d4ed8;     /* Deeper blue */
-    --accent: #10b981;           /* Emerald green */
-    --accent-dark: #059669;      /* Deeper emerald */
-    --danger: #ef4444;           /* Keep the red as is */
+    --primary: rgb(0, 150, 205);          /* Clear blue */
+    --primary-dark: #658bf3;     /* Deeper blue */
+    --accent: rgb(5, 177, 120);           /* Emerald green */
+    --accent-dark: #20785c;      /* Deeper emerald */
+    --danger: #cf5a5a;           /* Keep the red as is */
     --danger-dark: #dc2626;
-    --success: #10b981;          /* Match accent for harmony */
-    --warning: #f59e0b;          /* Keep the amber */
+    --success: #10b956;          /* Match accent for harmony */
+    --warning: #fcb233;          /* Keep the amber */
     
     /* Rest stays the same */
     --gray-50: #f9fafb;
@@ -616,7 +752,7 @@ body {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.625rem 1.5rem; /* slightly wider for a pill shape */
+    padding: 0.75rem 1.75rem; /* slightly taller and wider for better spacing */
     font-size: 0.875rem;
     font-weight: 500;
     border: none;
@@ -624,8 +760,8 @@ body {
     cursor: pointer;
     transition: var(--transition);
     white-space: nowrap;
+    margin: 0.5rem 0; /* adds space above and below the button */
 }
-
 
 .btn-primary {
     background: var(--primary);
@@ -685,7 +821,7 @@ body {
 .btn-text:hover {
     text-decoration: underline;
 }
-
+/* Base icon button styles */
 .btn-icon-only {
     width: 32px;
     height: 32px;
@@ -706,8 +842,24 @@ body {
     color: var(--text-primary);
 }
 
-.btn-icon {
-    font-size: 1.125rem;
+/* Variant for info button next to text */
+.btn-icon-only.info-icon {
+    display: inline-flex; /* Changed from flex to inline-flex */
+    width: 20px;
+    height: 20px;
+    background: var(--primary);
+    color: white;
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: bold;
+    margin-left: 0.5rem;
+    vertical-align: middle;
+}
+
+
+.btn-icon-only.info-icon:hover {
+    background: var(--primary-dark);
+    transform: scale(1.1);
 }
 
 /* Cards Container */
@@ -861,26 +1013,7 @@ body {
     color: var(--primary);
 }
 
-/* Settings Section */
-.settings-section {
-    margin-bottom: 1.5rem;
-    padding-top: 0.5rem;
-}
 
-.toggle-group {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    margin-bottom: 0.75rem;
-}
-
-/* Toggle Switch */
-.toggle {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    cursor: pointer;
-}
 
 .toggle input {
     position: absolute;
@@ -917,16 +1050,6 @@ body {
     transform: translateX(20px);
 }
 
-.toggle-label {
-    font-size: 0.875rem;
-    font-weight: 500;
-}
-
-.uplift-percent {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-}
 
 .uplift-percent input {
     width: 60px;
@@ -1117,13 +1240,12 @@ body {
 /* Card Actions */
 .card-actions {
     display: flex;
-    gap: 0.75rem;
-    margin-top: 1.5rem;
+    gap: 0.5rem;
+    margin-top: 1rem;
     padding-top: 1rem;
     border-top: 1px solid var(--border);
     flex-wrap: wrap;
 }
-
 
 /* Modal */
 .modal {
@@ -1328,14 +1450,12 @@ body {
     }
 }
     
-    .card-actions {
-        flex-wrap: wrap;
-    }
     
     .card-actions .btn {
         flex: 1;
         justify-content: center;
-        margin: 0;
+        margin: 0.25rem 0;
+
     }
     
     .item-row {
@@ -1384,6 +1504,7 @@ body {
             </button>            
         </div>
     </header>
+
     <!-- Cards Container -->
     <main class="cards-container" id="cards-container">
         <!-- Cards will be dynamically inserted here -->
@@ -1394,48 +1515,43 @@ body {
         <article class="budget-card" data-card-id="">
             <div class="card-header">
                 <div class="card-title">
-                    <input type="text" class="participant-name" placeholder="Participant Name" autocomplete="name">
-                    <input type="text" class="ndis-number" placeholder="NDIS Number (optional)" autocomplete="off">
+                    <input type="text" class="participant-name" placeholder="Participant Name">
+                    <input type="text" class="ndis-number" placeholder="NDIS Number">
                 </div>
                 <button class="btn-icon-only collapse-btn" aria-label="Collapse card">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M7 10l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
                     </svg>
                 </button>
             </div>
-
+            
             <div class="card-body">
-                <!-- Date Range & Budget -->
+                <!-- Date and Budget Section -->
                 <div class="card-section">
                     <div class="date-range">
                         <div class="form-group">
                             <label>Start Date</label>
-                            <input type="date" class="start-date" required>
+                            <input type="date" class="start-date">
                         </div>
                         <div class="form-group">
                             <label>End Date</label>
-                            <input type="date" class="end-date" required>
+                            <input type="date" class="end-date">
                         </div>
                     </div>
+                    
                     <div class="budget-inputs">
                         <div class="form-group">
-                            <label>Budget $</label>
-                            <input type="number" class="budget-amount" inputmode="decimal" step="0.01" min="0" placeholder="0.00">
+                            <label>Total Budget</label>
+                            <input type="number" class="budget-amount" placeholder="0.00" inputmode="decimal" step="0.01">
                         </div>
                         <div class="form-group">
-                            <label>Excluded $</label>
-                            <input type="number" class="excluded-amount" inputmode="decimal" step="0.01" min="0" placeholder="0.00">
+                            <label>Excluded Amount</label>
+                            <input type="number" class="excluded-amount" placeholder="0.00" inputmode="decimal" step="0.01">
                         </div>
-                    </div>
-                    <div class="notes-section">
-                        <h3>Notes & Assumptions</h3>
-                        <textarea class="notes-input" 
-                                  placeholder="Enter any notes or assumptions for this funding period..." 
-                                  rows="4"></textarea>
                     </div>
                 </div>
 
-                <!-- Live Totals -->
+                <!-- Totals Section -->
                 <div class="totals-section">
                     <div class="total-item">
                         <span class="total-label">Used</span>
@@ -1450,115 +1566,124 @@ body {
                         <span class="total-value weekly-amount">$0.00</span>
                     </div>
                 </div>
-
-<div class="settings-accordion">
-    <div class="accordion-header">
-        <span class="accordion-icon">▼</span>
-        <span class="accordion-title">Settings</span>
-    </div>
-    <div class="accordion-content">
-        <div class="settings-section">
-            <!-- State selector as first item -->
-            <div class="setting-group">
-                <label class="setting-label">State:</label>
-                <select class="card-state state-select">
-                    <option value="NSW">NSW</option>
-                    <option value="VIC">VIC</option>
-                    <option value="QLD">QLD</option>
-                    <option value="WA">WA</option>
-                    <option value="SA">SA</option>
-                    <option value="TAS">TAS</option>
-                    <option value="ACT">ACT</option>
-                    <option value="NT">NT</option>
-                </select>
-                <p class="setting-help">Prices are based on the selected state</p>
-            </div>            
-            
-            <!-- Public Holiday toggle -->
-            <div class="toggle-group">
-                <div class="toggle-wrapper">
-                    <label class="toggle">
-                        <input type="checkbox" class="include-ph" checked>
-                        <span class="toggle-slider"></span>
-                        <span class="toggle-label">Include Public Holidays</span>
-                    </label>
-                    <button class="btn-link view-ph-btn">View Public Holidays</button>
-                </div>
-            </div>
-            
-            <!-- Pricing uplift toggle -->
-            <div class="toggle-group">
-                <div class="toggle-wrapper">
-                    <label class="toggle">
-                        <input type="checkbox" class="july-uplift" checked>
-                        <span class="toggle-slider"></span>
-                        <span class="toggle-label">Account for unreleased pricing</span>
-                    </label>
-                </div>
-                <div class="uplift-info">
-                    <div class="uplift-percent">
-                        <input type="number" class="uplift-rate" inputmode="decimal" step="0.1" value="3.2" min="0" max="100">
-                        <span>% annual increase</span>
+                
+                <!-- Settings Accordion -->
+                <div class="settings-accordion">
+                    <div class="accordion-header">
+                        <span class="accordion-icon">▼</span>
+                        <span class="accordion-title">Settings</span>
                     </div>
-                    <p class="uplift-help">Estimates future pricing with compounding increases</p>
-                </div>
-            </div>
-            <button class="btn btn-success export-btn">
-                <span class="btn-icon"></span>
-                Export CSV
-            </button>
-            <button class="btn btn-secondary generate-report-btn">
-                <span class="btn-icon"></span>
-                Generate Report
-            </button>
-            <button class="btn btn-danger delete-btn">
-                <span class="btn-icon"></span>
-                Delete
-            </button>
-        </div>
-    </div>
+                    
+                    <div class="accordion-content">
+                        <div class="settings-section">
+                            <!-- Public Holidays Toggle -->
+                            <div class="toggle-group">
+                                <div class="toggle-wrapper">
+    <label class="toggle">
+        <input type="checkbox" class="include-ph" checked>
+        <span class="toggle-slider"></span>
+        <span class="toggle-label">
+            Include Public Holidays
+            <button class="btn-icon-only info-icon view-ph-btn" title="View holidays" type="button">ℹ</button>
+        </span>
+    </label>
 </div>
-
-<!-- Add global hide/show buttons before the groups section -->
-<div class="groups-section">
-    <div class="section-header">
-        <div class="groups-section">
-            <div class="section-header">
-                <h3>Support Items</h3>
-                <div class="global-actions">
-                    <button class="btn-text global-hide-unselected">Hide all unselected</button>
-                    <button class="btn-text global-show-all" style="display:none;">Show all items</button>
+</div>
+                            
+                            <!-- Price Uplift Toggle (THIS WAS MISSING) -->
+                            <div class="toggle-group">
+                                <div class="toggle-wrapper">
+                                    <label class="toggle">
+                                        <input type="checkbox" class="july-uplift" checked>
+                                        <span class="toggle-slider"></span>
+                                        <span class="toggle-label">Account for unreleased pricing</span>
+                                    </label>
+                                </div>
+                                <div class="uplift-info">
+                                    <div class="uplift-percent">
+                                        <input type="number" class="uplift-rate" inputmode="decimal" step="0.1" value="3.2" min="0" max="100">
+                                        <span>% annual increase</span>
+                                    </div>
+                                    <p class="uplift-help">Estimates future pricing with compounding increases</p>
+                                </div>
+                            </div>
+                            
+                            <!-- State Selection -->
+                            <div class="setting-group">
+                                <label class="setting-label">State:</label>
+                                <select class="card-state state-select">
+                                    <option value="NSW">NSW</option>
+                                    <option value="VIC">VIC</option>
+                                    <option value="QLD">QLD</option>
+                                    <option value="WA">WA</option>
+                                    <option value="SA">SA</option>
+                                    <option value="TAS">TAS</option>
+                                    <option value="ACT">ACT</option>
+                                    <option value="NT">NT</option>
+                                </select>
+                                <p class="setting-help">Prices are based on the selected state</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
-            
-            <div class="add-group-container">
-                <input type="text" 
-                       class="group-search" 
-                       placeholder="Search by name, code, or number..."
-                       autocomplete="off">
-                <div class="group-search-results hidden"></div>
-                <button class="btn btn-primary add-group-btn">Add Group</button>
-            </div>
-            
-            <div class="groups-list">
-                <!-- Groups will be dynamically added here -->
-            </div>
-
-
+                
+                <!-- Notes Section -->
+                <div class="notes-section">
+                    <h3>Notes & Assumptions</h3>
+                    <textarea class="notes-input" 
+                              placeholder="Enter any notes or assumptions for this funding period..." 
+                              rows="4"></textarea>
+                </div>
+                
+                <!-- Groups Section -->
+                <div class="groups-section">
+                    <div class="section-header">
+                        <h3>Support Items</h3>
+                        <div class="global-actions">
+                            <button class="btn-text global-hide-unselected">Hide all unselected</button>
+                            <button class="btn-text global-show-all" style="display:none;">Show all items</button>
+                        </div>
+                    </div>
+                    
+                    <div class="add-group-container">
+                        <input type="text" 
+                               class="group-search" 
+                               placeholder="Add support items - search by name or code..."
+                               autocomplete="off">
+                        <div class="group-search-results hidden"></div>
+                    </div>
+                    
+                    
+                    <div class="groups-list">
+                        <!-- Groups will be dynamically added here -->
+                    </div>
+                </div>
+                
                 <!-- Card Actions -->
                 <div class="card-actions">
+                    <!-- Primary action stays as button -->
                     <button class="btn btn-primary continue-btn">
-                        <span class="btn-icon"></span>
-                         + Next Funding Period
+                        + Next Funding Period
                     </button>
-                    <p class="action-help">Duplicates current setup with sequential dates</p>
                     
-                    
+                    <!-- Group other actions in a menu -->
+                    <div class="actions-menu">
+                        <button class="btn-icon-only actions-toggle" aria-label="More actions">
+                            ⋮
+                        </button>
+                        <div class="actions-dropdown hidden">
+                            <button class="dropdown-item generate-report-btn">Generate Report</button>
+                            <button class="dropdown-item export-btn">Export CSV</button>
+                            <div class="dropdown-divider"></div>
+                            <button class="dropdown-item delete-btn danger">Delete Period</button>
+                        </div>
+                    </div>
                 </div>
+                
+                
             </div>
         </article>
     </template>
-
     
     <!-- Group Template -->
     <template id="group-template">
@@ -1638,6 +1763,7 @@ body {
             </div>
         </div>
     </div>
+
 
     <!-- Supabase library -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -3222,43 +3348,81 @@ function attachCardEventHandlers(cardEl, card) {
         cardEl.classList.toggle('collapsed');
     };
     
+    // Actions dropdown
+    const actionsToggle = cardEl.querySelector('.actions-toggle');
+    const actionsDropdown = cardEl.querySelector('.actions-dropdown');
+
+    if (actionsToggle && actionsDropdown) {
+        actionsToggle.onclick = (e) => {
+            e.stopPropagation();
+            actionsDropdown.classList.toggle('hidden');
+        };
+        
+        // Use a more specific handler to avoid memory leaks
+        const closeDropdown = (e) => {
+            if (!actionsToggle.contains(e.target) && !actionsDropdown.contains(e.target)) {
+                actionsDropdown.classList.add('hidden');
+            }
+        };
+        
+        // Only add listener when dropdown is open
+        const handleDropdownToggle = () => {
+            if (!actionsDropdown.classList.contains('hidden')) {
+                document.addEventListener('click', closeDropdown);
+            } else {
+                document.removeEventListener('click', closeDropdown);
+            }
+        };
+        
+        // Watch for changes
+        const observer = new MutationObserver(handleDropdownToggle);
+        observer.observe(actionsDropdown, { attributes: true, attributeFilter: ['class'] });
+        
+        // Cleanup when card is removed
+        const cardObserver = new MutationObserver(() => {
+            if (!document.body.contains(cardEl)) {
+                document.removeEventListener('click', closeDropdown);
+                observer.disconnect();
+                cardObserver.disconnect();
+            }
+        });
+        cardObserver.observe(document.body, { childList: true, subtree: true });
+    }
+    
     // Input changes
     const inputs = [
-    '.participant-name', '.ndis-number', '.start-date', '.end-date',
-    '.budget-amount', '.excluded-amount', '.include-ph', '.july-uplift', '.uplift-rate',
-    '.card-state' // Add this
-];
+        '.participant-name', '.ndis-number', '.start-date', '.end-date',
+        '.budget-amount', '.excluded-amount', '.include-ph', '.july-uplift', '.uplift-rate',
+        '.card-state', '.notes-input' // Add notes-input
+    ];
 
-inputs.forEach(selector => {
-    const el = cardEl.querySelector(selector);
-    if (el) {
-        if (el.type === 'checkbox') {
-            el.addEventListener('change', () => {
-                updateCardFromDOM(cardEl);
-                saveState(); // Add this
-            });
-        } else {
-            el.addEventListener('input', () => {
-                updateCardFromDOM(cardEl);
-                saveState(); // Add this
-            });
+    inputs.forEach(selector => {
+        const el = cardEl.querySelector(selector);
+        if (el) {
+            if (el.type === 'checkbox') {
+                el.addEventListener('change', () => {
+                    updateCardFromDOM(cardEl);
+                    saveState();
+                });
+            } else {
+                el.addEventListener('input', () => {
+                    updateCardFromDOM(cardEl);
+                    saveState();
+                });
+            }
         }
-    }
-});
-
-
+    });
     
     // View PH button
     cardEl.querySelector('.view-ph-btn').onclick = () => {
         showPublicHolidaysModal(card);
     };
     
-    // Setup group search
-    const groupSearch = cardEl.querySelector('.group-search');
+    // Setup group search with the new primary search input
+    const groupSearch = cardEl.querySelector('.group-search-primary'); // Updated selector
     const searchResults = cardEl.querySelector('.group-search-results');
     let selectedGroup = null;
 
-    // Only set up search if using search UI
     if (groupSearch && searchResults) {
         // Search function
         const searchGroups = (query) => {
@@ -3312,8 +3476,38 @@ inputs.forEach(selector => {
                         ${result.matchedItem ? `<div style="font-size: 0.75rem; color: var(--text-muted)">Contains: ${result.matchedItem}</div>` : ''}
                     `;
                     div.onclick = () => {
-                        selectedGroup = result;
-                        groupSearch.value = result.display;
+                        // Add the group directly when clicked
+                        const groupNumber = result.groupNumber;
+                        const catalogueGroup = state.catalogue[groupNumber];
+                        if (!catalogueGroup) return;
+                        
+                        // Check if group already added
+                        if (card.groups.some(g => g.regGroupNumber === groupNumber)) {
+                            showError('This group has already been added');
+                            return;
+                        }
+                        
+                        // Create group data with state price
+                        const groupData = {
+                            regGroupNumber: groupNumber,
+                            regGroupName: catalogueGroup.regGroupName,
+                            items: catalogueGroup.items.map(item => ({
+                                ...item,
+                                selected: false,
+                                overridePrice: null,
+                                statePrice: item.statePrices[card.state] || item.statePrices['NSW'] || 0,
+                                hours: {},
+                                days: {},
+                                quantity: 0
+                            }))
+                        };
+                        
+                        card.groups.push(groupData);
+                        renderGroup(cardEl, groupData);
+                        updateCardTotals(cardEl, card);
+                        
+                        // Clear search
+                        groupSearch.value = '';
                         searchResults.classList.add('hidden');
                     };
                     searchResults.appendChild(div);
@@ -3349,103 +3543,56 @@ inputs.forEach(selector => {
             }
         });
         observer.observe(document.body, { childList: true, subtree: true });
-
-        // Add group button handler
-        cardEl.querySelector('.add-group-btn').onclick = () => {
-            if (!selectedGroup) {
-                showError('Please select a group first');
-                return;
-            }
-            
-            const groupNumber = selectedGroup.groupNumber;
-            const catalogueGroup = state.catalogue[groupNumber];
-            if (!catalogueGroup) return;
-            
-            // Check if group already added
-            if (card.groups.some(g => g.regGroupNumber === groupNumber)) {
-                showError('This group has already been added');
-                return;
-            }
-            
-            // Create group data with state price
-            const groupData = {
-                regGroupNumber: groupNumber,
-                regGroupName: catalogueGroup.regGroupName,
-                items: catalogueGroup.items.map(item => ({
-                    ...item,
-                    selected: false,
-                    overridePrice: null,
-                    statePrice: item.statePrices[card.state] || item.statePrices['NSW'] || 0,
-                    hours: {},
-                    days: {},
-                    quantity: 0
-                }))
-            };
-            
-            card.groups.push(groupData);
-            renderGroup(cardEl, groupData);
-            updateCardTotals(cardEl, card);
-            
-            // Clear search
-            groupSearch.value = '';
-            selectedGroup = null;
-            searchResults.classList.add('hidden');
-        };
-    } else {
-        // Fallback for old dropdown UI
-        cardEl.querySelector('.add-group-btn').onclick = () => {
-            const selector = cardEl.querySelector('.group-selector');
-            const groupNumber = selector.value;
-            if (!groupNumber) return;
-            
-            const catalogueGroup = state.catalogue[groupNumber];
-            if (!catalogueGroup) return;
-            
-            // Check if group already added
-            if (card.groups.some(g => g.regGroupNumber === groupNumber)) {
-                showError('This group has already been added');
-                return;
-            }
-            
-            // Create group data with state price
-            const groupData = {
-                regGroupNumber: groupNumber,
-                regGroupName: catalogueGroup.regGroupName,
-                items: catalogueGroup.items.map(item => ({
-                    ...item,
-                    selected: false,
-                    overridePrice: null,
-                    statePrice: item.statePrices[card.state] || item.statePrices['NSW'] || 0,
-                    hours: {},
-                    days: {},
-                    quantity: 0
-                }))
-            };
-            
-            card.groups.push(groupData);
-            renderGroup(cardEl, groupData);
-            updateCardTotals(cardEl, card);
-            
-            selector.value = '';
-        };
     }
     
-    // Export button
+    // Export button (now in dropdown)
     cardEl.querySelector('.export-btn').onclick = () => {
-    // Update and save the current state before exporting
-    updateCardFromDOM(cardEl);
-    saveState();
+        // Hide dropdown first
+        actionsDropdown.classList.add('hidden');
+        
+        // Update and save the current state before exporting
+        updateCardFromDOM(cardEl);
+        saveState();
+        
+        const errors = validateCard(card);
+        if (errors.length > 0) {
+            showValidationErrors(errors);
+            return;
+        }
+        
+        const csv = buildCsvRows(card);
+        const filename = generateFilename(card);
+        downloadCsv(filename, csv);
+    };
     
-    const errors = validateCard(card);
-    if (errors.length > 0) {
-        showValidationErrors(errors);
-        return;
+    // Generate report button (now in dropdown)
+    const reportBtn = cardEl.querySelector('.generate-report-btn');
+    if (reportBtn) {
+        reportBtn.onclick = function() {
+            // Hide dropdown first
+            actionsDropdown.classList.add('hidden');
+            
+            // Update and save the current state before generating PDF
+            updateCardFromDOM(cardEl);
+            saveState();
+            generatePDFReport(card);
+        };
     }
     
-    const csv = buildCsvRows(card);
-    const filename = generateFilename(card);
-    downloadCsv(filename, csv);
-};
+    // Delete button (now in dropdown)
+    cardEl.querySelector('.delete-btn').onclick = () => {
+        // Hide dropdown first
+        actionsDropdown.classList.add('hidden');
+        
+        if (confirm('Delete this funding period? This cannot be undone.')) {
+            const index = state.cards.findIndex(c => c.id === card.id);
+            if (index >= 0) {
+                state.cards.splice(index, 1);
+                cardEl.remove();
+                saveState();
+            }
+        }
+    };
 
     // Continue button
     cardEl.querySelector('.continue-btn').onclick = () => {
@@ -3456,69 +3603,48 @@ inputs.forEach(selector => {
         newCardEl.scrollIntoView({ behavior: 'smooth' });
         saveState();
     };
-    
-    // Delete button
-    cardEl.querySelector('.delete-btn').onclick = () => {
-        if (confirm('Delete this funding period? This cannot be undone.')){
-            const index = state.cards.findIndex(c => c.id === card.id);
-            if (index >= 0) {
-                state.cards.splice(index, 1);
-                cardEl.remove();
-                saveState();
-            }
-        }
-    };
 
-    const reportBtn = cardEl.querySelector('.generate-report-btn');
-if (reportBtn) {
-    reportBtn.onclick = function() {
-        generatePDFReport(card);
-    };
-}
-    // In attachCardEventHandlers, add:
+    // Settings accordion
+    const settingsAccordion = cardEl.querySelector('.settings-accordion');
+    if (settingsAccordion) {
+        settingsAccordion.querySelector('.accordion-header').onclick = () => {
+            settingsAccordion.classList.toggle('collapsed');
+        };
+    }
 
-// Settings accordion
-const settingsAccordion = cardEl.querySelector('.settings-accordion');
-if (settingsAccordion) {
-    settingsAccordion.querySelector('.accordion-header').onclick = () => {
-        settingsAccordion.classList.toggle('collapsed');
-    };
-}
+    // Global hide/show buttons
+    const globalHide = cardEl.querySelector('.global-hide-unselected');
+    const globalShow = cardEl.querySelector('.global-show-all');
 
-// Global hide/show buttons
-const globalHide = cardEl.querySelector('.global-hide-unselected');
-const globalShow = cardEl.querySelector('.global-show-all');
+    if (globalHide) {
+        globalHide.onclick = () => {
+            // Hide unselected items in all groups
+            cardEl.querySelectorAll('.group-panel').forEach(groupEl => {
+                const hideBtn = groupEl.querySelector('.hide-unselected-btn');
+                if (hideBtn && hideBtn.style.display !== 'none') {
+                    hideBtn.click();
+                }
+            });
+            
+            globalHide.style.display = 'none';
+            globalShow.style.display = 'inline';
+        };
+    }
 
-if (globalHide) {
-    globalHide.onclick = () => {
-        // Hide unselected items in all groups
-        cardEl.querySelectorAll('.group-panel').forEach(groupEl => {
-            const hideBtn = groupEl.querySelector('.hide-unselected-btn');
-            if (hideBtn && hideBtn.style.display !== 'none') {
-                hideBtn.click();
-            }
-        });
-        
-        globalHide.style.display = 'none';
-        globalShow.style.display = 'inline';
-    };
-}
-
-if (globalShow) {
-    globalShow.onclick = () => {
-        // Show all items in all groups
-        cardEl.querySelectorAll('.group-panel').forEach(groupEl => {
-            const showBtn = groupEl.querySelector('.show-all-btn');
-            if (showBtn && showBtn.style.display !== 'none') {
-                showBtn.click();
-            }
-        });
-        
-        globalShow.style.display = 'none';
-        globalHide.style.display = 'inline';
-    };
-}
-
+    if (globalShow) {
+        globalShow.onclick = () => {
+            // Show all items in all groups
+            cardEl.querySelectorAll('.group-panel').forEach(groupEl => {
+                const showBtn = groupEl.querySelector('.show-all-btn');
+                if (showBtn && showBtn.style.display !== 'none') {
+                    showBtn.click();
+                }
+            });
+            
+            globalShow.style.display = 'none';
+            globalHide.style.display = 'inline';
+        };
+    }
 }
 async function parseExportedCsv(file) {
     return new Promise((resolve, reject) => {
