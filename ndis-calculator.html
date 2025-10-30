@@ -983,8 +983,15 @@ body {
     gap: 0.5rem;
 }
 
+
 .total-item {
     text-align: center;
+    position: relative;
+}
+
+/* Style for the dash when no budget */
+.remaining-amount:not(.negative) {
+    color: var(--text-muted);
 }
 
 .total-label {
@@ -1556,7 +1563,6 @@ body {
                             <input type="date" class="end-date">
                         </div>
                     </div>
-                    
                     <div class="budget-inputs">
                         <div class="form-group">
                             <label>Total Budget</label>
@@ -1567,6 +1573,11 @@ body {
                             <input type="number" class="excluded-amount" placeholder="0.00" inputmode="decimal" step="0.01">
                         </div>
                     </div>
+                    <!-- Add carry-in separately if needed -->
+                    <div class="form-group" style="display: none;">
+                        <input type="number" class="carry-in-amount" value="0" inputmode="decimal" step="0.01">
+                    </div>
+                    
                 </div>
 
                 <!-- Totals Section -->
@@ -1577,13 +1588,14 @@ body {
                     </div>
                     <div class="total-item">
                         <span class="total-label">Remaining</span>
-                        <span class="total-value remaining-amount">$0.00</span>
+                        <span class="total-value remaining-amount">—</span>
                     </div>
                     <div class="total-item">
                         <span class="total-label">Weekly</span>
                         <span class="total-value weekly-amount">$0.00</span>
                     </div>
                 </div>
+                
                 
                 <!-- Settings Accordion -->
                 <div class="settings-accordion">
@@ -3941,19 +3953,29 @@ function updateCardFromDOM(cardEl) {
     card.participant.ndisNumber = cardEl.querySelector('.ndis-number').value;
     card.period.start = cardEl.querySelector('.start-date').value;
     card.period.end = cardEl.querySelector('.end-date').value;
+    
+    // Ensure budget values are numbers, not strings
     card.budget.total = parseFloat(cardEl.querySelector('.budget-amount').value) || 0;
     card.budget.excluded = parseFloat(cardEl.querySelector('.excluded-amount').value) || 0;
+    
+    // Only set carryIn if the element exists
+    const carryInEl = cardEl.querySelector('.carry-in-amount');
+if (carryInEl) {
+    carryInEl.value = card.budget.carryIn || 0;
+}
+    
     card.settings.includePH = cardEl.querySelector('.include-ph').checked;
     card.settings.uplift.enabled = cardEl.querySelector('.july-uplift').checked;
     card.settings.uplift.percent = parseFloat(cardEl.querySelector('.uplift-rate').value) || 3.2;
-    card.notes = cardEl.querySelector('.notes-input').value || '';
-
+    
     const stateSelect = cardEl.querySelector('.card-state');
     if (stateSelect) {
         card.state = stateSelect.value;
     }
     
-    // Update groups and items
+    card.notes = cardEl.querySelector('.notes-input').value || '';
+    
+    // Update groups and items - YOUR EXISTING CODE for groups...
     const groupEls = cardEl.querySelectorAll('.group-panel');
     card.groups = [];
     
@@ -3979,7 +4001,7 @@ function updateCardFromDOM(cardEl) {
             
             const itemData = {
                 ...catalogueItem,
-                selected: isSelected,  // Use the actual checkbox state
+                selected: isSelected,
                 overridePrice: null,
                 statePrice: catalogueItem.statePrices[card.state] || catalogueItem.statePrices['NSW'] || 0,
                 hours: {},
@@ -4048,7 +4070,6 @@ function updateCardFromDOM(cardEl) {
     
     // Update the totals after reading all the data
     updateCardTotals(cardEl, card);
-    saveState();
 }
 function generateFilename(card) {
     const parts = [];
