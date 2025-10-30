@@ -3874,21 +3874,36 @@ function attachCardEventHandlers(cardEl, card) {
     ];
 
     inputs.forEach(selector => {
-        const el = cardEl.querySelector(selector);
-        if (el) {
-            if (el.type === 'checkbox') {
-                el.addEventListener('change', () => {
-                    updateCardFromDOM(cardEl);
-                    saveState();
-                });
-            } else {
-                el.addEventListener('input', () => {
-                    updateCardFromDOM(cardEl);
-                    saveState();
-                });
-            }
+    const el = cardEl.querySelector(selector);
+    if (el) {
+        if (el.type === 'checkbox') {
+            el.addEventListener('change', () => {
+                updateCardFromDOM(cardEl);
+                saveState();
+            });
+        } else if (selector === '.budget-amount' || selector === '.excluded-amount') {
+            // Special handling for budget inputs
+            el.addEventListener('blur', (e) => {
+                // Format on blur (when user leaves the field)
+                const rawValue = e.target.value.replace(/,/g, '');
+                const numValue = parseFloat(rawValue) || 0;
+                e.target.value = numValue ? numValue.toLocaleString() : '';
+                updateCardFromDOM(cardEl);
+                saveState();
+            });
+            el.addEventListener('focus', (e) => {
+                // Remove formatting on focus (when user clicks into field)
+                e.target.value = e.target.value.replace(/,/g, '');
+            });
+        } else {
+            el.addEventListener('input', () => {
+                updateCardFromDOM(cardEl);
+                saveState();
+            });
         }
-    });
+    }
+});
+
     
     // View PH button
     cardEl.querySelector('.view-ph-btn').onclick = () => {
