@@ -9,9 +9,150 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
 
+.card-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1rem;
+    border-top: 1px solid var(--border);
+    align-items: stretch; /* Make children full width */
+}
+
+
+.continue-btn {
+    align-self: center; /* Center only this button */
+    width: auto; /* Remove full width */
+    max-width: 300px;
+    margin: 0;
+}
+
+.card-actions-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%; /* Full width for the bottom row */
+}
+
+.actions-menu {
+    position: relative;
+}
+
+.delete-btn {
+    margin-left: auto;
+}
+
+.actions-dropdown {
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    margin-bottom: 4px;
+    min-width: 180px;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+    z-index: 100;
+}
+.group-title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+}
+
+.item-count {
+    font-size: 0.9em;
+    color: var(--text-secondary);
+    margin-left: auto;
+}
+
+.filtered-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    background: var(--primary-light, #e0e7ff);
+    color: var(--primary);
+    border-radius: 12px;
+    font-size: 0.75em;
+    font-weight: normal;
+    margin-left: 8px;
+}
+
+.load-all-items {
+    width: 100%;
+    padding: 12px;
+    margin-top: 10px;
+    border-top: 1px dashed var(--border);
+    color: var(--primary);
+    text-align: center;
+    background: transparent;
+    transition: background-color 0.2s;
+}
+
+.load-all-items:hover {
+    background: var(--bg-hover);
+}
+
+/* Hide checkboxes when unselected items are hidden */
+.items-list.hiding-unselected .item-row:not(.selected) {
+    display: none;
+}
+
+.items-list.hiding-unselected .item-row.selected .item-checkbox {
+    visibility: hidden;
+}
+.search-result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.search-result-title {
+    font-weight: 500;
+}
+
+.search-result-count {
+    font-size: 0.85em;
+    color: var(--text-secondary);
+}
+
+.search-result-matches {
+    margin-top: 6px;
+    padding-left: 10px;
+    font-size: 0.85em;
+}
+
+.match-count {
+    color: var(--primary);
+    font-weight: 500;
+    margin-bottom: 3px;
+}
+
+.match-item {
+    color: var(--text-secondary);
+    padding: 2px 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.match-more {
+    font-style: italic;
+    color: var(--text-muted);
+    padding: 2px 0;
+}
+
+.group-search-result.no-results {
+    color: var(--text-muted);
+    text-align: center;
+    padding: 15px;
+}
 .notes-section {
     margin-bottom: 1.5rem;
     padding-right: 0; /* Remove any default padding */
+}
+
+.items-list.hiding-unselected .item-row.selected .item-checkbox {
+    visibility: hidden;
 }
 
 .notes-section h3 {
@@ -276,15 +417,22 @@
 
 @media (max-width: 640px) {
     .card-actions {
-        flex-direction: column;
+        /* Remove flex-direction: column; */
+        gap: 0.5rem;
+        padding: 0.75rem; /* Slightly less padding on mobile */
     }
     
-    .card-actions .btn {
-        width: 100%;
-        justify-content: center;
-        margin: 0.25rem 0;
+    /* Only make the continue button responsive, not the icon buttons */
+    .card-actions .continue-btn {
+        flex: 1;
+        min-width: 0; /* Allow it to shrink */
+        padding: 0.75rem 1rem; /* Smaller padding on mobile */
     }
     
+    /* Keep icon buttons their normal size */
+    .card-actions .btn-icon-only {
+        flex-shrink: 0; /* Prevent shrinking */
+    }
     .action-help {
         margin: 0.5rem 0;
     }
@@ -1249,16 +1397,6 @@ body {
     width: 100%;
 }
 
-/* Card Actions */
-.card-actions {
-    display: flex;
-    gap: 0.5rem;
-    margin-top: 1rem;
-    padding-top: 1rem;
-    border-top: 1px solid var(--border);
-    flex-wrap: wrap;
-}
-
 /* Modal */
 @media (max-width: 640px) {
     .modal {
@@ -1465,16 +1603,23 @@ body {
     }
     @media (max-width: 640px) {
     .card-actions {
-        flex-direction: column;
+        /* Remove flex-direction: column; */
         gap: 0.5rem;
+        padding: 0.75rem; /* Slightly less padding on mobile */
     }
     
-    .card-actions .btn {
-        width: 100%;
-        justify-content: center;
+    /* Only make the continue button responsive, not the icon buttons */
+    .card-actions .continue-btn {
+        flex: 1;
+        min-width: 0; /* Allow it to shrink */
+        padding: 0.75rem 1rem; /* Smaller padding on mobile */
+    }
+    
+    /* Keep icon buttons their normal size */
+    .card-actions .btn-icon-only {
+        flex-shrink: 0; /* Prevent shrinking */
     }
 }
-    
     
     .card-actions .btn {
         flex: 1;
@@ -1670,8 +1815,8 @@ body {
                     <div class="section-header">
                         <h3>Support Items</h3>
                         <div class="global-actions">
-                            <button class="btn-text global-hide-unselected">Hide all unselected</button>
-                            <button class="btn-text global-show-all" style="display:none;">Show all items</button>
+                            <button class="btn-text global-hide-unselected"><svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#1f1f1f"><path d="M480.09-336.92q67.99 0 115.49-47.59t47.5-115.58q0-67.99-47.59-115.49t-115.58-47.5q-67.99 0-115.49 47.59t-47.5 115.58q0 67.99 47.59 115.49t115.58 47.5ZM480-392q-45 0-76.5-31.5T372-500q0-45 31.5-76.5T480-608q45 0 76.5 31.5T588-500q0 45-31.5 76.5T480-392Zm.05 172q-137.97 0-251.43-76.12Q115.16-372.23 61.54-500q53.62-127.77 167.02-203.88Q341.97-780 479.95-780q137.97 0 251.43 76.12Q844.84-627.77 898.46-500q-53.62 127.77-167.02 203.88Q618.03-220 480.05-220ZM480-500Zm0 220q113 0 207.5-59.5T832-500q-50-101-144.5-160.5T480-720q-113 0-207.5 59.5T128-500q50 101 144.5 160.5T480-280Z"/></svg></button>
+                            <button class="btn-text global-show-all" style="display:none;"><svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#1f1f1f"><path d="M630.92-441.08 586-486q9-49.69-28.35-89.35Q520.31-615 466-606l-44.92-44.92q13.54-6.08 27.77-9.12 14.23-3.04 31.15-3.04 68.08 0 115.58 47.5T643.08-500q0 16.92-3.04 31.54-3.04 14.61-9.12 27.38Zm127.23 124.46L714-358q38-29 67.5-63.5T832-500q-50-101-143.5-160.5T480-720q-29 0-57 4t-55 12l-46.61-46.61q37.92-15.08 77.46-22.23Q438.39-780 480-780q140.61 0 253.61 77.54T898.46-500q-22.23 53.61-57.42 100.08-35.2 46.46-82.89 83.3Zm32.31 231.39L628.62-245.85q-30.77 11.39-68.2 18.62Q523-220 480-220q-141 0-253.61-77.54Q113.77-375.08 61.54-500q22.15-53 57.23-98.88 35.08-45.89 77.23-79.58l-110.77-112 42.16-42.15 705.22 705.22-42.15 42.16Zm-552.3-551.08q-31.7 25.23-61.66 60.66Q146.54-540.23 128-500q50 101 143.5 160.5T480-280q27.31 0 54.39-4.62 27.07-4.61 45.92-9.53L529.69-346q-10.23 4.15-23.69 6.61-13.46 2.47-26 2.47-68.08 0-115.58-47.5T316.92-500q0-12.15 2.47-25.42 2.46-13.27 6.61-24.27l-87.84-86.62ZM541-531Zm-131.77 65.77Z"/></svg></button>
                         </div>
                     </div>
                     
@@ -1689,28 +1834,34 @@ body {
                     </div>
                 </div>
                 
-                <!-- Card Actions -->
+                <!-- Update the card-actions section in your template -->
                 <div class="card-actions">
-                    <!-- Primary action stays as button -->
-                    <button class="btn btn-primary continue-btn">
-                        + Next Funding Period
-                    </button>
+                    <!-- Continue button centered on first line -->
+                    <button class="btn btn-primary continue-btn">+ Next Funding Period</button>
                     
-                    <!-- Group other actions in a menu -->
-                    <div class="actions-menu">
-                        <button class="btn-icon-only actions-toggle" aria-label="More actions">
-                        ☰
-                        </button>
-                        <div class="actions-dropdown hidden">
-                            <button class="dropdown-item generate-report-btn">Generate Report</button>
-                            <button class="dropdown-item export-btn">Export CSV</button>
-                            <div class="dropdown-divider"></div>
-                            <button class="dropdown-item delete-btn danger">Delete Period</button>
+                    <!-- Bottom row with download left and trash right -->
+                    <div class="card-actions-bottom">
+                        <!-- Download menu on LEFT -->
+                        <div class="actions-menu">
+                            <button class="btn-icon-only actions-toggle" aria-label="Download options">
+                                <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#1f1f1f">
+                                    <path d="M480-320 280-520l56-58 104 104v-326h80v326l104-104 56 58-200 200ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z"/>
+                                </svg>
+                            </button>
+                            <div class="actions-dropdown hidden">
+                                <button class="dropdown-item generate-report-btn">Generate PDF Report</button>
+                                <button class="dropdown-item export-btn">Export to CSV</button>
+                            </div>
                         </div>
+                        
+                        <!-- Delete button on RIGHT -->
+                        <button class="btn-icon-only delete-btn danger" aria-label="Delete period">
+                            <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#1f1f1f">
+                                <path d="M292.31-140q-29.92 0-51.12-21.19Q220-182.39 220-212.31V-720h-40v-60h180v-35.38h240V-780h180v60h-40v507.69Q740-182 719-161q-21 21-51.31 21H292.31ZM680-720H280v507.69q0 5.39 3.46 8.85t8.85 3.46h375.38q4.62 0 8.46-3.85 3.85-3.84 3.85-8.46V-720ZM376.16-280h59.99v-360h-59.99v360Zm147.69 0h59.99v-360h-59.99v360ZM280-720v520-520Z"/>
+                        </svg>
+                        </button>
                     </div>
                 </div>
-                
-                
             </div>
         </article>
     </template>
@@ -1851,7 +2002,49 @@ function getItemUsageDescription(item) {
     return '';
 }
 
+// Add this function to format numbers with commas
+function formatNumberWithCommas(value) {
+    // Remove all non-numeric characters except decimal point
+    const cleanValue = value.replace(/[^\d.]/g, '');
+    
+    // Split into whole and decimal parts
+    const parts = cleanValue.split('.');
+    
+    // Format the whole number part with commas
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    
+    // Rejoin with decimal if present
+    return parts.join('.');
+}
 
+// Add this event listener to your budget inputs
+function attachCommaFormatting(input) {
+    input.addEventListener('input', (e) => {
+        const cursorPosition = e.target.selectionStart;
+        const oldLength = e.target.value.length;
+        
+        // Format the value
+        const formattedValue = formatNumberWithCommas(e.target.value);
+        e.target.value = formattedValue;
+        
+        // Adjust cursor position after formatting
+        const newLength = formattedValue.length;
+        const diff = newLength - oldLength;
+        e.target.setSelectionRange(cursorPosition + diff, cursorPosition + diff);
+    });
+    
+    // Also format on blur to ensure proper formatting
+    input.addEventListener('blur', (e) => {
+        e.target.value = formatNumberWithCommas(e.target.value);
+    });
+}
+
+// In your renderCard function, after creating the inputs:
+const budgetInput = cardEl.querySelector('.budget-amount');
+const excludedInput = cardEl.querySelector('.excluded-amount');
+
+attachCommaFormatting(budgetInput);
+attachCommaFormatting(excludedInput);
 // Add this function to convert image URL to base64
 async function getBase64FromUrl(url) {
     const response = await fetch(url);
@@ -1864,6 +2057,41 @@ async function getBase64FromUrl(url) {
     });
 }
 
+
+function categorizeItems(items) {
+    const categories = {
+        'SDA': [],
+        'Respite': [],
+        'Daily Activities - Standard': [],
+        'Daily Activities - High': [],
+        'Community Access': [],
+        'Other': []
+    };
+    
+    items.forEach(item => {
+        const name = item.supportItemName.toLowerCase();
+        if (name.includes('sda')) {
+            categories['SDA'].push(item);
+        } else if (name.includes('respite')) {
+            categories['Respite'].push(item);
+        } else if (name.includes('daily') && name.includes('high')) {
+            categories['Daily Activities - High'].push(item);
+        } else if (name.includes('daily') && name.includes('standard')) {
+            categories['Daily Activities - Standard'].push(item);
+        } else if (name.includes('community')) {
+            categories['Community Access'].push(item);
+        } else {
+            categories['Other'].push(item);
+        }
+    });
+    
+    // Remove empty categories
+    Object.keys(categories).forEach(key => {
+        if (categories[key].length === 0) delete categories[key];
+    });
+    
+    return categories;
+}
 
 async function generatePDFReport(card) {
     const { jsPDF } = window.jspdf;
@@ -2864,24 +3092,50 @@ function renderGroup(cardEl, groupData) {
     
     // Create custom header with accordion and total
     const groupHeader = document.createElement('div');
-groupHeader.className = 'group-header';
-groupHeader.innerHTML = `
-    <div class="group-header-main">
-        <div class="group-title-row">
-            <span class="group-collapse-icon">▼</span>
-            <h4 class="group-title">${groupData.regGroupName} (${groupData.regGroupNumber})</h4>
+    groupHeader.className = 'group-header';
+    
+    // Build title HTML based on whether group is filtered
+    let titleHTML = '';
+    if (groupData.isFiltered) {
+        titleHTML = `
+            <div class="group-header-main">
+                <div class="group-title-row">
+                    <span class="group-collapse-icon">▼</span>
+                    <h4 class="group-title">
+                        ${groupData.regGroupName} (${groupData.regGroupNumber})
+                        <span class="filtered-badge">Filtered: "${groupData.filterTerm}"</span>
+                    </h4>
+                    <span class="item-count">${groupData.items.length} of ${groupData.totalCount} items</span>
+                </div>
+                <div class="group-totals">
+                    <span class="group-total">$0.00</span>
+                    <span class="group-weekly">$0.00/wk</span>
+                </div>
+            </div>
+        `;
+    } else {
+        titleHTML = `
+            <div class="group-header-main">
+                <div class="group-title-row">
+                    <span class="group-collapse-icon">▼</span>
+                    <h4 class="group-title">${groupData.regGroupName} (${groupData.regGroupNumber})</h4>
+                    <span class="item-count">${groupData.items.length} items</span>
+                </div>
+                <div class="group-totals">
+                    <span class="group-total">$0.00</span>
+                    <span class="group-weekly">$0.00/wk</span>
+                </div>
+            </div>
+        `;
+    }
+    
+    groupHeader.innerHTML = titleHTML + `
+        <div class="group-actions">
+            <button class="btn-text hide-unselected-btn">− Hide unselected</button>
+            <button class="btn-text show-all-btn" style="display:none;">+ Show all</button>
+            <button class="btn-icon-only remove-group-btn" aria-label="Remove group">✕</button>
         </div>
-        <div class="group-totals">
-            <span class="group-total">$0.00</span>
-            <span class="group-weekly">$0.00/wk</span>
-        </div>
-    </div>
-    <div class="group-actions">
-        <button class="btn-text hide-unselected-btn">− Hide unselected</button>
-        <button class="btn-text show-all-btn" style="display:none;">+ Show all</button>
-        <button class="btn-icon-only remove-group-btn" aria-label="Remove group">✕</button>
-    </div>
-`;
+    `;
     
     const itemsList = document.createElement('div');
     itemsList.className = 'items-list';
@@ -2897,6 +3151,55 @@ groupHeader.innerHTML = `
         itemsList.appendChild(itemEl);
     });
     
+    // Add "Load all items" button if filtered
+    if (groupData.isFiltered) {
+        const loadAllBtn = document.createElement('button');
+        loadAllBtn.className = 'btn-text load-all-items';
+        loadAllBtn.textContent = `Load all ${groupData.totalCount} items from this group`;
+        loadAllBtn.onclick = () => {
+            // Get the card reference
+            const card = state.cards.find(c => c.id === cardEl.dataset.cardId);
+            if (!card) return;
+            
+            // Replace with full group
+            const catalogueGroup = state.catalogue[groupData.regGroupNumber];
+            if (catalogueGroup) {
+                // Update the group data with all items
+                groupData.items = catalogueGroup.items.map(item => ({
+                    ...item,
+                    selected: false,
+                    overridePrice: null,
+                    statePrice: item.statePrices[card.state] || item.statePrices['NSW'] || 0,
+                    hours: {},
+                    days: {},
+                    quantity: 0
+                }));
+                groupData.isFiltered = false;
+                delete groupData.filterTerm;
+                delete groupData.matchedCount;
+                delete groupData.totalCount;
+                
+                // Find the group index in card.groups
+                const groupIndex = card.groups.findIndex(g => g.regGroupNumber === groupData.regGroupNumber);
+                if (groupIndex >= 0) {
+                    card.groups[groupIndex] = groupData;
+                }
+                
+                // Re-render the entire group
+                const newGroupEl = document.createElement('div');
+                renderGroup(cardEl, groupData);
+                
+                // Remove the old group element
+                groupEl.remove();
+                
+                saveState();
+            }
+        };
+        
+        // Add the button at the end of items list
+        itemsList.appendChild(loadAllBtn);
+    }
+    
     // Accordion toggle
     groupHeader.querySelector('.group-title-row').onclick = () => {
         groupEl.classList.toggle('collapsed');
@@ -2904,32 +3207,47 @@ groupHeader.innerHTML = `
         icon.textContent = groupEl.classList.contains('collapsed') ? '►' : '▼';
     };
     
-    // Group event handlers
+    // Hide/Show unselected handlers
     groupHeader.querySelector('.hide-unselected-btn').onclick = () => {
-    const unselectedItems = itemsList.querySelectorAll('.item-row:not(.selected)');
-    unselectedItems.forEach(item => {
-        item.classList.add('hidden');
-    });
-    itemsList.classList.add('hide-unselected'); // Add this
-    groupHeader.querySelector('.hide-unselected-btn').style.display = 'none';
-    groupHeader.querySelector('.show-all-btn').style.display = 'inline';
-};
+        itemsList.classList.add('hiding-unselected');
+        const unselectedItems = itemsList.querySelectorAll('.item-row:not(.selected)');
+        unselectedItems.forEach(item => {
+            item.style.display = 'none';
+        });
+        groupHeader.querySelector('.hide-unselected-btn').style.display = 'none';
+        groupHeader.querySelector('.show-all-btn').style.display = 'inline';
+    };
 
-groupHeader.querySelector('.show-all-btn').onclick = () => {
-    const hiddenItems = itemsList.querySelectorAll('.item-row.hidden');
-    hiddenItems.forEach(item => item.classList.remove('hidden'));
-    itemsList.classList.remove('hide-unselected'); // Add this
-    groupHeader.querySelector('.show-all-btn').style.display = 'none';
-    groupHeader.querySelector('.hide-unselected-btn').style.display = 'inline';
-};
+    groupHeader.querySelector('.show-all-btn').onclick = () => {
+        itemsList.classList.remove('hiding-unselected');
+        const hiddenItems = itemsList.querySelectorAll('.item-row');
+        hiddenItems.forEach(item => {
+            item.style.display = '';
+        });
+        groupHeader.querySelector('.show-all-btn').style.display = 'none';
+        groupHeader.querySelector('.hide-unselected-btn').style.display = 'inline';
+    };
 
+    // Remove group handler
     groupHeader.querySelector('.remove-group-btn').onclick = () => {
         if (confirm('Remove this group and all its items?')) {
+            // Get card reference
+            const card = state.cards.find(c => c.id === cardEl.dataset.cardId);
+            if (card) {
+                // Remove from card.groups
+                const groupIndex = card.groups.findIndex(g => g.regGroupNumber === groupData.regGroupNumber);
+                if (groupIndex >= 0) {
+                    card.groups.splice(groupIndex, 1);
+                }
+            }
+            
             groupEl.remove();
             updateCardFromDOM(cardEl);
+            saveState();
         }
     };
     
+    // Add to the groups list
     cardEl.querySelector('.groups-list').appendChild(groupEl);
     
     // Update the group total
@@ -3583,101 +3901,138 @@ function attachCardEventHandlers(cardEl, card) {
     if (groupSearch && searchResults) {
         // Search function
         const searchGroups = (query) => {
-            if (!state.catalogue || !query) {
-                searchResults.innerHTML = '';
-                searchResults.classList.add('hidden');
-                return;
+    if (!state.catalogue || !query) {
+        searchResults.innerHTML = '';
+        searchResults.classList.add('hidden');
+        return;
+    }
+    
+    const lowerQuery = query.toLowerCase();
+    const results = [];
+    
+    // Search through all groups and items
+    Object.entries(state.catalogue).forEach(([groupNumber, group]) => {
+        let matchingItems = [];
+        
+        // Check if group matches
+        const groupMatches = groupNumber.includes(lowerQuery) || 
+            group.regGroupName.toLowerCase().includes(lowerQuery);
+        
+        // Check which items match
+        group.items.forEach(item => {
+            if (item.supportItemNumber.toLowerCase().includes(lowerQuery) ||
+                item.supportItemName.toLowerCase().includes(lowerQuery)) {
+                matchingItems.push(item);
             }
-            
-            const lowerQuery = query.toLowerCase();
-            const results = [];
-            
-            // Search through all groups and items
-            Object.entries(state.catalogue).forEach(([groupNumber, group]) => {
-                // Check if group matches
-                if (groupNumber.includes(lowerQuery) || 
-                    group.regGroupName.toLowerCase().includes(lowerQuery)) {
-                    results.push({
-                        type: 'group',
-                        groupNumber,
-                        groupName: group.regGroupName,
-                        display: `${group.regGroupName} (${groupNumber})`
-                    });
-                }
-                
-                // Check if any items match
-                group.items.forEach(item => {
-                    if (item.supportItemNumber.toLowerCase().includes(lowerQuery) ||
-                        item.supportItemName.toLowerCase().includes(lowerQuery)) {
-                        if (!results.find(r => r.groupNumber === groupNumber)) {
-                            results.push({
-                                type: 'group',
-                                groupNumber,
-                                groupName: group.regGroupName,
-                                display: `${group.regGroupName} (${groupNumber})`,
-                                matchedItem: item.supportItemName
-                            });
-                        }
-                    }
-                });
+        });
+        
+        // Add result if group matches OR has matching items
+        if (groupMatches || matchingItems.length > 0) {
+            results.push({
+                type: 'group',
+                groupNumber,
+                groupName: group.regGroupName,
+                totalItems: group.items.length,
+                matchingItems: matchingItems,
+                directMatch: groupMatches
             });
+        }
+    });
+    
+    // Display results
+    searchResults.innerHTML = '';
+    if (results.length > 0) {
+        results.slice(0, 20).forEach(result => {
+            const div = document.createElement('div');
+            div.className = 'group-search-result';
             
-            // Display results
-            searchResults.innerHTML = '';
-            if (results.length > 0) {
-                results.slice(0, 20).forEach(result => {
-                    const div = document.createElement('div');
-                    div.className = 'group-search-result';
-                    div.innerHTML = `
-                        <div>${result.display}</div>
-                        ${result.matchedItem ? `<div style="font-size: 0.75rem; color: var(--text-muted)">Contains: ${result.matchedItem}</div>` : ''}
-                    `;
-                    div.onclick = () => {
-                        // Add the group directly when clicked
-                        const groupNumber = result.groupNumber;
-                        const catalogueGroup = state.catalogue[groupNumber];
-                        if (!catalogueGroup) return;
-                        
-                        // Check if group already added
-                        if (card.groups.some(g => g.regGroupNumber === groupNumber)) {
-                            showError('This group has already been added');
-                            return;
-                        }
-                        
-                        // Create group data with state price
-                        const groupData = {
-                            regGroupNumber: groupNumber,
-                            regGroupName: catalogueGroup.regGroupName,
-                            items: catalogueGroup.items.map(item => ({
-                                ...item,
-                                selected: false,
-                                overridePrice: null,
-                                statePrice: item.statePrices[card.state] || item.statePrices['NSW'] || 0,
-                                hours: {},
-                                days: {},
-                                quantity: 0
-                            }))
-                        };
-                        
-                        card.groups.push(groupData);
-                        renderGroup(cardEl, groupData);
-                        updateCardTotals(cardEl, card);
-                        
-                        // Clear search
-                        groupSearch.value = '';
-                        searchResults.classList.add('hidden');
-                    };
-                    searchResults.appendChild(div);
+            let displayHtml = `
+                <div class="search-result-header">
+                    <span class="search-result-title">${result.groupName} (${result.groupNumber})</span>
+                    <span class="search-result-count">${result.totalItems} items</span>
+                </div>
+            `;
+            
+            // If search matched items but not the group name/number, show preview
+            if (!result.directMatch && result.matchingItems.length > 0) {
+                displayHtml += `<div class="search-result-matches">`;
+                displayHtml += `<div class="match-count">${result.matchingItems.length} matching item${result.matchingItems.length > 1 ? 's' : ''}:</div>`;
+                
+                // Show first 3 matching items
+                const preview = result.matchingItems.slice(0, 3);
+                preview.forEach(item => {
+                    displayHtml += `<div class="match-item">• ${item.supportItemName}</div>`;
                 });
-                searchResults.classList.remove('hidden');
-            } else {
-                const div = document.createElement('div');
-                div.className = 'group-search-result';
-                div.textContent = 'No results found';
-                searchResults.appendChild(div);
-                searchResults.classList.remove('hidden');
+                
+                if (result.matchingItems.length > 3) {
+                    displayHtml += `<div class="match-more">...and ${result.matchingItems.length - 3} more</div>`;
+                }
+                displayHtml += `</div>`;
             }
-        };
+            
+            div.innerHTML = displayHtml;
+            
+            div.onclick = () => {
+    const groupNumber = result.groupNumber;
+    const catalogueGroup = state.catalogue[groupNumber];
+    if (!catalogueGroup) return;
+    
+    // Check if group already added
+    if (card.groups.some(g => g.regGroupNumber === groupNumber)) {
+        showError('This group has already been added');
+        return;
+    }
+    
+    // Create group data - but only include matching items if search was specific
+    let itemsToInclude;
+    
+    if (!result.directMatch && result.matchingItems.length > 0) {
+        // User searched for specific items - only include those
+        itemsToInclude = result.matchingItems;
+    } else {
+        // User searched for the group itself - include all items
+        itemsToInclude = catalogueGroup.items;
+    }
+    
+    const groupData = {
+        regGroupNumber: groupNumber,
+        regGroupName: catalogueGroup.regGroupName,
+        // Add a filtered flag and search term for display purposes
+        isFiltered: !result.directMatch && result.matchingItems.length > 0,
+        filterTerm: lowerQuery,
+        matchedCount: result.matchingItems.length,
+        totalCount: catalogueGroup.items.length,
+        items: itemsToInclude.map(item => ({
+            ...item,
+            selected: false,
+            overridePrice: null,
+            statePrice: item.statePrices[card.state] || item.statePrices['NSW'] || 0,
+            hours: {},
+            days: {},
+            quantity: 0
+        }))
+    };
+    
+    card.groups.push(groupData);
+    renderGroup(cardEl, groupData);
+    updateCardTotals(cardEl, card);
+    
+    // Clear search
+    groupSearch.value = '';
+    searchResults.classList.add('hidden');
+};
+            searchResults.appendChild(div);
+        });
+        searchResults.classList.remove('hidden');
+    } else {
+        const div = document.createElement('div');
+        div.className = 'group-search-result no-results';
+        div.textContent = 'No matching groups or items found';
+        searchResults.appendChild(div);
+        searchResults.classList.remove('hidden');
+    }
+};
+
 
         // Search input handler
         groupSearch.oninput = (e) => {
@@ -3748,18 +4103,16 @@ if (reportBtn) {
 
     // Delete button (now in dropdown)
     cardEl.querySelector('.delete-btn').onclick = () => {
-        // Hide dropdown first
-        actionsDropdown.classList.add('hidden');
-        
-        if (confirm('Delete this funding period? This cannot be undone.')) {
-            const index = state.cards.findIndex(c => c.id === card.id);
-            if (index >= 0) {
-                state.cards.splice(index, 1);
-                cardEl.remove();
-                saveState();
-            }
+    if (confirm('Delete this funding period? This cannot be undone.')) {
+        const index = state.cards.findIndex(c => c.id === card.id);
+        if (index >= 0) {
+            state.cards.splice(index, 1);
+            cardEl.remove();
+            saveState();
         }
-    };
+    }
+};
+
 
     // Continue button
     cardEl.querySelector('.continue-btn').onclick = () => {
@@ -4081,8 +4434,8 @@ function updateCardFromDOM(cardEl) {
     card.period.end = cardEl.querySelector('.end-date').value;
     
     // Ensure budget values are numbers, not strings
-    card.budget.total = parseFloat(cardEl.querySelector('.budget-amount').value) || 0;
-    card.budget.excluded = parseFloat(cardEl.querySelector('.excluded-amount').value) || 0;
+    card.budget.total = parseFloat(cardEl.querySelector('.budget-amount').value.replace(/,/g, '')) || 0;
+card.budget.excluded = parseFloat(cardEl.querySelector('.excluded-amount').value.replace(/,/g, '')) || 0;
     
     // Only set carryOver if the element exists
     const carryOverEl = cardEl.querySelector('.carry-in-amount');
