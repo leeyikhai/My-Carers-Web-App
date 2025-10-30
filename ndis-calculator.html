@@ -864,9 +864,14 @@ body {
 
 /* Cards Container */
 .cards-container {
-    padding: 1rem;
-    max-width: 800px;
+    padding: 1rem 0.5rem; /* Reduced from 1rem all around */
+    max-width: 900px; /* Increased from 800px to use more screen width */
     margin: 0 auto 2rem;
+}
+@media (max-width: 640px) {
+    .cards-container {
+        padding: 0.5rem 0.25rem; /* Very minimal side padding on mobile */
+    }
 }
 
 /* Budget Card */
@@ -925,7 +930,7 @@ body {
 }
 
 .card-section {
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
 }
 
 .date-range,
@@ -1248,6 +1253,23 @@ body {
 }
 
 /* Modal */
+@media (max-width: 640px) {
+    .modal {
+        padding: 1rem 0.5rem; /* Reduce padding on mobile */
+    }
+    
+    .modal-content {
+        max-width: calc(100% - 1rem); /* Ensure space on sides */
+        max-height: 90vh; /* More height on mobile */
+    }
+}
+
+.modal.show {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 .modal {
     display: none;
     position: fixed;
@@ -1257,14 +1279,8 @@ body {
     height: 100%;
     background: rgba(0, 0, 0, 0.5);
     z-index: 1000;
-    padding: 1rem;
+    padding: 1rem; /* This is already there */
     overflow-y: auto;
-}
-
-.modal.show {
-    display: flex;
-    align-items: center;
-    justify-content: center;
 }
 
 .modal-content {
@@ -1277,7 +1293,9 @@ body {
     display: flex;
     flex-direction: column;
     box-shadow: var(--shadow-lg);
+    margin: 0 auto; /* Center it */
 }
+
 
 .modal-header {
     padding: 1rem;
