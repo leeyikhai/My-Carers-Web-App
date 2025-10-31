@@ -2299,6 +2299,166 @@ function getItemUsageDescription(item) {
 
 
 // Add this function to convert image URL to base64
+async function createSupportGroupTable(doc, card, x, y, width) {
+    const totals = computeCardTotals(card);
+    const data = [];
+    
+    // Prepare data for each group
+    card.groups.forEach(group => {
+        const groupTotal = (totals.perGroupCents[group.regGroupNumber] || 0) / 100;
+        let groupHasItems = false;
+        
+        group.items.forEach(item => {
+            if (!item.selected) return;
+            
+            // Calculate item usage
+            let quantity = 0;
+            let usage = '';
+            
+            if (item.unit === 'H') {
+                // Calculate total hours across the period
+                let totalHours = 0;
+                
+                // Count days and calculate hours
+                eachDateInclusive(card.period.start, card.period.end, (date) => {
+                    const dayOfWeek = getDayOfWeek(date);
+                    const isPH = isPublicHoliday(date, card.state);
+                    const dayQty = resolveQuantityForDate(item, date, dayOfWeek, { isPH, isSleepover: isSleepoverItem(item) });
+                    totalHours += dayQty;
+                });
+                
+                quantity = totalHours;
+                usage = getItemUsageDescription(item);
+            } else {
+                // For E items, show quantity or days
+                if (getEItemType(item.supportItemName) === 'daily' && item.days) {
+                    const selectedDays = Object.entries(item.days)
+                        .filter(([day, selected]) => selected)
+                        .map(([day]) => day);
+                    usage = selectedDays.length ? `Days: ${selectedDays.join(', ')}` : '';
+                } else if (item.quantity) {
+                    quantity = item.quantity;
+                    usage = `Quantity: ${item.quantity}`;
+                }
+            }
+            
+            const unitPrice = item.statePrice || 0;
+            const lineTotal = quantity * unitPrice;
+            
+            if (quantity > 0 || (item.days && Object.values(item.days).some(v => v))) {
+                data.push([
+                    item.supportItemName,
+                    item.supportItemNumber,
+                    usage,
+                    quantity > 0 ? quantity.toString() : '',
+                    formatCurrency(unitPrice),
+                    formatCurrency(lineTotal)
+                ]);
+                groupHasItems = true;
+            }
+        });
+        
+        // Add group total row if group has items
+        if (groupHasItems && groupTotal > 0) {
+            data.push([
+                `${group.regGroupName} Total`,
+                '',
+                '',
+                '',
+                '',
+                formatCurrency(groupTotal)
+            ]);
+        }
+    });
+    
+    if (data.length === 0) {
+        doc.setFontSize(10);
+        doc.text('No support items with quantities entered', x, y);
+        return;
+    }
+    
+    // Create the table
+    doc.autoTable({
+        startY: y,
+        head: [['Support Item', 'Code', 'Usage', 'Qty', 'Rate', 'Total']],
+        body: data,
+        margin: { left: x, right: 20 },
+        columnStyles: {
+            0: { cellWidth: 45 },
+            1: { cellWidth: 20 },
+            2: { cellWidth: 30 },
+            3: { cellWidth: 16 },
+            4: { cellWidth: 16, halign: 'right' },
+            5: { cellWidth: 20, halign: 'right' }
+        },
+        styles: {
+            fontSize: 8,
+            cellPadding: 2
+        },
+        headStyles: {
+            fillColor: [37, 99, 235],
+            textColor: [255, 255, 255]
+        },
+        didDrawCell: (data) => {
+            // Bold group total rows
+            if (data.cell.raw && data.cell.raw.includes('Total') && data.column.index === 0) {
+                doc.setFont(undefined, 'bold');
+                doc.setFillColor(248, 249, 250);
+            }
+        }
+    });
+}
+
+// Helper function to generate individual period sections in multi-period report
+async function generatePeriodSection(doc, card, periodNumber) {
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 20;
+    const contentWidth = pageWidth - (margin * 2);
+    
+    let y = margin;
+    
+    // Period header
+    doc.setFontSize(20);
+    doc.setFont(undefined, 'bold');
+    doc.text(`Period ${periodNumber}`, margin, y);
+    
+    doc.setFontSize(12);
+    doc.setFont(undefined, 'normal');
+    const startDate = new Date(card.period.start);
+    const endDate = new Date(card.period.end);
+    doc.text(`${startDate.toLocaleDateString('en-AU')} to ${endDate.toLocaleDateString('en-AU')}`, margin, y + 8);
+    
+    y += 25;
+    
+    // Budget summary
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.text('Budget Summary', margin, y);
+    y += 10;
+    
+    if (card.settings.calculateByGroup) {
+        await createGroupBudgetSummaryTable(doc, card, margin, y, contentWidth);
+    } else {
+        await createBudgetTable(doc, card, margin, y, contentWidth);
+    }
+    
+    y = doc.lastAutoTable.finalY + 20;
+    
+    // Support groups
+    if (y > pageHeight - 100) {
+        doc.addPage();
+        y = margin;
+    }
+    
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.text('Support Groups', margin, y);
+    y += 10;
+    
+    await createSupportGroupTable(doc, card, margin, y, contentWidth);
+}
+
 async function getBase64FromUrl(url) {
     const response = await fetch(url);
     const blob = await response.blob();
@@ -2346,466 +2506,7 @@ function categorizeItems(items) {
     return categories;
 }
 
-async function generatePDFReport(card) {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    
-    // Page settings
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 20;
-    const contentWidth = pageWidth - (margin * 2);
-    const yLimit = pageHeight - 25; // Leave space for footer
-    
-    let y = margin; // Start at top margin
-    
-    // Helper functions
-    const ensureSpace = (needed = 10) => {
-        if (y + needed > yLimit) {
-            addPageNumber();
-            doc.addPage();
-            y = margin;
-            return true; // Indicates new page was created
-        }
-        return false;
-    };
-    
-    const addPageNumber = () => {
-        const pageNum = doc.internal.getCurrentPageInfo().pageNumber;
-        doc.setFontSize(9);
-        doc.setFont(undefined, 'normal');
-        doc.setTextColor(128, 128, 128);
-        doc.text(`Page ${pageNum}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
-        doc.setTextColor(0, 0, 0);
-    };
-    
-    // Calculate data with safe numbers
-    const totals = computeCardTotals(card);
-    const used = totals.usedCents / 100;
-    const totalBudget = parseFloat(card.budget.total) || 0;
-    const carryOver = parseFloat(card.budget.carryOver) || 0;
-    const excluded = parseFloat(card.budget.excluded) || 0;
-    const available = totalBudget + carryOver - excluded;
-    const remaining = available - used;
-    const weeks = Math.max(1, totals.weeks);
-    const weekly = used / weeks;
-    
-    // Colors
-    const primaryColor = [37, 99, 235];
-    const grayColor = [128, 128, 128];
-    const errorColor = [239, 68, 68];
-    const lightGray = [248, 249, 250];
-    
-    // HEADER SECTION
-    // Logo on left
-    try {
-        const logoBase64 = await getBase64FromUrl('https://gqchhsayqxttewthcsah.supabase.co/storage/v1/object/public/Branding/LOGO%20No%20Background.png');
-        const logoHeight = 20;
-        const logoWidth = logoHeight * 4; // Adjust ratio as needed
-        doc.addImage(logoBase64, 'PNG', margin, y, logoWidth, logoHeight, undefined, 'FAST');
-    } catch (e) {
-        doc.setFontSize(20);
-        doc.setFont(undefined, 'bold');
-        doc.setTextColor(...primaryColor);
-        doc.text('MY CARERS', margin, y + 10);
-        doc.setTextColor(0, 0, 0);
-    }
-    
-    // Company details on right
-    doc.setFontSize(9);
-    doc.setFont(undefined, 'normal');
-    doc.setTextColor(...grayColor);
-    const rightX = pageWidth - margin;
-    doc.text('ABN: 34 787 739 579', rightX, y, { align: 'right' });
-    doc.text('Email: admin@mycarers.com.au', rightX, y + 5, { align: 'right' });
-    doc.text('S2, Lvl 6, 12 Railway Pde, Burwood, NSW 2134', rightX, y + 10, { align: 'right' });
-    doc.setTextColor(0, 0, 0);
-    
-    // Move down past header elements
-    y += 35;
-    
-    // Separator line
-    doc.setDrawColor(...grayColor);
-    doc.setLineWidth(0.5);
-    doc.line(margin, y, pageWidth - margin, y);
-    
-    y += 15; // Space after line
-    
-    // TITLE SECTION
-    doc.setFontSize(24);
-    doc.setFont(undefined, 'bold');
-    doc.text('NDIS Funding Report', pageWidth / 2, y, { align: 'center' });
-    y += 12;
-    
-    doc.setFontSize(11);
-    doc.setFont(undefined, 'normal');
-    doc.setTextColor(...grayColor);
-    const dateStr = new Date().toLocaleDateString('en-AU', { 
-        day: 'numeric', 
-        month: 'long', 
-        year: 'numeric' 
-    });
-    doc.text(`Created: ${dateStr}`, pageWidth / 2, y, { align: 'center' });
-    doc.setTextColor(0, 0, 0);
-    y += 20;
-    
-    // PARTICIPANT INFO SECTION
-    ensureSpace(50);
-    
-    // Background box
-    doc.setFillColor(...lightGray);
-    doc.roundedRect(margin - 5, y - 5, contentWidth + 10, 45, 3, 3, 'F');
-    
-    doc.setFontSize(12);
-    doc.setFont(undefined, 'bold');
-    doc.text('PARTICIPANT INFORMATION', margin, y + 3);
-    y += 12;
-    
-    doc.setFontSize(10);
-    doc.setFont(undefined, 'normal');
-    const participantName = card.participant.name || 'Not specified';
-    
-    // Handle long names
-    const nameLines = doc.splitTextToSize(`Name: ${participantName}`, contentWidth - 10);
-    nameLines.forEach(line => {
-        doc.text(line, margin, y);
-        y += 6;
-    });
-    
-    doc.text(`NDIS Number: ${card.participant.ndisNumber || 'Not specified'}`, margin, y);
-    y += 6;
-    
-    // Period dates
-    const startDate = new Date(card.period.start);
-    const endDate = new Date(card.period.end);
-    const periodText = `Period: ${startDate.toLocaleDateString('en-AU', { 
-        day: 'numeric', month: 'long', year: 'numeric' 
-    })} to ${endDate.toLocaleDateString('en-AU', { 
-        day: 'numeric', month: 'long', year: 'numeric' 
-    })}`;
-    
-    doc.text(periodText, margin, y);
-    y += 6;
-    doc.text(`State: ${card.state}`, margin, y);
-    y += 20; // Extra space after section
-    
-    // PERIOD BREAKDOWN SECTION
-    ensureSpace(50);
-doc.setFontSize(12);
-doc.setFont(undefined, 'bold');
-doc.text('PERIOD BREAKDOWN', margin, y);
-y += 10;
 
-const dayCount = countDaysInPeriod(startDate, endDate);
-const phInPeriod = state.publicHolidays.filter(ph => {
-    const phDate = new Date(ph.date);
-    return phDate >= startDate && phDate <= endDate;
-});
-
-// Day grid with better spacing
-doc.setFontSize(10);
-const gridStartY = y;
-const colWidth = contentWidth / 4;
-const rowHeight = 15;
-
-const dayData = [
-    ['Monday', dayCount.Mon], 
-    ['Tuesday', dayCount.Tue], 
-    ['Wednesday', dayCount.Wed], 
-    ['Thursday', dayCount.Thu],
-    ['Friday', dayCount.Fri], 
-    ['Saturday', dayCount.Sat], 
-    ['Sunday', dayCount.Sun], 
-    ['Public Holidays', phInPeriod.length]
-];
-
-dayData.forEach((item, index) => {
-    const col = index % 4;
-    const row = Math.floor(index / 4);
-    const xPos = margin + (col * colWidth);
-    const yPos = gridStartY + (row * rowHeight);
-    
-    // Draw the label
-    doc.setFont(undefined, 'normal');
-    doc.text(`${item[0]}:`, xPos, yPos);
-    
-    // Calculate where to place the number - use text width
-    const labelWidth = doc.getTextWidth(`${item[0]}:`);
-    const numberX = xPos + labelWidth + 3; // 3px spacing after colon
-    
-    doc.setFont(undefined, 'bold');
-    doc.setTextColor(...primaryColor);
-    doc.text(item[1].toString(), numberX, yPos);
-    doc.setTextColor(0, 0, 0);
-});
-
-y = gridStartY + (2 * rowHeight) + 15; // Move past grid with spacing
-
-    
-    // BUDGET SUMMARY SECTION
-    ensureSpace(80);
-    doc.setFontSize(12);
-    doc.setFont(undefined, 'bold');
-    doc.text('BUDGET SUMMARY', margin, y);
-    y += 10;
-    
-    const budgetData = [
-        ['Total Budget', formatCurrency(totalBudget)],
-        ['Carry Over', formatCurrency(carryOver)],
-        ['Excluded', formatCurrency(excluded)],
-        ['Available', formatCurrency(available)],
-        ['Forecasted Usage', formatCurrency(used)],
-        ['Remaining', formatCurrency(remaining), remaining < 0],
-        ['Weekly Average', formatCurrency(weekly)]
-    ];
-    
-    doc.setFontSize(10);
-    const rowHeight2 = 8;
-    budgetData.forEach((row, index) => {
-        // Alternating backgrounds
-        if (index % 2 === 0) {
-            doc.setFillColor(...lightGray);
-            doc.rect(margin - 5, y - 5, contentWidth + 10, rowHeight2, 'F');
-        }
-        
-        doc.setFont(undefined, 'normal');
-        doc.text(row[0], margin, y);
-        
-        // Handle negative remaining
-        if (row[2]) {
-            doc.setTextColor(...errorColor);
-        }
-        
-        doc.setFont(undefined, 'bold');
-        doc.text(row[1], pageWidth - margin - 5, y, { align: 'right' });
-        doc.setTextColor(0, 0, 0);
-        
-        y += rowHeight2 + 1;
-    });
-    
-    y += 15; // Section spacing
-    
-    // WEEKLY BREAKDOWN SECTION
-    ensureSpace(30);
-    doc.setFontSize(12);
-    doc.setFont(undefined, 'bold');
-    doc.text('WEEKLY COST BREAKDOWN', margin, y);
-    y += 10;
-    
-    doc.setFontSize(10);
-    doc.setFont(undefined, 'normal');
-    
-    let weeklyTotal = 0;
-    card.groups.forEach(group => {
-        group.items.forEach(item => {
-            if (!item.selected || item.unit !== 'H' || !item.hours) return;
-            
-            let weeklyBreakdown = [];
-            let itemWeeklyTotal = 0;
-            
-            // Collect hours
-            if (item.hours.weekday > 0) {
-                ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].forEach(day => {
-                    weeklyBreakdown.push(`${day}: ${item.hours.weekday}h`);
-                    itemWeeklyTotal += item.hours.weekday;
-                });
-            } else {
-                ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach(day => {
-                    if (item.hours[day] > 0) {
-                        weeklyBreakdown.push(`${day}: ${item.hours[day]}h`);
-                        itemWeeklyTotal += item.hours[day];
-                    }
-                });
-            }
-            
-            if (item.hours.saturday > 0 && !item.hours.weekday) {
-                weeklyBreakdown.push(`Sat: ${item.hours.saturday}h`);
-                itemWeeklyTotal += item.hours.saturday;
-            }
-            
-            if (item.hours.sunday > 0 && !item.hours.weekday) {
-                weeklyBreakdown.push(`Sun: ${item.hours.sunday}h`);
-                itemWeeklyTotal += item.hours.sunday;
-            }
-            
-            if (itemWeeklyTotal > 0) {
-                ensureSpace(20);
-                
-                const weeklyItemCost = itemWeeklyTotal * (item.statePrice || 0);
-                weeklyTotal += weeklyItemCost;
-                
-                // Item name
-                doc.setFont(undefined, 'bold');
-                const itemNameLines = doc.splitTextToSize(item.supportItemName, contentWidth - 10);
-                itemNameLines.forEach(line => {
-                    doc.text(line, margin, y);
-                    y += 5;
-                });
-                
-                // Hours
-                doc.setFont(undefined, 'normal');
-                doc.setFontSize(9);
-                const hoursText = doc.splitTextToSize(weeklyBreakdown.join(', '), contentWidth - 15);
-                hoursText.forEach(line => {
-                    doc.text(line, margin + 5, y);
-                    y += 4;
-                });
-                
-                // Cost
-                doc.text(`Weekly cost: ${formatCurrency(weeklyItemCost)}`, margin + 5, y);
-                y += 8;
-            }
-        });
-    });
-    
-    if (weeklyTotal > 0) {
-        doc.setFont(undefined, 'bold');
-        doc.setFontSize(11);
-        doc.text(`Total Weekly Cost: ${formatCurrency(weeklyTotal)}`, margin, y);
-        y += 15;
-    }
-    
-    // SUPPORT GROUPS SECTION
-    ensureSpace(30);
-    doc.setFontSize(12);
-    doc.setFont(undefined, 'bold');
-    doc.text('SUPPORT GROUPS BREAKDOWN', margin, y);
-    y += 10;
-    
-    let hasGroups = false;
-    
-    card.groups.forEach(group => {
-        const groupTotal = (totals.perGroupCents[group.regGroupNumber] || 0) / 100;
-        let groupHasItems = false;
-        
-        // Check if group has selected items with data
-        group.items.forEach(item => {
-            if (!item.selected) return;
-            
-            let hasData = false;
-            if (item.unit === 'H' && item.hours) {
-                const hasHours = Object.keys(item.hours).some(key => item.hours[key] > 0);
-                if (hasHours) hasData = true;
-            } else if (item.unit === 'E') {
-                if (item.quantity > 0) hasData = true;
-                else if (item.days && Object.values(item.days).some(v => v)) hasData = true;
-            }
-            
-            if (hasData) groupHasItems = true;
-        });
-        
-        if (groupHasItems) {
-            hasGroups = true;
-            ensureSpace(30);
-            
-            // Group header with total on separate line
-            doc.setFont(undefined, 'bold');
-            doc.setFontSize(11);
-            doc.text(group.regGroupName, margin, y);
-            y += 6;
-            
-            doc.setFont(undefined, 'normal');
-            doc.setFontSize(10);
-            doc.text(`Total: ${formatCurrency(groupTotal)}`, margin, y);
-            y += 5;
-            doc.text(`(${group.regGroupNumber})`, margin, y);
-            y += 8;
-            
-            // List items
-            group.items.forEach(item => {
-                if (!item.selected) return;
-                
-                ensureSpace(15);
-                
-                doc.setFontSize(9);
-                const itemLines = doc.splitTextToSize(`• ${item.supportItemName}`, contentWidth - 15);
-                itemLines.forEach(line => {
-                    doc.text(line, margin + 5, y);
-                    y += 4;
-                });
-                
-                doc.text(`Code: ${item.supportItemNumber}`, margin + 10, y);
-                y += 4;
-                
-                const usage = getItemUsageDescription(item);
-                if (usage && !['No hours set', 'No days selected', 'No quantity set'].includes(usage)) {
-                    const usageLines = doc.splitTextToSize(usage, contentWidth - 20);
-                    usageLines.forEach(line => {
-                        doc.text(line, margin + 10, y);
-                        y += 4;
-                    });
-                }
-                
-                y += 3;
-            });
-            
-            y += 5;
-        }
-    });
-    
-    if (!hasGroups) {
-        doc.setFontSize(10);
-        doc.setFont(undefined, 'normal');
-        doc.text('No support items with hours/quantities entered', margin, y);
-        y += 15;
-    }
-    
-    // NOTES SECTION
-    if (card.notes && card.notes.trim()) {
-        ensureSpace(30);
-        doc.setFontSize(12);
-        doc.setFont(undefined, 'bold');
-        doc.text('NOTES & ASSUMPTIONS', margin, y);
-        y += 8;
-        
-        doc.setFontSize(10);
-        doc.setFont(undefined, 'normal');
-        const noteLines = doc.splitTextToSize(card.notes, contentWidth);
-        noteLines.forEach(line => {
-            ensureSpace(6);
-            doc.text(line, margin, y);
-            y += 5;
-        });
-        y += 10;
-    }
-    
-    // PUBLIC HOLIDAYS SECTION
-    ensureSpace(30);
-    doc.setFontSize(12);
-    doc.setFont(undefined, 'bold');
-    doc.text(`PUBLIC HOLIDAYS ${card.settings.includePH ? 'INCLUDED' : 'EXCLUDED'}`, margin, y);
-    y += 8;
-    
-    doc.setFontSize(10);
-    doc.setFont(undefined, 'normal');
-    
-    if (phInPeriod.length > 0) {
-        doc.text('Public holidays in this period:', margin, y);
-        y += 6;
-        
-        phInPeriod.forEach(ph => {
-            ensureSpace(6);
-            const phDate = new Date(ph.date);
-            const phDateStr = phDate.toLocaleDateString('en-AU', { 
-                day: 'numeric', 
-                month: 'long', 
-                year: 'numeric' 
-            });
-            doc.text(`• ${phDateStr} - ${ph.name}`, margin + 5, y);
-            y += 5;
-        });
-    } else {
-        doc.text('No public holidays within this period', margin, y);
-    }
-    
-    // Add page number to final page
-    addPageNumber();
-    
-    // Save PDF with sanitized filename
-    const safeName = participantName.replace(/[^a-zA-Z0-9]/g, '_');
-    doc.save(`NDIS_Report_${safeName}.pdf`);
-}
-//REPORT END
 
 // ===== QR Code Functions =====
 function buildQRData(card) {
@@ -3178,7 +2879,23 @@ async function generateMultiPeriodReport() {
         const primaryColor = [37, 99, 235];
         const grayColor = [128, 128, 128];
         const errorColor = [239, 68, 68];
-        const lightGray = [248, 249, 250];        
+        const lightGray = [248, 249, 250];
+        
+        // Title page with header
+        
+        // Generate QR Code for multi-period data
+        let qrCodeDataUrl = null;
+        try {
+            // Create combined data for QR
+            const multiPeriodData = {
+                v: 2, // Version 2 for multi-period
+                periods: state.cards.map(card => buildQRData(card))
+            };
+            qrCodeDataUrl = await generateQRCode(JSON.stringify(multiPeriodData));
+        } catch (error) {
+            console.error('Error generating multi-period QR code:', error);
+        }
+        
         // Logo on left
         try {
             const logoBase64 = await getBase64FromUrl('https://gqchhsayqxttewthcsah.supabase.co/storage/v1/object/public/Branding/LOGO%20No%20Background.png');
@@ -3199,6 +2916,18 @@ async function generateMultiPeriodReport() {
             doc.setFont(undefined, 'bold');
             doc.setTextColor(...primaryColor);
             doc.text('MY CARERS', margin, y + 10);
+            doc.setTextColor(0, 0, 0);
+        }
+        
+        // QR Code on right
+        if (qrCodeDataUrl) {
+            const qrSize = 40;
+            doc.addImage(qrCodeDataUrl, 'PNG', pageWidth - margin - qrSize, y, qrSize, qrSize);
+            
+            // QR Code label
+            doc.setFontSize(7);
+            doc.setTextColor(...grayColor);
+            doc.text('Scan for all periods', pageWidth - margin - qrSize/2, y + qrSize + 3, { align: 'center' });
             doc.setTextColor(0, 0, 0);
         }
         
@@ -3262,40 +2991,12 @@ async function generateMultiPeriodReport() {
 }
 
 async function createExecutiveSummaryTable(doc, x, y, width) {
-    const headers = ['Period', 'Dates', 'Budget', 'Used', 'Remaining', 'Status'];
-    const colWidths = [10, 35, 20, 20, 20, 15];
-    const cellHeight = 8;
-    const headerHeight = 10;
+    const headers = ['Period', 'Dates', 'Budget', 'Used', 'Remaining'];
+    const colWidths = [10, 35, 20, 20, 15]; // Adjusted widths without status column
     
-    // Colors
-    const primaryColor = [37, 99, 235];
-    const successColor = [16, 185, 129];
-    const errorColor = [239, 68, 68];
-    const lightGray = [248, 249, 250];
+    const data = [];
     
-    // Draw header
-    doc.setFillColor(...primaryColor);
-    doc.rect(x, y, width, headerHeight, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFont(undefined, 'bold');
-    doc.setFontSize(9);
-    
-    let currentX = x;
-    headers.forEach((header, i) => {
-        const cellWidth = (width * colWidths[i]) / 100;
-        doc.text(header, currentX + cellWidth / 2, y + 6, { align: 'center' });
-        currentX += cellWidth;
-    });
-    
-    y += headerHeight;
-    
-    // Draw rows
-    doc.setTextColor(0, 0, 0);
-    doc.setFont(undefined, 'normal');
-    doc.setFontSize(8);
-    
-    let totalCarryOver = 0;
-    
+    // Prepare data rows
     state.cards.forEach((card, index) => {
         const totals = computeCardTotals(card);
         const used = totals.usedCents / 100;
@@ -3303,11 +3004,9 @@ async function createExecutiveSummaryTable(doc, x, y, width) {
         let available, remaining;
         
         if (card.settings.calculateByGroup) {
-            // Sum up group budgets
             available = totals.totalAvailableCents / 100;
             remaining = totals.totalRemainingCents / 100;
         } else {
-            // Use overall budget
             const totalBudget = parseFloat(card.budget.total) || 0;
             const carryOver = parseFloat(card.budget.carryOver) || 0;
             const excluded = parseFloat(card.budget.excluded) || 0;
@@ -3315,54 +3014,18 @@ async function createExecutiveSummaryTable(doc, x, y, width) {
             remaining = available - used;
         }
         
-        // Alternate row colors
-        if (index % 2 === 0) {
-            doc.setFillColor(...lightGray);
-            doc.rect(x, y, width, cellHeight, 'F');
-        }
-        
-        currentX = x;
-        const rowData = [
+        data.push([
             `${index + 1}`,
             `${formatDateDDMMYYYY(card.period.start)} - ${formatDateDDMMYYYY(card.period.end)}`,
             formatCurrency(available),
             formatCurrency(used),
-            formatCurrency(remaining),
-            remaining >= 0 ? 'OK' : 'OVER'
-        ];
-        
-        rowData.forEach((cell, i) => {
-            const cellWidth = (width * colWidths[i]) / 100;
-            
-            if (i === 5) { // Status column
-                doc.setTextColor(...(remaining >= 0 ? successColor : errorColor));
-                doc.setFontSize(12); // Larger size for symbols
-            }
-            
-            doc.text(cell, currentX + cellWidth / 2, y + 5, { align: 'center' });
-            
-            if (i === 5) {
-                doc.setTextColor(0, 0, 0);
-                doc.setFontSize(8); // Reset to normal size
-            }
-            
-            currentX += cellWidth;
-        });
-        
-        y += cellHeight;
-        totalCarryOver = remaining; // Track for next period
+            formatCurrency(remaining)
+        ]);
     });
-    
-    // Add grand total row
-    doc.setFillColor(...primaryColor);
-    doc.rect(x, y, width, cellHeight, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFont(undefined, 'bold');
     
     // Calculate grand totals
     let grandBudget = 0;
     let grandUsed = 0;
-    let grandRemaining = 0;
     
     state.cards.forEach(card => {
         const totals = computeCardTotals(card);
@@ -3381,52 +3044,59 @@ async function createExecutiveSummaryTable(doc, x, y, width) {
         grandBudget += available;
         grandUsed += used;
     });
-    grandRemaining = grandBudget - grandUsed;
     
-    currentX = x;
-    const totalRowData = [
+    // Add total row
+    data.push([
         'TOTAL',
         '',
         formatCurrency(grandBudget),
         formatCurrency(grandUsed),
-        formatCurrency(grandRemaining),
-        grandRemaining >= 0 ? 'OK' : 'OVER'
-    ];
+        formatCurrency(grandBudget - grandUsed)
+    ]);
     
-    totalRowData.forEach((cell, i) => {
-        const cellWidth = (width * colWidths[i]) / 100;
-        doc.text(cell, currentX + cellWidth / 2, y + 5, { align: 'center' });
-        currentX += cellWidth;
+    // Use autoTable for clean formatting
+    doc.autoTable({
+        startY: y,
+        head: [headers],
+        body: data,
+        margin: { left: x, right: 20 },
+        columnStyles: {
+            0: { cellWidth: (width * colWidths[0]) / 100, halign: 'center' },
+            1: { cellWidth: (width * colWidths[1]) / 100 },
+            2: { cellWidth: (width * colWidths[2]) / 100, halign: 'right' },
+            3: { cellWidth: (width * colWidths[3]) / 100, halign: 'right' },
+            4: { cellWidth: (width * colWidths[4]) / 100, halign: 'right' }
+        },
+        styles: {
+            fontSize: 8,
+            cellPadding: 3
+        },
+        headStyles: {
+            fillColor: [37, 99, 235],
+            textColor: [255, 255, 255],
+            fontStyle: 'bold'
+        },
+        alternateRowStyles: {
+            fillColor: [248, 249, 250]
+        },
+        didDrawCell: (data) => {
+            // Bold and highlight total row
+            if (data.row.index === state.cards.length) {
+                doc.setFillColor(37, 99, 235);
+                doc.setTextColor(255, 255, 255);
+                doc.setFont(undefined, 'bold');
+            }
+            // Highlight negative remaining in red
+            if (data.column.index === 4 && data.row.index < state.cards.length) {
+                const value = parseFloat(data.cell.raw.replace(/[$,]/g, ''));
+                if (value < 0) {
+                    doc.setTextColor(239, 68, 68);
+                }
+            }
+        }
     });
     
-    doc.setTextColor(0, 0, 0);
-    doc.setFont(undefined, 'normal');
-    y += cellHeight;
-    
-    // Draw borders
-    doc.setDrawColor(200, 200, 200);
-    doc.setLineWidth(0.1);
-    
-    // Calculate actual table height
-    const tableHeight = (state.cards.length + 2) * cellHeight + headerHeight; // +2 for header and total row
-    const tableStartY = y - tableHeight + cellHeight; // Adjust for total row
-    
-    // Horizontal lines
-    for (let i = 0; i <= state.cards.length + 2; i++) {
-        const lineY = tableStartY + (i * cellHeight);
-        doc.line(x, lineY, x + width, lineY);
-    }
-    
-    // Vertical lines
-    currentX = x;
-    for (let i = 0; i <= headers.length; i++) {
-        doc.line(currentX, tableStartY, currentX, tableStartY + tableHeight);
-        if (i < headers.length) {
-            currentX += (width * colWidths[i]) / 100;
-        }
-    }
-    
-    return y + 10;
+    return doc.lastAutoTable.finalY + 10;
 }
 
 async function generatePeriodSection(doc, card, periodNumber) {
@@ -4800,6 +4470,12 @@ function renderCard(card) {
     // Apply calculate by group class if active
     if (card.settings.calculateByGroup) {
         cardEl.classList.add('calculate-by-group-active');
+        // Ensure all group budget sections are visible
+        setTimeout(() => {
+            cardEl.querySelectorAll('.group-budget-section').forEach(section => {
+                section.style.display = 'block';
+            });
+        }, 100);
     }
     cardEl.querySelector('.notes-input').value = card.notes || '';
 
