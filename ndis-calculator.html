@@ -3178,9 +3178,7 @@ async function generateMultiPeriodReport() {
         const primaryColor = [37, 99, 235];
         const grayColor = [128, 128, 128];
         const errorColor = [239, 68, 68];
-        const lightGray = [248, 249, 250];
-        
-        
+        const lightGray = [248, 249, 250];        
         // Logo on left
         try {
             const logoBase64 = await getBase64FromUrl('https://gqchhsayqxttewthcsah.supabase.co/storage/v1/object/public/Branding/LOGO%20No%20Background.png');
@@ -5066,8 +5064,12 @@ function renderGroup(cardEl, groupData) {
     // Add to the groups list
     cardEl.querySelector('.groups-list').appendChild(groupEl);
     
-    // Update the group total
-    updateGroupTotal(cardEl, groupEl, groupData.regGroupNumber);
+    // Get the card for totals update
+    const card = state.cards.find(c => c.id === cardEl.dataset.cardId);
+    if (card) {
+        // Update the group total
+        updateGroupTotal(cardEl, groupEl, groupData.regGroupNumber);
+    }
 }
 
 function updateGroupTotal(cardEl, groupEl, groupNumber) {
@@ -5655,7 +5657,7 @@ function updateCardTotals(cardEl, card) {
     
     if (collapsedUsed) collapsedUsed.textContent = formatCurrency(used);
     if (collapsedRemaining) {
-        collapsedRemaining.textContent = totalBudget === 0 && carryOver === 0 ? '—' : formatCurrency(remaining);
+        collapsedRemaining.textContent = available === 0 ? '—' : formatCurrency(remaining);
         collapsedRemaining.classList.toggle('negative', remaining < 0);
     }
     if (collapsedBudget) collapsedBudget.textContent = formatCurrency(available);
