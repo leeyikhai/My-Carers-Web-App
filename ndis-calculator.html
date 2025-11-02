@@ -1310,11 +1310,59 @@ body {
     display: block;
 }
 
-.collapsed-info-row {
+/* Group-based collapsed display */
+.collapsed-groups-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.collapsed-group-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.375rem 0;
+}
+
+.collapsed-group-name {
+    font-weight: 500;
+    font-size: 0.875rem;
+    min-width: 200px;
+}
+
+.collapsed-group-totals {
+    display: flex;
+    gap: 1rem;
+    flex: 1;
+}
+
+.collapsed-total-item {
+    text-align: center;
+    flex: 1;
+}
+
+.collapsed-total-label {
+    display: block;
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    margin-bottom: 0.125rem;
+}
+
+.collapsed-total-value {
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.collapsed-total-value.negative {
+    color: var(--danger);
+}
+
+/* Standard collapsed view (when not calculate by group) */
+.collapsed-standard-totals {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 0.5rem;
 }
 
 .collapsed-dates {
@@ -1854,6 +1902,94 @@ body {
 .hidden {
     display: none !important;
 }
+
+/* Group Budget Enhancements */
+.calculate-by-group-active .budget-inputs input,
+.calculate-by-group-active .carry-in-amount {
+    background: var(--gray-100);
+    cursor: not-allowed;
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.group-budget-section {
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 0.75rem;
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+    display: none;
+}
+
+.calculate-by-group-active .group-budget-section {
+    display: block !important;
+}
+
+.group-budget-inputs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+}
+
+.group-budget-inputs .form-group {
+    margin: 0;
+}
+
+.group-budget-inputs .form-group label {
+    font-size: 0.7rem;
+}
+
+.group-budget-inputs input {
+    width: 100%;
+    font-size: 0.875rem;
+    padding: 0.375rem 0.5rem;
+}
+
+.group-budget-totals {
+    display: flex;
+    justify-content: space-around;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    padding: 0.5rem;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+}
+
+.group-budget-total-item {
+    text-align: center;
+}
+
+.group-budget-total-label {
+    display: block;
+    font-size: 0.65rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    margin-bottom: 0.125rem;
+}
+
+.group-budget-total-value {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.group-budget-total-value.negative {
+    color: var(--danger);
+}
+
+/* Mobile fixes for group budgets */
+@media (max-width: 640px) {
+    .group-budget-inputs {
+        grid-template-columns: 1fr;
+    }
+    
+    .group-budget-totals {
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+}
 </style>
 </head>
 <body>
@@ -1892,10 +2028,10 @@ body {
                 <svg xmlns="http://www.w3.org/2000/svg" height="20" width="20" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-1 9H9V9h10v2zm-4 4H9v-2h6v2zm4-8H9V5h10v2z"/>
                 </svg>
-                Bulk Report
+                Multi-Period Report
             </button>
             <button id="new-card-btn" class="btn btn-accent">
-                + New Period
+                + New Funding Period
             </button>            
         </div>
     </header>
@@ -2139,6 +2275,22 @@ body {
             <div class="items-list">
                 <!-- Items will be dynamically added here -->
             </div>
+            
+            <!-- Group Totals Section -->
+            <div class="totals-section group-totals-section" style="margin-top: 0.75rem;">
+                <div class="total-item">
+                    <span class="total-label">Used</span>
+                    <span class="total-value group-used-amount">$0.00</span>
+                </div>
+                <div class="total-item">
+                    <span class="total-label">Budget</span>
+                    <span class="total-value group-budget-amount">$0.00</span>
+                </div>
+                <div class="total-item">
+                    <span class="total-label">Remaining</span>
+                    <span class="total-value group-remaining-amount">—</span>
+                </div>
+            </div>
         </div>
     </template>
 
@@ -2298,7 +2450,7 @@ function getItemUsageDescription(item) {
 }
 
 
-// Add this function to convert image URL to base64
+
 async function createSupportGroupTable(doc, card, x, y, width) {
     const totals = computeCardTotals(card);
     const data = [];
@@ -2320,18 +2472,24 @@ async function createSupportGroupTable(doc, card, x, y, width) {
                     itemTotals[itemKey] = {
                         item: item,
                         group: group,
-                        totalQuantity: 0
+                        totalQuantity: 0,
+                        totalOccurrences: 0  // Track number of days/occurrences
                     };
                 }
                 
                 const isSleepover = isSleepoverItem(item);
                 
                 // Apply same gating logic as computeCardTotals
+                if (isPH && !card.settings.includePH) {
+                    // If PH not included, skip ALL items on PH days
+                    return;
+                }
+                
                 if (isPH) {
                     if (isSleepover) {
                         // Sleepover allowed on PH at standard rate
                     } else {
-                        if (!card.settings.includePH) return;
+                        // For non-sleepover items on PH, only PH items apply
                         if (!item.flags.isPublicHoliday) return;
                     }
                 } else {
@@ -2345,9 +2503,18 @@ async function createSupportGroupTable(doc, card, x, y, width) {
                 const quantity = resolveQuantityForDate(item, date, dayOfWeek, { 
                     isPH, 
                     isSleepover,
-                    startDate: new Date(card.period.start)
+                    isFirstDay: date.getTime() === new Date(card.period.start).getTime()
                 });
-                itemTotals[itemKey].totalQuantity += quantity;
+                
+                if (quantity > 0) {
+                    itemTotals[itemKey].totalQuantity += quantity;
+                    itemTotals[itemKey].totalOccurrences += 1;  // Count the day/occurrence
+                    
+                    // Debug logging for weekday items
+                    if (item.supportItemName.includes('Weekday') && itemTotals[itemKey].totalOccurrences % 50 === 0) {
+                        console.log(`${item.supportItemName}: ${itemTotals[itemKey].totalOccurrences} days, ${itemTotals[itemKey].totalQuantity} total hours`);
+                    }
+                }
             });
         });
     });
@@ -2356,6 +2523,9 @@ async function createSupportGroupTable(doc, card, x, y, width) {
     card.groups.forEach(group => {
         const groupTotal = (totals.perGroupCents[group.regGroupNumber] || 0) / 100;
         let groupHasItems = false;
+        
+        // Debug: Log group totals
+        console.log(`Group ${group.regGroupName}: Total from computeCardTotals = $${groupTotal}`);
         
         group.items.forEach(item => {
             if (!item.selected) return;
@@ -2366,13 +2536,23 @@ async function createSupportGroupTable(doc, card, x, y, width) {
             if (itemTotal && itemTotal.totalQuantity > 0) {
                 const usage = getItemUsageDescription(item);
                 const unitPrice = item.statePrice || 0;
+                
+                // Calculate the actual line total using the total quantity and current price
                 const lineTotal = itemTotal.totalQuantity * unitPrice;
+                
+                // For display, show total quantity which is the actual total hours/occurrences
+                const displayQuantity = itemTotal.totalQuantity.toString();
+                
+                // Debug logging
+                if (item.supportItemName.includes('Weekday')) {
+                    console.log(`Table row: ${item.supportItemName} - Quantity: ${displayQuantity}, Price: ${unitPrice}, Total: ${lineTotal}`);
+                }
                 
                 data.push([
                     item.supportItemName,
                     item.supportItemNumber,
                     usage,
-                    itemTotal.totalQuantity.toString(),
+                    displayQuantity,
                     formatCurrency(unitPrice),
                     formatCurrency(lineTotal)
                 ]);
@@ -2576,117 +2756,108 @@ function categorizeItems(items) {
 
 
 // ===== QR Code Functions =====
-function buildQRData(card) {
-    // Create a compact representation of the card data
-    const qrData = {
-        v: 1, // Version for future compatibility
-        id: card.id,
-        p: { // participant
-            n: card.participant.name,
-            ndis: card.participant.ndisNumber
-        },
-        d: { // dates
-            s: card.period.start,
-            e: card.period.end
-        },
-        b: { // budget
-            t: card.budget.total,
-            ex: card.budget.excluded,
-            co: card.budget.carryOver
-        },
-        st: card.state,
-        set: { // settings
-            ph: card.settings.includePH,
-            u: card.settings.uplift.enabled,
-            up: card.settings.uplift.percent,
-            cbg: card.settings.calculateByGroup || false
-        },
-        n: card.notes || '',
-        g: [] // groups
-    };
-    
-    // Compress groups data - only include selected items
-    card.groups.forEach(group => {
-        const selectedItems = group.items.filter(item => item.selected);
-        if (selectedItems.length > 0) {
-            const groupData = {
-                n: group.regGroupNumber,
-                i: [] // items
-            };
-            
-            // Add group budget if calculate by group is enabled
-            if (card.settings.calculateByGroup && group.budget) {
-                groupData.b = {
-                    t: group.budget.total || 0,
-                    e: group.budget.excluded || 0,
-                    c: group.budget.carryOver || 0
-                };
-            }
-            
-            selectedItems.forEach(item => {
-                const itemData = {
-                    n: item.supportItemNumber,
-                    op: item.overridePrice
-                };
-                
-                if (item.unit === 'H' && item.hours) {
-                    itemData.h = item.hours;
-                } else if (item.unit === 'E') {
-                    if (item.days && Object.keys(item.days).length > 0) {
-                        itemData.d = item.days;
-                    }
-                    if (item.quantity > 0) {
-                        itemData.q = item.quantity;
-                    }
-                }
-                
-                groupData.i.push(itemData);
+// Database functions for saving/loading funding periods
+async function saveFundingPeriod(card) {
+    try {
+        showLoading('Saving to cloud...');
+        
+        // Get the complete card data
+        const cardData = JSON.stringify(card);
+        
+        // Calculate total amount from card
+        const totals = computeCardTotals(card);
+        const totalAmount = totals.usedCents / 100;
+        
+        // Generate a unique token
+        const token = generateToken(8);
+        
+        // Save to database
+        const { error } = await supabaseClient
+            .from('funding_periods')
+            .insert({
+                token: token,
+                data: card,
+                participant_name: card.participant.name || null,
+                ndis_number: card.participant.ndisNumber || null,
+                period_start: card.period.start || null,
+                period_end: card.period.end || null,
+                total_amount: totalAmount
             });
-            
-            qrData.g.push(groupData);
-        }
-    });
+        
+        if (error) throw error;
+        
+        hideLoading();
+        return token;
+        
+    } catch (error) {
+        hideLoading();
+        console.error('Error saving:', error);
+        showError('Failed to save: ' + error.message);
+        return null;
+    }
+}
+
+function generateToken(length = 8) {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+}
+
+async function loadFundingPeriod(token) {
+    try {
+        showLoading('Loading from cloud...');
+        
+        const { data, error } = await supabaseClient
+            .from('funding_periods')
+            .select('data')
+            .eq('token', token.toUpperCase())
+            .single();
+        
+        if (error) throw error;
+        if (!data) throw new Error('Funding period not found');
+        
+        hideLoading();
+        return data.data;
+        
+    } catch (error) {
+        hideLoading();
+        console.error('Error loading:', error);
+        showError('Failed to load: ' + error.message);
+        return null;
+    }
+}
+
+async function buildQRData(card) {
+    // Save to database and get token
+    const token = await saveFundingPeriod(card);
     
-    // Convert to JSON and compress
-    return JSON.stringify(qrData);
+    if (!token) {
+        throw new Error('Failed to save funding period');
+    }
+    
+    // Return just the token for QR code
+    return token;
 }
 
 async function generateQRCode(data) {
     return new Promise((resolve, reject) => {
-        // Check if QRCode library is available
-        if (typeof QRCode === 'undefined') {
-            // Try to load it dynamically
-            const script = document.createElement('script');
-            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
-            script.onload = () => {
-                // Library loaded, generate QR code
-                generateQRCodeInternal(data).then(resolve).catch(reject);
-            };
-            script.onerror = () => {
-                console.warn('Could not load QR code library');
-                resolve(null); // Return null instead of failing
-            };
-            document.head.appendChild(script);
-        } else {
-            // Library already loaded
-            generateQRCodeInternal(data).then(resolve).catch(reject);
-        }
-    });
-}
-
-function generateQRCodeInternal(data) {
-    return new Promise((resolve) => {
         try {
             // Create a temporary div for QR code generation
             const tempDiv = document.createElement('div');
-            tempDiv.style.display = 'none';
+            tempDiv.style.position = 'absolute';
+            tempDiv.style.left = '-9999px';
             document.body.appendChild(tempDiv);
             
             // Generate QR code
-            const qrcode = new QRCode(tempDiv, {
+            const qrCode = new QRCode(tempDiv, {
                 text: data,
-                width: 256,
-                height: 256,
+                width: 200,
+                height: 200,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
                 correctLevel: QRCode.CorrectLevel.M
             });
             
@@ -2698,106 +2869,105 @@ function generateQRCodeInternal(data) {
                     document.body.removeChild(tempDiv);
                     resolve(dataUrl);
                 } else {
-                    // Fallback to img element if canvas not found
-                    const img = tempDiv.querySelector('img');
-                    if (img) {
-                        resolve(img.src);
-                        document.body.removeChild(tempDiv);
-                    } else {
-                        document.body.removeChild(tempDiv);
-                        resolve(null);
-                    }
+                    document.body.removeChild(tempDiv);
+                    reject(new Error('Failed to generate QR code'));
                 }
             }, 100);
         } catch (error) {
-            console.error('Error generating QR code:', error);
-            resolve(null);
+            reject(error);
         }
     });
 }
 
-// Parse QR data back to card format
-function parseQRData(qrDataString) {
+function parseQRData(qrString) {
     try {
-        const qrData = JSON.parse(qrDataString);
+        const data = JSON.parse(qrString);
         
-        // Check version compatibility
-        if (qrData.v !== 1) {
-            throw new Error('Incompatible QR code version');
+        // Validate version
+        if (data.v !== 1) {
+            throw new Error('Unsupported QR code version');
         }
         
-        // Reconstruct card object
+        // Reconstruct full card structure
         const card = {
-            id: qrData.id || generateUUID(),
+            id: data.id || generateUUID(),
             participant: {
-                name: qrData.p.n,
-                ndisNumber: qrData.p.ndis
+                name: data.p.n || '',
+                ndisNumber: data.p.ndis || ''
             },
             period: {
-                start: qrData.d.s,
-                end: qrData.d.e
+                start: data.d.s || '',
+                end: data.d.e || ''
             },
+            state: data.st || state.preferences.state,
             budget: {
-                total: qrData.b.t || 0,
-                excluded: qrData.b.ex || 0,
-                carryOver: qrData.b.co || 0
+                total: data.b.t || 0,
+                excluded: data.b.ex || 0,
+                carryOver: data.b.co || 0
             },
-            state: qrData.st,
             settings: {
-                includePH: qrData.set.ph,
+                includePH: data.set.ph !== false,
                 uplift: {
-                    enabled: qrData.set.u,
-                    percent: qrData.set.up
+                    enabled: data.set.u !== false,
+                    percent: data.set.up || 3.2
                 },
-                calculateByGroup: qrData.set.cbg || false
+                calculateByGroup: data.set.cbg || false
             },
-            notes: qrData.n || '',
+            notes: data.n || '',
             groups: []
         };
         
-        // Reconstruct groups
-        qrData.g.forEach(groupData => {
-            const catalogueGroup = state.catalogue[groupData.n];
-            if (!catalogueGroup) return;
-            
-            const group = {
-                regGroupNumber: groupData.n,
-                regGroupName: catalogueGroup.regGroupName,
-                items: []
-            };
-            
-            // Add group budget if present
-            if (groupData.b) {
-                group.budget = {
-                    total: groupData.b.t || 0,
-                    excluded: groupData.b.e || 0,
-                    carryOver: groupData.b.c || 0
-                };
-            }
-            
-            // Map all catalogue items, marking selected ones
-            catalogueGroup.items.forEach(catalogueItem => {
-                const savedItem = groupData.i.find(i => i.n === catalogueItem.supportItemNumber);
+        // Reconstruct groups with full catalogue data
+        if (data.g && state.catalogue) {
+            data.g.forEach(groupData => {
+                const catalogueGroup = state.catalogue[groupData.n];
+                if (!catalogueGroup) return;
                 
-                const item = {
-                    ...catalogueItem,
-                    selected: !!savedItem,
-                    overridePrice: savedItem?.op || null,
-                    statePrice: catalogueItem.statePrices[card.state] || catalogueItem.statePrices['NSW'] || 0,
-                    hours: savedItem?.h || {},
-                    days: savedItem?.d || {},
-                    quantity: savedItem?.q || 0
+                const group = {
+                    regGroupNumber: groupData.n,
+                    regGroupName: catalogueGroup.regGroupName,
+                    items: []
                 };
                 
-                group.items.push(item);
+                // Add group budget if present
+                if (groupData.b) {
+                    group.budget = {
+                        total: groupData.b.t || 0,
+                        excluded: groupData.b.e || 0,
+                        carryOver: groupData.b.c || 0
+                    };
+                }
+                
+                // Create a map of QR items for quick lookup
+                const qrItemsMap = new Map();
+                groupData.i.forEach(item => {
+                    qrItemsMap.set(item.n, item);
+                });
+                
+                // Add all items from catalogue, marking selected ones
+                catalogueGroup.items.forEach(catalogueItem => {
+                    const qrItem = qrItemsMap.get(catalogueItem.supportItemNumber);
+                    const itemData = {
+                        ...catalogueItem,
+                        selected: !!qrItem,
+                        overridePrice: qrItem?.op || null,
+                        statePrice: catalogueItem.statePrices[card.state] || catalogueItem.statePrices['NSW'] || 0,
+                        hours: qrItem?.h || {},
+                        days: qrItem?.d || {},
+                        quantity: qrItem?.q || 0
+                    };
+                    
+                    group.items.push(itemData);
+                });
+                
+                card.groups.push(group);
             });
-            
-            card.groups.push(group);
-        });
+        }
         
         return card;
     } catch (error) {
-        throw new Error('Invalid QR code data: ' + error.message);
+        console.error('Error parsing QR data:', error);
+        throw new Error('Invalid QR code data');
     }
 }
 
@@ -2807,65 +2977,150 @@ let html5QrCode = null;
 function initQRScanner() {
     const modal = document.getElementById('qr-scanner-modal');
     const actionsDiv = document.getElementById('qr-actions');
+    const scannerInfo = document.querySelector('.qr-scanner-info');
     
-    // Load the QR scanner library if not already loaded
+    // Reset UI
+    actionsDiv.classList.add('hidden');
+    scannerInfo.textContent = 'Position QR code within the frame';
+    
+    // Check if Html5Qrcode is available
     if (typeof Html5Qrcode === 'undefined') {
-        // Create script element
-        const script = document.createElement('script');
-        script.src = 'https://unpkg.com/html5-qrcode/html5-qrcode.min.js';
-        script.onload = () => {
-            // Library loaded, try again
-            initQRScanner();
-        };
-        script.onerror = () => {
-            showError('Failed to load QR Scanner. Please check your internet connection.');
-            modal.classList.remove('show');
-        };
-        document.head.appendChild(script);
+        console.error('Html5Qrcode library not loaded');
+        showError('QR Scanner not available. Please check your internet connection and refresh the page.');
+        modal.classList.remove('show');
         return;
     }
     
-    // Continue with initialization as before...
+    // Create new instance
     html5QrCode = new Html5Qrcode("qr-reader");
     
     const config = {
         fps: 10,
-        qrbox: { width: 250, height: 250 }
+        qrbox: { width: 250, height: 250 },
+        aspectRatio: 1.0
     };
     
     let scannedData = null;
     
     const onScanSuccess = (decodedText, decodedResult) => {
-        html5QrCode.stop();
+        // Stop scanning
+        html5QrCode.stop().then(() => {
+            console.log('QR Code scanning stopped');
+        }).catch(err => {
+            console.error('Failed to stop scanning:', err);
+        });
+        
+        // Store scanned data
         scannedData = decodedText;
+        
+        // Show action buttons
         actionsDiv.classList.remove('hidden');
-        document.querySelector('.qr-scanner-info').textContent = 'QR code scanned successfully! Choose an action:';
+        
+        // Update scanner info
+        scannerInfo.textContent = 'QR code scanned successfully! Choose an action:';
+        
+        // Hide the video element
+        const videoElement = document.getElementById('qr-reader');
+        if (videoElement) {
+            videoElement.style.display = 'none';
+        }
     };
     
     const onScanFailure = (error) => {
-        // Silent fail
+        // Handle scan failure silently - this is called continuously while scanning
     };
     
-    html5QrCode.start(
-        { facingMode: "environment" },
-        config,
-        onScanSuccess,
-        onScanFailure
-    );
+    // Get camera permissions and start scanning
+    Html5Qrcode.getCameras().then(devices => {
+        if (devices && devices.length) {
+            let cameraId = devices[0].id;
+            
+            // Prefer back camera if available
+            const backCamera = devices.find(device => 
+                device.label.toLowerCase().includes('back') || 
+                device.label.toLowerCase().includes('rear')
+            );
+            
+            if (backCamera) {
+                cameraId = backCamera.id;
+            }
+            
+            // Start scanning with selected camera
+            html5QrCode.start(
+                cameraId,
+                config,
+                onScanSuccess,
+                onScanFailure
+            ).then(() => {
+                console.log('QR Code scanning started');
+            }).catch(err => {
+                console.error('Unable to start scanning:', err);
+                scannerInfo.textContent = 'Unable to access camera. Please check permissions.';
+            });
+        } else {
+            scannerInfo.textContent = 'No cameras found on this device.';
+        }
+    }).catch(err => {
+        console.error('Unable to get cameras:', err);
+        scannerInfo.textContent = 'Unable to access camera. Please check permissions.';
+    });
     
-    // Rest of the function continues...
+    // Action button handlers
+    actionsDiv.querySelectorAll('.qr-action-btn').forEach(btn => {
+        btn.onclick = async () => {
+            const action = btn.dataset.action;
+            
+            try {
+                const card = parseQRData(scannedData);
+                
+                switch (action) {
+                    case 'import':
+                        importCardFromQR(card);
+                        break;
+                    case 'continue':
+                        continueFromQR(card);
+                        break;
+                    case 'invoice':
+                        await generateInvoiceFromQR(card);
+                        break;
+                    case 'view':
+                        viewReportFromQR(card);
+                        break;
+                }
+                
+                // Close modal
+                closeQRScanner();
+            } catch (error) {
+                showError('Error processing QR code: ' + error.message);
+            }
+        };
+    });
 }
 
-// Add the QR script to the HTML head if needed
-document.addEventListener('DOMContentLoaded', () => {
-    // Check if we need the QR library
-    const needsQR = document.getElementById('qr-scanner-modal');
-    if (needsQR && typeof Html5Qrcode === 'undefined') {
-        const script = document.createElement('script');
-        script.src = 'https://unpkg.com/html5-qrcode/html5-qrcode.min.js';
-        document.head.appendChild(script);
+function closeQRScanner() {
+    const modal = document.getElementById('qr-scanner-modal');
+    
+    if (html5QrCode) {
+        // Check if scanner is running
+        const state = html5QrCode.getState();
+        if (state === Html5QrcodeScannerState.SCANNING || state === Html5QrcodeScannerState.PAUSED) {
+            html5QrCode.stop().then(() => {
+                console.log('QR Code scanning stopped');
+                html5QrCode.clear();
+                modal.classList.remove('show');
+            }).catch(err => {
+                console.error('Failed to stop scanning:', err);
+                modal.classList.remove('show');
+            });
+        } else {
+            modal.classList.remove('show');
+        }
+    } else {
+        modal.classList.remove('show');
     }
-});
+}
+
+
 
 
 function importCardFromQR(card) {
@@ -2914,6 +3169,32 @@ function viewReportFromQR(card) {
     });
 }
 
+document.addEventListener('DOMContentLoaded', () => {
+    const qrModal = document.getElementById('qr-scanner-modal');
+    if (qrModal) {
+        // Close button in modal
+        const closeBtn = qrModal.querySelector('.close-modal');
+        if (closeBtn) {
+            closeBtn.onclick = () => closeQRScanner();
+        }
+        
+        // Click outside modal to close
+        qrModal.onclick = (e) => {
+            if (e.target === qrModal) {
+                closeQRScanner();
+            }
+        };
+    }
+    
+    // Load Html5Qrcode library if not already loaded
+    if (typeof Html5Qrcode === 'undefined') {
+        const script = document.createElement('script');
+        script.src = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
+        document.head.appendChild(script);
+    }
+});
+
+
 // ===== Multi-Period Report Functions =====
 async function generateMultiPeriodReport() {
     if (state.cards.length === 0) {
@@ -2922,6 +3203,7 @@ async function generateMultiPeriodReport() {
     }
     
     if (state.cards.length === 1) {
+        // Just generate single report
         await generatePDFReport(state.cards[0]);
         return;
     }
@@ -2936,28 +3218,17 @@ async function generateMultiPeriodReport() {
         const pageHeight = doc.internal.pageSize.getHeight();
         const margin = 20;
         const contentWidth = pageWidth - (margin * 2);
-        const yLimit = pageHeight - 25;
         
         let y = margin;
         
-        // Helper functions
+        // Helper functions (reuse from single report)
         const ensureSpace = (needed = 10) => {
-            if (y + needed > yLimit) {
-                addPageNumber();
+            if (y + needed > pageHeight - 25) {
                 doc.addPage();
                 y = margin;
                 return true;
             }
             return false;
-        };
-        
-        const addPageNumber = () => {
-            const pageNum = doc.internal.getCurrentPageInfo().pageNumber;
-            doc.setFontSize(9);
-            doc.setFont(undefined, 'normal');
-            doc.setTextColor(128, 128, 128);
-            doc.text(`Page ${pageNum}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
-            doc.setTextColor(0, 0, 0);
         };
         
         // Colors
@@ -2966,13 +3237,29 @@ async function generateMultiPeriodReport() {
         const errorColor = [239, 68, 68];
         const lightGray = [248, 249, 250];
         
-        // HEADER SECTION
+        // Title page with header
+        
+        // Generate QR Code for multi-period data
+        let qrCodeDataUrl = null;
+        try {
+            // Create combined data for QR
+            const multiPeriodData = {
+                v: 2, // Version 2 for multi-period
+                periods: state.cards.map(card => buildQRData(card))
+            };
+            qrCodeDataUrl = await generateQRCode(JSON.stringify(multiPeriodData));
+        } catch (error) {
+            console.error('Error generating multi-period QR code:', error);
+        }
+        
+        // Logo on left
         try {
             const logoBase64 = await getBase64FromUrl('https://gqchhsayqxttewthcsah.supabase.co/storage/v1/object/public/Branding/LOGO%20No%20Background.png');
             const logoHeight = 20;
             const logoWidth = logoHeight * 4;
             doc.addImage(logoBase64, 'PNG', margin, y, logoWidth, logoHeight, undefined, 'FAST');
             
+            // Company details under logo
             doc.setFontSize(9);
             doc.setFont(undefined, 'normal');
             doc.setTextColor(...grayColor);
@@ -2986,312 +3273,75 @@ async function generateMultiPeriodReport() {
             doc.setTextColor(...primaryColor);
             doc.text('MY CARERS', margin, y + 10);
             doc.setTextColor(0, 0, 0);
+        }
+        
+        // QR Code on right
+        if (qrCodeDataUrl) {
+            const qrSize = 40;
+            doc.addImage(qrCodeDataUrl, 'PNG', pageWidth - margin - qrSize, y, qrSize, qrSize);
             
-            doc.setFontSize(9);
-            doc.setFont(undefined, 'normal');
+            // QR Code label
+            doc.setFontSize(7);
             doc.setTextColor(...grayColor);
-            doc.text('ABN: 34 787 739 579', margin, y + 25);
-            doc.text('Email: admin@mycarers.com.au', margin, y + 30);
-            doc.text('S2, Lvl 6, 12 Railway Pde, Burwood, NSW 2134', margin, y + 35);
+            doc.text('Scan for all periods', pageWidth - margin - qrSize/2, y + qrSize + 3, { align: 'center' });
             doc.setTextColor(0, 0, 0);
         }
         
-        y += 50;
-        
         // Separator line
+        y += 45;
         doc.setDrawColor(...grayColor);
         doc.setLineWidth(0.5);
         doc.line(margin, y, pageWidth - margin, y);
         y += 20;
         
-        // TITLE SECTION
-        doc.setFontSize(24);
+        // Title
+        doc.setFontSize(28);
         doc.setFont(undefined, 'bold');
         doc.text('Multi-Period Funding Report', pageWidth / 2, y, { align: 'center' });
-        y += 12;
         
-        const participantName = state.cards[0].participant.name || 'Not specified';
-        doc.setFontSize(12);
+        doc.setFontSize(14);
         doc.setFont(undefined, 'normal');
         doc.setTextColor(...grayColor);
-        doc.text(`Participant: ${participantName}`, pageWidth / 2, y, { align: 'center' });
-        y += 8;
-        doc.text(`NDIS Number: ${state.cards[0].participant.ndisNumber || 'Not specified'}`, pageWidth / 2, y, { align: 'center' });
-        y += 8;
+        const participantName = state.cards[0].participant.name || 'Not specified';
+        doc.text(`Participant: ${participantName}`, pageWidth / 2, y + 20, { align: 'center' });
+        doc.text(`NDIS Number: ${state.cards[0].participant.ndisNumber || 'Not specified'}`, pageWidth / 2, y + 30, { align: 'center' });
         
-        const dateStr = new Date().toLocaleDateString('en-AU', { 
-            day: 'numeric', 
-            month: 'long', 
-            year: 'numeric' 
-        });
-        doc.setFontSize(10);
-        doc.text(`Generated: ${dateStr}`, pageWidth / 2, y, { align: 'center' });
         doc.setTextColor(0, 0, 0);
-        y += 25;
         
-        // EXECUTIVE SUMMARY
-        ensureSpace(100);
+        // Executive Summary Table
+        y = y + 60;
         doc.setFontSize(16);
         doc.setFont(undefined, 'bold');
         doc.text('Executive Summary', margin, y);
         y += 15;
         
-        // Create summary table data
-        const summaryData = [];
-        let grandTotalBudget = 0;
-        let grandTotalUsed = 0;
-        let grandTotalRemaining = 0;
-        
-        state.cards.forEach((card, index) => {
-            const totals = computeCardTotals(card);
-            const used = totals.usedCents / 100;
-            const totalBudget = parseFloat(card.budget.total) || 0;
-            const carryOver = parseFloat(card.budget.carryOver) || 0;
-            const excluded = parseFloat(card.budget.excluded) || 0;
-            const available = totalBudget + carryOver - excluded;
-            const remaining = available - used;
-            
-            grandTotalBudget += available;
-            grandTotalUsed += used;
-            grandTotalRemaining += remaining;
-            
-            const startDate = new Date(card.period.start);
-            const endDate = new Date(card.period.end);
-            
-            summaryData.push([
-                `Period ${index + 1}`,
-                `${startDate.toLocaleDateString('en-AU')} - ${endDate.toLocaleDateString('en-AU')}`,
-                formatCurrency(available),
-                formatCurrency(used),
-                formatCurrency(remaining)
-            ]);
-        });
-        
-        // Add totals row
-        summaryData.push([
-            'TOTAL',
-            '',
-            formatCurrency(grandTotalBudget),
-            formatCurrency(grandTotalUsed),
-            formatCurrency(grandTotalRemaining)
-        ]);
-        
         // Create summary table
-        doc.autoTable({
-            startY: y,
-            head: [['Period', 'Dates', 'Budget', 'Used', 'Remaining']],
-            body: summaryData,
-            margin: { left: margin, right: margin },
-            columnStyles: {
-                0: { cellWidth: 30 },
-                1: { cellWidth: 60 },
-                2: { cellWidth: 30, halign: 'right' },
-                3: { cellWidth: 30, halign: 'right' },
-                4: { cellWidth: 30, halign: 'right' }
-            },
-            styles: {
-                fontSize: 9,
-                cellPadding: 3
-            },
-            headStyles: {
-                fillColor: [...primaryColor],
-                textColor: [255, 255, 255],
-                fontStyle: 'bold'
-            },
-            alternateRowStyles: {
-                fillColor: [...lightGray]
-            },
-            footStyles: {
-                fillColor: [...primaryColor],
-                textColor: [255, 255, 255],
-                fontStyle: 'bold'
-            },
-            willDrawCell: (data) => {
-                // Style the total row
-                if (data.row.index === summaryData.length - 1) {
-                    data.cell.styles.fillColor = [...primaryColor];
-                    data.cell.styles.textColor = [255, 255, 255];
-                    data.cell.styles.fontStyle = 'bold';
-                }
-                // Highlight negative remaining
-                if (data.column.index === 4 && data.row.index < summaryData.length - 1) {
-                    const value = parseFloat(data.cell.raw.replace(/[^-\d.]/g, ''));
-                    if (value < 0) {
-                        data.cell.styles.textColor = [...errorColor];
-                        data.cell.styles.fontStyle = 'bold';
-                    }
-                }
-            }
-        });
+        await createExecutiveSummaryTable(doc, margin, y, contentWidth);
         
-        y = doc.lastAutoTable.finalY + 20;
+        // Generate individual period reports
+        doc.addPage();
         
-        // Add page number to first page
-        addPageNumber();
-        
-        // INDIVIDUAL PERIOD DETAILS
         for (let i = 0; i < state.cards.length; i++) {
-            doc.addPage();
-            y = margin;
+            if (i > 0) doc.addPage();
             
-            const card = state.cards[i];
-            const totals = computeCardTotals(card);
-            
-            // Period header
-            doc.setFontSize(18);
-            doc.setFont(undefined, 'bold');
-            doc.setTextColor(...primaryColor);
-            doc.text(`Period ${i + 1} of ${state.cards.length}`, margin, y);
-            doc.setTextColor(0, 0, 0);
-            y += 15;
-            
-            // Period info box
-            doc.setFillColor(...lightGray);
-            doc.roundedRect(margin - 5, y - 5, contentWidth + 10, 30, 3, 3, 'F');
-            
-            doc.setFontSize(10);
-            doc.setFont(undefined, 'normal');
-            const startDate = new Date(card.period.start);
-            const endDate = new Date(card.period.end);
-            doc.text(`Period: ${startDate.toLocaleDateString('en-AU', {
-                day: 'numeric', month: 'long', year: 'numeric'
-            })} to ${endDate.toLocaleDateString('en-AU', {
-                day: 'numeric', month: 'long', year: 'numeric'
-            })}`, margin, y + 3);
-            y += 8;
-            
-            const dayCount = countDaysInPeriod(startDate, endDate);
-            const totalDays = Object.values(dayCount).reduce((sum, count) => sum + count, 0);
-            doc.text(`Duration: ${totalDays} days (${totals.weeks} weeks)`, margin, y);
-            y += 8;
-            doc.text(`State: ${card.state}`, margin, y);
-            y += 20;
-            
-            // Budget Summary
-            ensureSpace(80);
-            doc.setFontSize(12);
-            doc.setFont(undefined, 'bold');
-            doc.text('Budget Summary', margin, y);
-            y += 10;
-            
-            const used = totals.usedCents / 100;
-            const totalBudget = parseFloat(card.budget.total) || 0;
-            const carryOver = parseFloat(card.budget.carryOver) || 0;
-            const excluded = parseFloat(card.budget.excluded) || 0;
-            const available = totalBudget + carryOver - excluded;
-            const remaining = available - used;
-            const weekly = totals.weeks > 0 ? used / totals.weeks : 0;
-            
-            const budgetData = [
-                ['Total Budget', formatCurrency(totalBudget)],
-                ['Carry Over', formatCurrency(carryOver)],
-                ['Excluded', formatCurrency(excluded)],
-                ['Available', formatCurrency(available)],
-                ['Forecasted Usage', formatCurrency(used)],
-                ['Remaining', formatCurrency(remaining)],
-                ['Weekly Average', formatCurrency(weekly)]
-            ];
-            
-            doc.autoTable({
-                startY: y,
-                body: budgetData,
-                margin: { left: margin },
-                columnStyles: {
-                    0: { cellWidth: 80 },
-                    1: { cellWidth: 50, halign: 'right' }
-                },
-                styles: {
-                    fontSize: 10,
-                    cellPadding: 3
-                },
-                alternateRowStyles: {
-                    fillColor: [...lightGray]
-                },
-                willDrawCell: (data) => {
-                    // Highlight negative remaining
-                    if (data.row.index === 5 && remaining < 0) {
-                        data.cell.styles.textColor = [...errorColor];
-                        data.cell.styles.fontStyle = 'bold';
-                    }
-                }
-            });
-            
-            y = doc.lastAutoTable.finalY + 20;
-            
-            // Support Groups Summary
-            ensureSpace(40);
-            doc.setFontSize(12);
-            doc.setFont(undefined, 'bold');
-            doc.text('Support Groups', margin, y);
-            y += 10;
-            
-            const groupData = [];
-            card.groups.forEach(group => {
-                const groupTotal = (totals.perGroupCents[group.regGroupNumber] || 0) / 100;
-                if (groupTotal > 0) {
-                    const selectedCount = group.items.filter(item => item.selected).length;
-                    groupData.push([
-                        group.regGroupName,
-                        group.regGroupNumber,
-                        selectedCount.toString(),
-                        formatCurrency(groupTotal)
-                    ]);
-                }
-            });
-            
-            if (groupData.length > 0) {
-                doc.autoTable({
-                    startY: y,
-                    head: [['Group Name', 'Number', 'Items', 'Total']],
-                    body: groupData,
-                    margin: { left: margin },
-                    columnStyles: {
-                        0: { cellWidth: 80 },
-                        1: { cellWidth: 30 },
-                        2: { cellWidth: 20, halign: 'center' },
-                        3: { cellWidth: 40, halign: 'right' }
-                    },
-                    styles: {
-                        fontSize: 9,
-                        cellPadding: 2
-                    },
-                    headStyles: {
-                        fillColor: [...primaryColor],
-                        textColor: [255, 255, 255]
-                    }
-                });
-                
-                y = doc.lastAutoTable.finalY + 15;
-            } else {
-                doc.setFontSize(10);
+            // Add page number function
+            const addPageNumber = () => {
+                const pageNum = doc.internal.getCurrentPageInfo().pageNumber;
+                doc.setFontSize(9);
                 doc.setFont(undefined, 'normal');
-                doc.text('No support items selected for this period', margin, y);
-                y += 15;
-            }
+                doc.setTextColor(128, 128, 128);
+                doc.text(`Page ${pageNum}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+                doc.setTextColor(0, 0, 0);
+            };
             
-            // Notes
-            if (card.notes && card.notes.trim()) {
-                ensureSpace(30);
-                doc.setFontSize(12);
-                doc.setFont(undefined, 'bold');
-                doc.text('Notes', margin, y);
-                y += 8;
-                
-                doc.setFontSize(10);
-                doc.setFont(undefined, 'normal');
-                const noteLines = doc.splitTextToSize(card.notes, contentWidth);
-                noteLines.forEach(line => {
-                    ensureSpace(6);
-                    doc.text(line, margin, y);
-                    y += 5;
-                });
-            }
+            // Generate period section
+            await generatePeriodSection(doc, state.cards[i], i + 1);
             
-            // Add page number
+            // Add page number to current page
             addPageNumber();
         }
         
-        // Save
+        // Save with appropriate filename
         const safeName = participantName.replace(/[^a-zA-Z0-9]/g, '_');
         doc.save(`Multi_Period_Report_${safeName}.pdf`);
         
@@ -3301,7 +3351,6 @@ async function generateMultiPeriodReport() {
         showError('Error generating multi-period report: ' + error.message);
     }
 }
-
 
 async function createExecutiveSummaryTable(doc, x, y, width) {
     const headers = ['Period', 'Dates', 'Budget', 'Used', 'Remaining'];
@@ -3599,7 +3648,8 @@ async function createGroupBudgetSummaryTable(doc, card, x, y, width) {
 }
 
 async function createSupportGroupTable(doc, group, card, x, y, width) {
-    const groupTotal = computeGroupTotal(group, card);
+    const totals = computeCardTotals(card);
+    const groupTotal = (totals.perGroupCents[group.regGroupNumber] || 0) / 100;
     
     // Group header
     doc.setFontSize(11);
@@ -3610,87 +3660,113 @@ async function createSupportGroupTable(doc, group, card, x, y, width) {
     doc.text(`(${group.regGroupNumber}) - Total: ${formatCurrency(groupTotal)}`, x, y + 5);
     y += 10;
     
-    // Create table data
-    const tableData = [];
+    // Calculate totals for each item using the same logic as computeCardTotals
+    const itemData = {};
+    const startDate = new Date(card.period.start + 'T00:00:00Z');
     
-    group.items.forEach(item => {
-        if (!item.selected) return;
+    eachDateInclusive(card.period.start, card.period.end, (date) => {
+        const isPH = isPublicHoliday(date, card.state);
+        const dayOfWeek = getDayOfWeek(date);
         
-        const usage = getItemUsageDescription(item);
-        if (usage === 'No hours set' || usage === 'No days selected' || usage === 'No quantity set') return;
-        
-        let quantity = 0;
-        let rate = item.statePrice || 0;
-        let total = 0;
-        
-        if (item.unit === 'H') {
-            // Calculate total hours
-            Object.values(item.hours || {}).forEach(h => quantity += h);
-            // Multiply by weeks in period
-            const weeks = Math.ceil((new Date(card.period.end) - new Date(card.period.start)) / (7 * 24 * 60 * 60 * 1000));
-            quantity *= weeks;
-            total = quantity * rate;
-        } else if (item.unit === 'E') {
-            quantity = item.quantity || 1;
-            total = quantity * rate;
-        }
-        
-        tableData.push([
-            item.supportItemName,
-            item.supportItemNumber,
-            usage,
-            `${quantity} ${item.unit === 'H' ? 'hrs' : 'ea'}`,
-            formatCurrency(rate),
-            formatCurrency(total)
-        ]);
-    });
-    
-    if (tableData.length > 0) {
-        doc.autoTable({
-            startY: y,
-            head: [['Item', 'Code', 'Schedule', 'Quantity', 'Rate', 'Total']],
-            body: tableData,
-            margin: { left: x },
-            columnStyles: {
-                0: { cellWidth: 45 },
-                1: { cellWidth: 20 },
-                2: { cellWidth: 30 },
-                3: { cellWidth: 16 },
-                4: { cellWidth: 16, halign: 'right' },
-                5: { cellWidth: 20, halign: 'right' }
-            },
-            styles: {
-                fontSize: 8,
-                cellPadding: 2
-            },
-            headStyles: {
-                fillColor: [37, 99, 235],
-                textColor: [255, 255, 255]
+        group.items.forEach(item => {
+            if (!item.selected) return;
+            
+            const itemKey = item.supportItemNumber;
+            if (!itemData[itemKey]) {
+                itemData[itemKey] = {
+                    item: item,
+                    totalQuantity: 0,
+                    totalCents: 0
+                };
+            }
+            
+            const isSleepover = isSleepoverItem(item);
+            
+            // Apply same gating logic as computeCardTotals
+            if (isPH && !card.settings.includePH) return;
+            
+            if (isPH) {
+                if (isSleepover) {
+                    // Sleepover allowed on PH at standard rate
+                } else {
+                    if (!item.flags.isPublicHoliday) return;
+                }
+            } else {
+                // Non-PH day
+                if (item.flags.isPublicHoliday) return;
+                if (item.flags.isWeekday && !isWeekday(date)) return;
+                if (item.flags.isSaturday && !isSaturday(date)) return;
+                if (item.flags.isSunday && !isSunday(date)) return;
+            }
+            
+            const quantity = resolveQuantityForDate(item, date, dayOfWeek, { 
+                isPH, 
+                isSleepover,
+                isFirstDay: date.getTime() === startDate.getTime()
+            });
+            
+            if (quantity > 0) {
+                // Get the price WITH UPLIFT for this specific date
+                const unitPrice = getUnitPrice(item, card, date, { isPH, isSleepover });
+                const lineCents = Math.round(quantity * Math.round(unitPrice * 100));
+                
+                itemData[itemKey].totalQuantity += quantity;
+                itemData[itemKey].totalCents += lineCents;
             }
         });
-    }
-}
-
-function computeGroupTotal(group, card) {
-    let total = 0;
-    group.items.forEach(item => {
-        if (!item.selected) return;
-        
-        const rate = item.statePrice || 0;
-        
-        if (item.unit === 'H' && item.hours) {
-            let weeklyHours = 0;
-            Object.values(item.hours).forEach(h => weeklyHours += h);
-            const weeks = Math.ceil((new Date(card.period.end) - new Date(card.period.start)) / (7 * 24 * 60 * 60 * 1000));
-            total += weeklyHours * weeks * rate;
-        } else if (item.unit === 'E') {
-            const quantity = item.quantity || 0;
-            total += quantity * rate;
+    });
+    
+    // Build table rows
+    const tableRows = [];
+    
+    Object.values(itemData).forEach(data => {
+        if (data.totalQuantity > 0) {
+            const usage = getItemUsageDescription(data.item);
+            const totalDollars = data.totalCents / 100;
+            // Calculate average rate (total dollars / total quantity)
+            const avgRate = data.totalQuantity > 0 ? totalDollars / data.totalQuantity : 0;
+            
+            tableRows.push([
+                data.item.supportItemName,
+                data.item.supportItemNumber,
+                usage,
+                data.totalQuantity.toString(),
+                formatCurrency(avgRate),
+                formatCurrency(totalDollars)
+            ]);
         }
     });
-    return total;
+    
+    if (tableRows.length === 0) {
+        doc.setFontSize(10);
+        doc.text('No support items with quantities entered', x, y);
+        return;
+    }
+    
+    // Create the table
+    doc.autoTable({
+        startY: y,
+        head: [['Support Item', 'Code', 'Usage', 'Qty', 'Avg Rate', 'Total']],
+        body: tableRows,
+        margin: { left: x, right: 20 },
+        columnStyles: {
+            0: { cellWidth: 45 },
+            1: { cellWidth: 20 },
+            2: { cellWidth: 30 },
+            3: { cellWidth: 16, halign: 'right' },
+            4: { cellWidth: 20, halign: 'right' },
+            5: { cellWidth: 20, halign: 'right' }
+        },
+        styles: {
+            fontSize: 8,
+            cellPadding: 2
+        },
+        headStyles: {
+            fillColor: [37, 99, 235],
+            textColor: [255, 255, 255]
+        }
+    });
 }
-
 // ===== Invoice Generation =====
 async function generateInvoiceReport(card) {
     const { jsPDF } = window.jspdf;
@@ -3978,7 +4054,7 @@ async function generatePDFReport(card) {
     doc.text('PERIOD BREAKDOWN', margin, y);
     y += 10;
 
-    const dayCount = countDaysInPeriod(startDate, endDate);
+    const dayCounts = countDaysInPeriod(startDate, endDate, card);
     const phInPeriod = state.publicHolidays.filter(ph => {
         const phDate = new Date(ph.date);
         return phDate >= startDate && phDate <= endDate;
@@ -3991,14 +4067,14 @@ async function generatePDFReport(card) {
     const rowHeight = 15;
 
     const dayData = [
-        ['Monday', dayCount.Mon], 
-        ['Tuesday', dayCount.Tue], 
-        ['Wednesday', dayCount.Wed], 
-        ['Thursday', dayCount.Thu],
-        ['Friday', dayCount.Fri], 
-        ['Saturday', dayCount.Sat], 
-        ['Sunday', dayCount.Sun], 
-        ['Public Holidays', phInPeriod.length]
+        ['Monday', dayCounts.excludingPH.Mon], 
+        ['Tuesday', dayCounts.excludingPH.Tue], 
+        ['Wednesday', dayCounts.excludingPH.Wed], 
+        ['Thursday', dayCounts.excludingPH.Thu],
+        ['Friday', dayCounts.excludingPH.Fri], 
+        ['Saturday', dayCounts.excludingPH.Sat], 
+        ['Sunday', dayCounts.excludingPH.Sun], 
+        ['Public Holidays', dayCounts.publicHolidays]
     ];
 
     dayData.forEach((item, index) => {
@@ -4578,8 +4654,8 @@ function buildCsvRows(card) {
     
     rows.push(''); // Empty row separator
     
-    // Original CSV headers
-    rows.push('NDISNumber,SupportsDeliveredFrom,SupportsDeliveredTo,SupportNumber,Quantity,UnitPrice,GSTCode');
+    // Original CSV headers with new columns
+    rows.push('ParticipantName,NDISNumber,ABNofSupportProvider,SupportsDeliveredFrom,SupportsDeliveredTo,SupportNumber,ClaimReference,RegistrationNumber,Quantity,UnitPrice,GSTCode');
     
     // Keep all your existing logic for generating rows
     eachDateInclusive(card.period.start, card.period.end, (date) => {
@@ -4614,11 +4690,21 @@ function buildCsvRows(card) {
                 
                 const unitPrice = getUnitPrice(item, card, date, { isPH, isSleepover });
                 
+                // Generate participant initials for ClaimReference
+                const participantInitials = card.participant.name
+                    .split(' ')
+                    .map(word => word.charAt(0).toUpperCase())
+                    .join('');
+                
                 rows.push([
+                    card.participant.name || '',
                     card.participant.ndisNumber || '',
+                    '34787739579', // ABN of Support Provider
                     dateStr,
                     dateStr,
                     item.supportItemNumber,
+                    participantInitials || 'XX', // ClaimReference - participant initials
+                    '4050125851', // RegistrationNumber
                     quantity.toFixed(2),
                     unitPrice.toFixed(2),
                     'P2'
@@ -4788,7 +4874,17 @@ function renderCard(card) {
             cardEl.querySelectorAll('.group-budget-section').forEach(section => {
                 section.style.display = 'block';
             });
+            // Disable main budget inputs
+            cardEl.querySelector('.budget-amount').disabled = true;
+            cardEl.querySelector('.excluded-amount').disabled = true;
+            cardEl.querySelector('.carry-in-amount').disabled = true;
         }, 100);
+    }
+    
+    // Set toggle state
+    const calcByGroupToggle = cardEl.querySelector('.calculate-by-group');
+    if (calcByGroupToggle) {
+        calcByGroupToggle.checked = card.settings.calculateByGroup || false;
     }
     cardEl.querySelector('.notes-input').value = card.notes || '';
 
@@ -4835,6 +4931,15 @@ function renderGroup(cardEl, groupData) {
     
     groupEl.dataset.groupNumber = groupData.regGroupNumber;
     
+    // Ensure budget object exists
+    if (!groupData.budget) {
+        groupData.budget = {
+            total: 0,
+            excluded: 0,
+            carryOver: 0
+        };
+    }
+    
     // Initialize group budget data if not exists
     if (!groupData.budget) {
         groupData.budget = {
@@ -4861,10 +4966,6 @@ function renderGroup(cardEl, groupData) {
                     </h4>
                     <span class="item-count">${groupData.items.length} of ${groupData.totalCount} items</span>
                 </div>
-                <div class="group-totals">
-                    <span class="group-total">$0.00</span>
-                    <span class="group-weekly">$0.00/wk</span>
-                </div>
             </div>
         `;
     } else {
@@ -4874,10 +4975,6 @@ function renderGroup(cardEl, groupData) {
                     <span class="group-collapse-icon">▼</span>
                     <h4 class="group-title">${groupData.regGroupName} (${groupData.regGroupNumber})</h4>
                     <span class="item-count">${groupData.items.length} items</span>
-                </div>
-                <div class="group-totals">
-                    <span class="group-total">$0.00</span>
-                    <span class="group-weekly">$0.00/wk</span>
                 </div>
             </div>
         `;
@@ -4905,15 +5002,30 @@ function renderGroup(cardEl, groupData) {
         <div class="group-budget-inputs">
             <div class="form-group">
                 <label>Group Budget</label>
-                <input type="number" class="group-budget-amount" placeholder="0.00" inputmode="decimal" step="0.01" value="${groupData.budget.total || ''}">
+                <input type="number" class="group-budget-amount" placeholder="0.00" inputmode="decimal" step="0.01" value="${groupData.budget?.total || ''}">
             </div>
             <div class="form-group">
                 <label>Excluded</label>
-                <input type="number" class="group-excluded-amount" placeholder="0.00" inputmode="decimal" step="0.01" value="${groupData.budget.excluded || ''}">
+                <input type="number" class="group-excluded-amount" placeholder="0.00" inputmode="decimal" step="0.01" value="${groupData.budget?.excluded || ''}">
             </div>
             <div class="form-group">
                 <label>Carry Over</label>
-                <input type="number" class="group-carry-amount" placeholder="0.00" inputmode="decimal" step="0.01" value="${groupData.budget.carryOver || ''}">
+                <input type="number" class="group-carry-amount" placeholder="0.00" inputmode="decimal" step="0.01" value="${groupData.budget?.carryOver || ''}">
+            </div>
+        </div>
+        <!-- Group Totals using same structure as main totals -->
+        <div class="totals-section" style="margin-top: 0.75rem;">
+            <div class="total-item">
+                <span class="total-label">Used</span>
+                <span class="total-value group-used-amount">$0.00</span>
+            </div>
+            <div class="total-item">
+                <span class="total-label">Remaining</span>
+                <span class="total-value group-remaining-amount">—</span>
+            </div>
+            <div class="total-item">
+                <span class="total-label">Weekly</span>
+                <span class="total-value group-weekly-amount">$0.00</span>
             </div>
         </div>
     `;
@@ -5377,44 +5489,27 @@ function isSleepoverItem(item) {
 }
 
 function applyJulyUplift(basePrice, serviceDate, itemEndDate, upliftPercent) {
-  // If no end date, assume it's current pricing (no uplift needed)
-  if (!itemEndDate) return basePrice;
+  // For services delivered on or after July 1, 2026, apply uplift
+  // This simulates the annual NDIS price increase
   
-  // Handle both string and date formats
-  let endDate;
-  if (typeof itemEndDate === 'string') {
-    // Handle dd-mm-yyyy format from the catalogue
-    if (itemEndDate.match(/^\d{2}[-/]\d{2}[-/]\d{4}$/)) {
-      const [day, month, year] = itemEndDate.split(/[-/]/);
-      endDate = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day)));
-    } else {
-      endDate = new Date(itemEndDate);
-    }
-  } else {
-    endDate = itemEndDate;
-  }
+  const july2026 = new Date(Date.UTC(2026, 6, 1)); // July 1, 2026
+  const july2025 = new Date(Date.UTC(2025, 6, 1)); // July 1, 2025
+  const july2024 = new Date(Date.UTC(2024, 6, 1)); // July 1, 2024
   
-  if (isNaN(endDate.getTime())) return basePrice;
-  
-  // Only apply uplift if service date is after the item's end date
-  if (serviceDate <= endDate) return basePrice;
-  
-  // Calculate how many July 1st periods have passed since the end date
-  const endYear = endDate.getUTCFullYear();
-  const serviceYear = serviceDate.getUTCFullYear();
-  
+  // Count how many July 1st dates have passed since the base price year
   let periodsElapsed = 0;
-  for (let year = endYear; year < serviceYear; year++) {
-    const july1 = new Date(Date.UTC(year, 6, 1)); // July 1st
-    if (serviceDate > july1 && july1 > endDate) {
+  
+  // If service is on/after July 1, 2026
+  if (serviceDate >= july2026) {
+    periodsElapsed++;
+    
+    // Check if we need multiple years of uplift
+    if (serviceDate >= new Date(Date.UTC(2027, 6, 1))) {
       periodsElapsed++;
     }
-  }
-  
-  // Check current year July 1st
-  const currentYearJuly1 = new Date(Date.UTC(serviceYear, 6, 1));
-  if (serviceDate >= currentYearJuly1 && currentYearJuly1 > endDate) {
-    periodsElapsed++;
+    if (serviceDate >= new Date(Date.UTC(2028, 6, 1))) {
+      periodsElapsed++;
+    }
   }
   
   if (periodsElapsed <= 0) return basePrice;
@@ -5424,6 +5519,8 @@ function applyJulyUplift(basePrice, serviceDate, itemEndDate, upliftPercent) {
   for (let i = 0; i < periodsElapsed; i++) {
     price = price * (1 + upliftPercent / 100);
   }
+  
+  console.log(`Uplift: ${serviceDate.toISOString().split('T')[0]} - periods: ${periodsElapsed}, base: $${basePrice}, uplifted: $${Math.round(price * 100) / 100}`);
   
   return Math.round(price * 100) / 100;
 }
@@ -5453,7 +5550,7 @@ function getUnitPrice(item, card, date, { isPH, isSleepover }) {
   return base;
 }
 
-function resolveQuantityForDate(item, date, dayOfWeek, { isPH, isSleepover }) {
+function resolveQuantityForDate(item, date, dayOfWeek, { isPH, isSleepover, isFirstDay }) {
   if (item.unit === 'H') {
     // Hours logic
     if (item.hours) {
@@ -5483,10 +5580,10 @@ function resolveQuantityForDate(item, date, dayOfWeek, { isPH, isSleepover }) {
       return (item.days && item.days[dayOfWeek]) ? 1 : 0;
     } else if (getEItemType(item.supportItemName) === 'one-time') {
       // One-time items only on first day
-      const startDate = new Date(card.period.start);
-      if (date.getTime() === startDate.getTime()) {
+      if (isFirstDay) {
         return item.quantity || 0;
       }
+      return 0;
     } else {
       // Other E items - return quantity for each applicable day
       return item.quantity || 0;
@@ -5551,11 +5648,16 @@ function computeCardTotals(card) {
         const isSleepover = isSleepoverItem(item);
         
         // Main gating logic with sleepover exception
+        if (isPH && !card.settings.includePH) {
+          // If PH not included, skip ALL items on PH days (including sleepovers)
+          return;
+        }
+        
         if (isPH) {
           if (isSleepover) {
-            // Sleepover allowed on PH at standard rate
+            // Sleepover allowed on PH at standard rate when PH included
           } else {
-            if (!card.settings.includePH) return;
+            // For non-sleepover items on PH, only PH items apply
             if (!item.flags.isPublicHoliday) return;
           }
         } else {
@@ -5566,10 +5668,16 @@ function computeCardTotals(card) {
           if (item.flags.isSunday && !isSunday(date)) return;
         }
         
-        const quantity = resolveQuantityForDate(item, date, dayOfWeek, { isPH, isSleepover });
+        const quantity = resolveQuantityForDate(item, date, dayOfWeek, { 
+          isPH, 
+          isSleepover,
+          isFirstDay: date.getTime() === startDate.getTime()
+        });
         if (quantity <= 0) return;
         
+        // Get unit price with uplift applied based on the service date
         const unitPrice = getUnitPrice(item, card, date, { isPH, isSleepover });
+        
         const lineCents = Math.round(quantity * Math.round(unitPrice * 100));
         
         result.usedCents += lineCents;
@@ -5590,18 +5698,35 @@ function computeCardTotals(card) {
 }
 
 // Helper function to count days in period
-function countDaysInPeriod(startDate, endDate) {
+function countDaysInPeriod(startDate, endDate, card) {
     const dayCount = { Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0, Sun: 0 };
+    const dayCountExcludingPH = { Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0, Sun: 0 };
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    let phCount = 0;
     
     let current = new Date(startDate);
     while (current <= endDate) {
         const dayName = days[current.getDay()];
+        const isPH = card ? isPublicHoliday(current, card.state) : false;
+        
+        // Always count raw days
         dayCount[dayName]++;
+        
+        // Count excluding PH for display
+        if (!isPH) {
+            dayCountExcludingPH[dayName]++;
+        } else {
+            phCount++;
+        }
+        
         current.setDate(current.getDate() + 1);
     }
     
-    return dayCount;
+    return {
+        raw: dayCount,
+        excludingPH: dayCountExcludingPH,
+        publicHolidays: phCount
+    };
 }
 
 function updateCardTotals(cardEl, card) {
@@ -5697,7 +5822,122 @@ function updateCardTotals(cardEl, card) {
         if (weeklyEl) {
             weeklyEl.textContent = `${formatCurrency(groupWeekly)}/wk`;
         }
+        
+        // Update group budget section totals
+        if (card.settings.calculateByGroup) {
+            const group = card.groups.find(g => g.regGroupNumber === groupNumber);
+            if (group) {
+                const groupBudget = parseFloat(group.budget?.total) || 0;
+                const groupExcluded = parseFloat(group.budget?.excluded) || 0;
+                const groupCarryOver = parseFloat(group.budget?.carryOver) || 0;
+                const groupAvailable = groupBudget + groupCarryOver - groupExcluded;
+                const groupRemaining = groupAvailable - groupTotal;
+                
+                // Update group used amount
+                const groupUsedEl = groupEl.querySelector('.group-used-amount');
+                if (groupUsedEl) {
+                    groupUsedEl.textContent = formatCurrency(groupTotal);
+                }
+                
+                // Update group remaining
+                const groupRemainingEl = groupEl.querySelector('.group-remaining-amount');
+                if (groupRemainingEl) {
+                    if (groupAvailable === 0) {
+                        groupRemainingEl.textContent = '—';
+                        groupRemainingEl.classList.remove('negative');
+                    } else {
+                        groupRemainingEl.textContent = formatCurrency(groupRemaining);
+                        groupRemainingEl.classList.toggle('negative', groupRemaining < 0);
+                    }
+                }
+                
+                // Update group weekly
+                const groupWeeklyEl = groupEl.querySelector('.group-weekly-amount');
+                if (groupWeeklyEl) {
+                    groupWeeklyEl.textContent = formatCurrency(groupWeekly);
+                }
+            }
+        }
     });
+    
+    // Update collapsed view
+    updateCollapsedView(cardEl, card, totals);
+}
+
+// Function to update collapsed view
+function updateCollapsedView(cardEl, card, totals) {
+    const collapsedInfo = cardEl.querySelector('.card-collapsed-info');
+    if (!collapsedInfo) return;
+    
+    const startDate = new Date(card.period.start);
+    const endDate = new Date(card.period.end);
+    const dateRange = `${startDate.toLocaleDateString('en-AU')} - ${endDate.toLocaleDateString('en-AU')}`;
+    
+    if (card.settings.calculateByGroup) {
+        // Show ALL groups with totals
+        let html = '<div class="collapsed-groups-container">';
+        
+        // Add date range at top
+        html += `<div class="collapsed-dates" style="margin-bottom: 0.75rem;">${dateRange}</div>`;
+        
+        card.groups.forEach(group => {
+            const groupUsed = (totals.perGroupCents[group.regGroupNumber] || 0) / 100;
+            const groupBudget = parseFloat(group.budget?.total) || 0;
+            const groupRemaining = groupBudget - groupUsed;
+            
+            html += `
+                <div class="collapsed-group-row" style="margin-bottom: 1rem;">
+                    <div class="collapsed-group-name" style="font-weight: 500; margin-bottom: 0.5rem;">${group.regGroupName}</div>
+                    <div class="totals-section" style="padding: 0.75rem; margin: 0;">
+                        <div class="total-item">
+                            <span class="total-label">Budget</span>
+                            <span class="total-value">${formatCurrency(groupBudget)}</span>
+                        </div>
+                        <div class="total-item">
+                            <span class="total-label">Used</span>
+                            <span class="total-value">${formatCurrency(groupUsed)}</span>
+                        </div>
+                        <div class="total-item">
+                            <span class="total-label">Remaining</span>
+                            <span class="total-value ${groupRemaining < 0 ? 'negative' : ''}">${formatCurrency(groupRemaining)}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        collapsedInfo.innerHTML = html;
+    } else {
+        // Show standard totals
+        const used = totals.usedCents / 100;
+        const totalBudget = parseFloat(card.budget.total) || 0;
+        const carryOver = parseFloat(card.budget.carryOver) || 0;
+        const excluded = parseFloat(card.budget.excluded) || 0;
+        const available = totalBudget + carryOver - excluded;
+        const remaining = available - used;
+        const weekly = totals.weeks > 0 ? used / totals.weeks : 0;
+        
+        collapsedInfo.innerHTML = `
+            <div class="collapsed-standard-totals">
+                <span class="collapsed-dates">${dateRange}</span>
+                <div class="collapsed-amounts">
+                    <div class="collapsed-amount-item">
+                        <span class="collapsed-amount-label">Used</span>
+                        <span class="collapsed-amount-value">${formatCurrency(used)}</span>
+                    </div>
+                    <div class="collapsed-amount-item">
+                        <span class="collapsed-amount-label">Remaining</span>
+                        <span class="collapsed-amount-value ${remaining < 0 ? 'negative' : ''}">${formatCurrency(remaining)}</span>
+                    </div>
+                    <div class="collapsed-amount-item">
+                        <span class="collapsed-amount-label">Weekly</span>
+                        <span class="collapsed-amount-value">${formatCurrency(weekly)}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
 }
 
 function attachCardEventHandlers(cardEl, card) {
