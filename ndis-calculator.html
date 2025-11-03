@@ -2024,14 +2024,14 @@ body {
                 </div>
             </div>
             <input type="file" id="csv-import" accept=".csv" style="display: none;">
-            <button id="multi-period-report-btn" class="btn btn-accent">
+            <button id="multi-period-report-btn" class="btn btn-primary">
                 <svg xmlns="http://www.w3.org/2000/svg" height="20" width="20" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-1 9H9V9h10v2zm-4 4H9v-2h6v2zm4-8H9V5h10v2z"/>
                 </svg>
-                Multi-Period Report
+                Bulk Report
             </button>
             <button id="new-card-btn" class="btn btn-accent">
-                + New Funding Period
+                + Report
             </button>            
         </div>
     </header>
@@ -2810,16 +2810,30 @@ async function loadFundingPeriod(token) {
     try {
         showLoading('Loading from cloud...');
         
+        // Ensure token is uppercase and trimmed
+        const cleanToken = token.trim().toUpperCase();
+        console.log('Loading token:', cleanToken);
+        
         const { data, error } = await supabaseClient
             .from('funding_periods')
             .select('data')
-            .eq('token', token.toUpperCase())
-            .single();
+            .eq('token', cleanToken)
+            .maybeSingle(); // Use maybeSingle to avoid error when no rows
         
-        if (error) throw error;
-        if (!data) throw new Error('Funding period not found');
+        if (error) {
+            console.error('Supabase error:', error);
+            throw error;
+        }
         
+        if (!data) {
+            console.log('No funding period found for token:', cleanToken);
+            throw new Error('Funding period not found');
+        }
+        
+        console.log('Loaded data:', data);
         hideLoading();
+        
+        // Return the card data directly
         return data.data;
         
     } catch (error) {
@@ -2830,17 +2844,92 @@ async function loadFundingPeriod(token) {
     }
 }
 
-async function buildQRData(card) {
-    // Save to database and get token
-    const token = await saveFundingPeriod(card);
+function buildQRData(card) {
+    // This function ONLY builds the QR data structure
+    // It should NOT save anything to Supabase
     
-    if (!token) {
-        throw new Error('Failed to save funding period');
+    const qrData = {
+        v: 1,  // version
+        id: card.id,
+        p: {  // participant
+            n: card.participant.name,
+            ndis: card.participant.ndisNumber
+        },
+        d: {  // dates
+            s: card.period.start,
+            e: card.period.end
+        },
+        st: card.state || 'NSW',
+        b: {  // budget
+            t: card.budget.total,
+            ex: card.budget.excluded || 0,
+            co: card.budget.carryOver || 0
+        },
+        set: {  // settings
+            ph: card.settings?.includePH !== false,
+            u: card.settings?.uplift?.enabled !== false,
+            up: card.settings?.uplift?.percent || 3.2,
+            cbg: card.settings?.calculateByGroup || false
+        },
+        n: card.notes || '',
+        g: []  // groups
+    };
+    
+    // Add selected items only
+    if (card.groups) {
+        card.groups.forEach(group => {
+            const selectedItems = group.items.filter(item => item.selected);
+            if (selectedItems.length === 0) return;
+            
+            const groupData = {
+                n: group.regGroupNumber,
+                i: []
+            };
+            
+            // Add group budget if present
+            if (group.budget) {
+                groupData.b = {
+                    t: group.budget.total || 0,
+                    e: group.budget.excluded || 0,
+                    c: group.budget.carryOver || 0
+                };
+            }
+            
+            selectedItems.forEach(item => {
+                const itemData = {
+                    n: item.supportItemNumber,
+                };
+                
+                // Add hours if present
+                if (item.hours && Object.keys(item.hours).length > 0) {
+                    itemData.h = item.hours;
+                }
+                
+                // Add days if present
+                if (item.days && Object.keys(item.days).length > 0) {
+                    itemData.d = item.days;
+                }
+                
+                // Add quantity if present
+                if (item.quantity > 0) {
+                    itemData.q = item.quantity;
+                }
+                
+                // Add override price if present
+                if (item.overridePrice !== null) {
+                    itemData.op = item.overridePrice;
+                }
+                
+                groupData.i.push(itemData);
+            });
+            
+            qrData.g.push(groupData);
+        });
     }
     
-    // Return just the token for QR code
-    return token;
+    return qrData;
 }
+
 
 async function generateQRCode(data) {
     return new Promise((resolve, reject) => {
@@ -2881,11 +2970,42 @@ async function generateQRCode(data) {
 
 function parseQRData(qrString) {
     try {
-        const data = JSON.parse(qrString);
+        // Check if qrString is empty or not a string
+        if (!qrString || typeof qrString !== 'string') {
+            throw new Error('QR data is empty or invalid');
+        }
+        
+        // Trim whitespace
+        qrString = qrString.trim();
+        
+        // Check if string is empty after trimming
+        if (qrString.length === 0) {
+            throw new Error('QR data is empty');
+        }
+        
+        // Try to parse JSON
+        let data;
+        try {
+            data = JSON.parse(qrString);
+        } catch (jsonError) {
+            console.error('JSON parsing error:', jsonError);
+            console.error('QR string content:', qrString);
+            throw new Error(`Invalid JSON in QR code: ${jsonError.message}`);
+        }
+        
+        // Validate that data is an object
+        if (!data || typeof data !== 'object') {
+            throw new Error('QR data is not a valid object');
+        }
         
         // Validate version
         if (data.v !== 1) {
             throw new Error('Unsupported QR code version');
+        }
+        
+        // Validate required fields
+        if (!data.p || !data.d || !data.b) {
+            throw new Error('QR data is missing required fields');
         }
         
         // Reconstruct full card structure
@@ -2940,9 +3060,11 @@ function parseQRData(qrString) {
                 
                 // Create a map of QR items for quick lookup
                 const qrItemsMap = new Map();
-                groupData.i.forEach(item => {
-                    qrItemsMap.set(item.n, item);
-                });
+                if (groupData.i && Array.isArray(groupData.i)) {
+                    groupData.i.forEach(item => {
+                        qrItemsMap.set(item.n, item);
+                    });
+                }
                 
                 // Add all items from catalogue, marking selected ones
                 catalogueGroup.items.forEach(catalogueItem => {
@@ -2967,13 +3089,17 @@ function parseQRData(qrString) {
         return card;
     } catch (error) {
         console.error('Error parsing QR data:', error);
-        throw new Error('Invalid QR code data');
+        console.error('QR string received:', qrString);
+        throw error; // Re-throw with the original error for better debugging
     }
 }
 
+
 // ===== QR Scanner Functions =====
 let html5QrCode = null;
+let scannedData = null;
 
+// 2. Updated initQRScanner function
 function initQRScanner() {
     const modal = document.getElementById('qr-scanner-modal');
     const actionsDiv = document.getElementById('qr-actions');
@@ -2982,6 +3108,13 @@ function initQRScanner() {
     // Reset UI
     actionsDiv.classList.add('hidden');
     scannerInfo.textContent = 'Position QR code within the frame';
+    scannedData = null; // Reset scanned data
+    
+    // Show the video element again
+    const videoElement = document.getElementById('qr-reader');
+    if (videoElement) {
+        videoElement.style.display = 'block';
+    }
     
     // Check if Html5Qrcode is available
     if (typeof Html5Qrcode === 'undefined') {
@@ -3000,9 +3133,9 @@ function initQRScanner() {
         aspectRatio: 1.0
     };
     
-    let scannedData = null;
-    
-    const onScanSuccess = (decodedText, decodedResult) => {
+    const onScanSuccess = async (decodedText, decodedResult) => {
+        console.log('QR Code detected:', decodedText);
+        
         // Stop scanning
         html5QrCode.stop().then(() => {
             console.log('QR Code scanning stopped');
@@ -3010,14 +3143,51 @@ function initQRScanner() {
             console.error('Failed to stop scanning:', err);
         });
         
-        // Store scanned data
-        scannedData = decodedText;
+        // Check if it's a token (short string) or full JSON data
+        try {
+            // Try to parse as JSON first
+            const parsed = JSON.parse(decodedText);
+            // If it has version property, it's already full QR data
+            if (parsed.v) {
+                scannedData = decodedText;
+                scannerInfo.textContent = 'QR code scanned successfully! Choose an action:';
+            } else {
+                throw new Error('Not QR data format');
+            }
+        } catch (e) {
+            // Not JSON or not QR format - treat as token
+            console.log('Detected token:', decodedText);
+            scannerInfo.textContent = 'Loading data from cloud...';
+            
+            try {
+                // Load the funding period using the token
+                const cardData = await loadFundingPeriod(decodedText);
+                
+                if (!cardData) {
+                    throw new Error('No data returned from cloud');
+                }
+                
+                // The loaded data is already a full card object
+                // We need to convert it to QR format for parseQRData
+                const qrData = buildQRData(cardData);
+                scannedData = JSON.stringify(qrData);
+                
+                scannerInfo.textContent = 'Data loaded successfully! Choose an action:';
+            } catch (loadError) {
+                console.error('Failed to load data from token:', loadError);
+                scannerInfo.textContent = 'Failed to load data. Invalid or expired code.';
+                
+                // Hide video element but don't show actions
+                const videoElement = document.getElementById('qr-reader');
+                if (videoElement) {
+                    videoElement.style.display = 'none';
+                }
+                return; // Exit without showing action buttons
+            }
+        }
         
-        // Show action buttons
+        // Show action buttons only if we have valid data
         actionsDiv.classList.remove('hidden');
-        
-        // Update scanner info
-        scannerInfo.textContent = 'QR code scanned successfully! Choose an action:';
         
         // Hide the video element
         const videoElement = document.getElementById('qr-reader');
@@ -3065,12 +3235,17 @@ function initQRScanner() {
         scannerInfo.textContent = 'Unable to access camera. Please check permissions.';
     });
     
-    // Action button handlers
+    // Action button handlers - THIS MUST BE INSIDE initQRScanner
     actionsDiv.querySelectorAll('.qr-action-btn').forEach(btn => {
         btn.onclick = async () => {
             const action = btn.dataset.action;
             
             try {
+                if (!scannedData) {
+                    throw new Error('No QR data available. Please scan a QR code first.');
+                }
+                
+                console.log('Processing QR data:', scannedData);
                 const card = parseQRData(scannedData);
                 
                 switch (action) {
@@ -3088,17 +3263,23 @@ function initQRScanner() {
                         break;
                 }
                 
-                // Close modal
+                // Close modal after successful action
                 closeQRScanner();
+                
             } catch (error) {
+                console.error('Error processing QR code:', error);
                 showError('Error processing QR code: ' + error.message);
             }
         };
     });
 }
 
+// 3. Updated closeQRScanner function
 function closeQRScanner() {
     const modal = document.getElementById('qr-scanner-modal');
+    
+    // Reset scannedData when closing
+    scannedData = null;
     
     if (html5QrCode) {
         // Check if scanner is running
@@ -3120,8 +3301,10 @@ function closeQRScanner() {
     }
 }
 
-
-
+// 4. Helper function to check QR scanner state
+function isQRScannerReady() {
+    return scannedData !== null && scannedData !== undefined && scannedData.length > 0;
+}
 
 function importCardFromQR(card) {
     // Add card to state and render
@@ -3241,16 +3424,21 @@ async function generateMultiPeriodReport() {
         
         // Generate QR Code for multi-period data
         let qrCodeDataUrl = null;
-        try {
-            // Create combined data for QR
-            const multiPeriodData = {
-                v: 2, // Version 2 for multi-period
-                periods: state.cards.map(card => buildQRData(card))
-            };
-            qrCodeDataUrl = await generateQRCode(JSON.stringify(multiPeriodData));
-        } catch (error) {
-            console.error('Error generating multi-period QR code:', error);
+    try {
+        // First save to Supabase to get a token
+        const token = await saveFundingPeriod(card);
+        if (token) {
+            // Use the token for QR code instead of full data
+            qrCodeDataUrl = await generateQRCode(token);
+        } else {
+            // If save fails, fallback to embedding full data
+            const qrData = buildQRData(card);
+            qrCodeDataUrl = await generateQRCode(JSON.stringify(qrData));
         }
+    } catch (error) {
+        console.error('Error generating QR code:', error);
+        // Continue without QR if it fails
+    }
         
         // Logo on left
         try {
@@ -3277,7 +3465,7 @@ async function generateMultiPeriodReport() {
         
         // QR Code on right
         if (qrCodeDataUrl) {
-            const qrSize = 40;
+            const qrSize = 15;
             doc.addImage(qrCodeDataUrl, 'PNG', pageWidth - margin - qrSize, y, qrSize, qrSize);
             
             // QR Code label
@@ -3869,7 +4057,6 @@ async function generateInvoiceReport(card) {
 }
 
 // ===== Enhanced PDF Report with QR Code =====
-// Update the existing generatePDFReport function
 const originalGeneratePDFReport = generatePDFReport;
 
 async function generatePDFReport(card) {
@@ -3925,12 +4112,20 @@ async function generatePDFReport(card) {
     // Generate QR Code
     let qrCodeDataUrl = null;
     try {
-        const qrData = buildQRData(card);
-        qrCodeDataUrl = await generateQRCode(qrData);
+        // First save to Supabase to get a token
+        const token = await saveFundingPeriod(card);
+        if (token) {
+            // Use the token for QR code instead of full data
+            qrCodeDataUrl = await generateQRCode(token);
+        } else {
+            // If save fails, fallback to embedding full data
+            const qrData = buildQRData(card);
+            qrCodeDataUrl = await generateQRCode(JSON.stringify(qrData));
+        }
     } catch (error) {
         console.error('Error generating QR code:', error);
+        // Continue without QR if it fails
     }
-    
     // HEADER SECTION
     // Logo on left
     try {
@@ -3966,7 +4161,7 @@ async function generatePDFReport(card) {
     
     // QR Code on right
     if (qrCodeDataUrl) {
-        const qrSize = 40;
+        const qrSize = 15;
         doc.addImage(qrCodeDataUrl, 'PNG', pageWidth - margin - qrSize, y, qrSize, qrSize);
         
         // QR Code label
