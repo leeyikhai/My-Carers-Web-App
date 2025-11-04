@@ -2425,7 +2425,11 @@ let isSaving = false;
 function getItemUsageDescription(item) {
     if (item.unit === 'H') {
         const hours = [];
-        if (item.hours.weekday !== undefined) {
+        
+        // Check for weekly fixed first
+        if (item.hours.weeklyFixed !== undefined && item.hours.weeklyFixed > 0) {
+            hours.push(`Weekly Fixed: ${item.hours.weeklyFixed}h`);
+        } else if (item.hours.weekday !== undefined) {
             hours.push(`Weekdays: ${item.hours.weekday}h`);
         } else if (item.hours.Mon || item.hours.Tue || item.hours.Wed || item.hours.Thu || item.hours.Fri) {
             const dayHours = [];
@@ -2450,131 +2454,131 @@ function getItemUsageDescription(item) {
     return '';
 }
 
-
-
-async function createSupportGroupTable(doc, card, x, y, width) {
+async function createSupportGroupTable(doc, group, card, x, y, width) {
     const totals = computeCardTotals(card);
-    const data = [];
+    const groupTotal = (totals.perGroupCents[group.regGroupNumber] || 0) / 100;
     
-    // Create a map to store item totals
-    const itemTotals = {};
+    // Group header
+    doc.setFontSize(11);
+    doc.setFont(undefined, 'bold');
+    doc.text(group.regGroupName, x, y);
+    doc.setFont(undefined, 'normal');
+    doc.setFontSize(9);
+    doc.text(`(${group.regGroupNumber}) - Total: ${formatCurrency(groupTotal)}`, x, y + 5);
+    y += 10;
     
     // Calculate totals for each item using the same logic as computeCardTotals
+    const itemData = {};
+    const startDate = new Date(card.period.start + 'T00:00:00Z');
+    const endDate = new Date(card.period.end + 'T00:00:00Z');
+    
     eachDateInclusive(card.period.start, card.period.end, (date) => {
         const isPH = isPublicHoliday(date, card.state);
         const dayOfWeek = getDayOfWeek(date);
         
-        card.groups.forEach(group => {
-            group.items.forEach(item => {
-                if (!item.selected) return;
-                
-                const itemKey = `${group.regGroupNumber}-${item.supportItemNumber}`;
-                if (!itemTotals[itemKey]) {
-                    itemTotals[itemKey] = {
-                        item: item,
-                        group: group,
-                        totalQuantity: 0,
-                        totalOccurrences: 0  // Track number of days/occurrences
-                    };
-                }
-                
-                const isSleepover = isSleepoverItem(item);
-                
-                // Apply same gating logic as computeCardTotals
-                if (isPH && !card.settings.includePH) {
-                    // If PH not included, skip ALL items on PH days
-                    return;
-                }
-                
-                if (isPH) {
-                    if (isSleepover) {
-                        // Sleepover allowed on PH at standard rate
-                    } else {
-                        // For non-sleepover items on PH, only PH items apply
-                        if (!item.flags.isPublicHoliday) return;
-                    }
-                } else {
-                    // Non-PH day
-                    if (item.flags.isPublicHoliday) return;
-                    if (item.flags.isWeekday && !isWeekday(date)) return;
-                    if (item.flags.isSaturday && !isSaturday(date)) return;
-                    if (item.flags.isSunday && !isSunday(date)) return;
-                }
-                
-                const quantity = resolveQuantityForDate(item, date, dayOfWeek, { 
-                    isPH, 
-                    isSleepover,
-                    isFirstDay: date.getTime() === new Date(card.period.start).getTime()
-                });
-                
-                if (quantity > 0) {
-                    itemTotals[itemKey].totalQuantity += quantity;
-                    itemTotals[itemKey].totalOccurrences += 1;  // Count the day/occurrence
-                    
-                    // Debug logging for weekday items
-                    if (item.supportItemName.includes('Weekday') && itemTotals[itemKey].totalOccurrences % 50 === 0) {
-                        console.log(`${item.supportItemName}: ${itemTotals[itemKey].totalOccurrences} days, ${itemTotals[itemKey].totalQuantity} total hours`);
-                    }
-                }
-            });
-        });
-    });
-    
-    // Now build the table rows using the calculated totals
-    card.groups.forEach(group => {
-        const groupTotal = (totals.perGroupCents[group.regGroupNumber] || 0) / 100;
-        let groupHasItems = false;
-        
-        // Debug: Log group totals
-        console.log(`Group ${group.regGroupName}: Total from computeCardTotals = $${groupTotal}`);
-        
         group.items.forEach(item => {
             if (!item.selected) return;
             
-            const itemKey = `${group.regGroupNumber}-${item.supportItemNumber}`;
-            const itemTotal = itemTotals[itemKey];
+            const itemKey = item.supportItemNumber;
+            if (!itemData[itemKey]) {
+                itemData[itemKey] = {
+                    item: item,
+                    totalQuantity: 0,
+                    totalCents: 0
+                };
+            }
             
-            if (itemTotal && itemTotal.totalQuantity > 0) {
-                const usage = getItemUsageDescription(item);
-                const unitPrice = item.statePrice || 0;
-                
-                // Calculate the actual line total using the total quantity and current price
-                const lineTotal = itemTotal.totalQuantity * unitPrice;
-                
-                // For display, show total quantity which is the actual total hours/occurrences
-                const displayQuantity = itemTotal.totalQuantity.toString();
-                
-                // Debug logging
-                if (item.supportItemName.includes('Weekday')) {
-                    console.log(`Table row: ${item.supportItemName} - Quantity: ${displayQuantity}, Price: ${unitPrice}, Total: ${lineTotal}`);
+            const isSleepover = isSleepoverItem(item);
+            
+            // Apply same gating logic as computeCardTotals
+            if (isPH && !card.settings.includePH) return;
+            
+            if (isPH) {
+                if (isSleepover) {
+                    // Sleepover allowed on PH at standard rate
+                } else {
+                    if (!item.flags.isPublicHoliday) return;
                 }
+            } else {
+                // Non-PH day
+                if (item.flags.isPublicHoliday) return;
+                if (item.flags.isWeekday && !isWeekday(date)) return;
+                if (item.flags.isSaturday && !isSaturday(date)) return;
+                if (item.flags.isSunday && !isSunday(date)) return;
+            }
+            
+            const quantity = resolveQuantityForDate(item, date, dayOfWeek, { 
+                isPH, 
+                isSleepover,
+                isFirstDay: date.getTime() === startDate.getTime()
+            });
+            
+            if (quantity > 0) {
+                // Get the price WITH UPLIFT for this specific date
+                const unitPrice = getUnitPrice(item, card, date, { isPH, isSleepover });
+                const lineCents = Math.round(quantity * Math.round(unitPrice * 100));
                 
-                data.push([
-                    item.supportItemName,
-                    item.supportItemNumber,
-                    usage,
-                    displayQuantity,
-                    formatCurrency(unitPrice),
-                    formatCurrency(lineTotal)
-                ]);
-                groupHasItems = true;
+                itemData[itemKey].totalQuantity += quantity;
+                itemData[itemKey].totalCents += lineCents;
             }
         });
+    });
+    
+    // Add weekly fixed items after the date loop
+    const weeks = Math.max(1, Math.ceil(
+        (endDate - startDate) / (1000 * 60 * 60 * 24 * 7)
+    ));
+    
+    group.items.forEach(item => {
+        if (!item.selected) return;
+        if (!item.hours?.weeklyFixed || item.hours.weeklyFixed <= 0) return;
         
-        // Add group total row if group has items
-        if (groupHasItems && groupTotal > 0) {
-            data.push([
-                `${group.regGroupName} Total`,
-                '',
-                '',
-                '',
-                '',
-                formatCurrency(groupTotal)
+        const itemKey = item.supportItemNumber;
+        if (!itemData[itemKey]) {
+            itemData[itemKey] = {
+                item: item,
+                totalQuantity: 0,
+                totalCents: 0
+            };
+        }
+        
+        const totalHours = weeks * item.hours.weeklyFixed;
+        const unitPrice = item.statePrice || 0;
+        
+        // Apply uplift if needed
+        let finalPrice = unitPrice;
+        if (card.settings.uplift.enabled) {
+            finalPrice = applyJulyUplift(unitPrice, endDate, item.effectiveTo, card.settings.uplift.percent);
+        }
+        
+        const totalCents = Math.round(totalHours * finalPrice * 100);
+        
+        itemData[itemKey].totalQuantity = totalHours;
+        itemData[itemKey].totalCents = totalCents;
+    });
+    
+    // Build table rows
+    const tableRows = [];
+    
+    Object.values(itemData).forEach(data => {
+        if (data.totalQuantity > 0) {
+            const usage = getItemUsageDescription(data.item);
+            const totalDollars = data.totalCents / 100;
+            // Calculate average rate (total dollars / total quantity)
+            const avgRate = data.totalQuantity > 0 ? totalDollars / data.totalQuantity : 0;
+            
+            tableRows.push([
+                data.item.supportItemName,
+                data.item.supportItemNumber,
+                usage,
+                data.totalQuantity.toString(),
+                formatCurrency(avgRate),
+                formatCurrency(totalDollars)
             ]);
         }
     });
     
-    if (data.length === 0) {
+    if (tableRows.length === 0) {
         doc.setFontSize(10);
         doc.text('No support items with quantities entered', x, y);
         return;
@@ -2583,15 +2587,15 @@ async function createSupportGroupTable(doc, card, x, y, width) {
     // Create the table
     doc.autoTable({
         startY: y,
-        head: [['Support Item', 'Code', 'Usage', 'Qty', 'Rate', 'Total']],
-        body: data,
+        head: [['Support Item', 'Code', 'Usage', 'Qty', 'Avg Rate', 'Total']],
+        body: tableRows,
         margin: { left: x, right: 20 },
         columnStyles: {
             0: { cellWidth: 45 },
             1: { cellWidth: 20 },
             2: { cellWidth: 30 },
-            3: { cellWidth: 16 },
-            4: { cellWidth: 16, halign: 'right' },
+            3: { cellWidth: 16, halign: 'right' },
+            4: { cellWidth: 20, halign: 'right' },
             5: { cellWidth: 20, halign: 'right' }
         },
         styles: {
@@ -2601,111 +2605,10 @@ async function createSupportGroupTable(doc, card, x, y, width) {
         headStyles: {
             fillColor: [37, 99, 235],
             textColor: [255, 255, 255]
-        },
-        didDrawCell: (data) => {
-            // Bold group total rows
-            if (data.cell.raw && data.cell.raw.includes('Total') && data.column.index === 0) {
-                doc.setFont(undefined, 'bold');
-                doc.setFillColor(248, 249, 250);
-            }
         }
     });
 }
 
-// Helper function to generate individual period sections in multi-period report
-async function generatePeriodSection(doc, card, periodNumber) {
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 20;
-    const contentWidth = pageWidth - (margin * 2);
-    
-    // Colors
-    const primaryColor = [37, 99, 235];
-    const grayColor = [128, 128, 128];
-    const lightGray = [248, 249, 250];
-    
-    let y = margin;
-    
-    // Period header with background
-    doc.setFillColor(...lightGray);
-    doc.roundedRect(margin - 5, y - 5, contentWidth + 10, 35, 3, 3, 'F');
-    
-    doc.setFontSize(20);
-    doc.setFont(undefined, 'bold');
-    doc.setTextColor(...primaryColor);
-    doc.text(`Period ${periodNumber}`, margin, y + 5);
-    
-    doc.setFontSize(12);
-    doc.setFont(undefined, 'normal');
-    doc.setTextColor(0, 0, 0);
-    const startDate = new Date(card.period.start);
-    const endDate = new Date(card.period.end);
-    const periodText = `${startDate.toLocaleDateString('en-AU', { 
-        day: 'numeric', month: 'long', year: 'numeric' 
-    })} to ${endDate.toLocaleDateString('en-AU', { 
-        day: 'numeric', month: 'long', year: 'numeric' 
-    })}`;
-    doc.text(periodText, margin, y + 15);
-    doc.text(`State: ${card.state}`, margin, y + 22);
-    
-    y += 45; // Move past header box
-    
-    // Budget summary section
-    doc.setFontSize(14);
-    doc.setFont(undefined, 'bold');
-    doc.text('BUDGET SUMMARY', margin, y);
-    y += 10;
-    
-    if (card.settings.calculateByGroup) {
-        await createGroupBudgetSummaryTable(doc, card, margin, y, contentWidth);
-    } else {
-        await createBudgetTable(doc, card, margin, y, contentWidth);
-    }
-    
-    // Add proper spacing after budget table
-    y = doc.lastAutoTable.finalY + 30; // Increased from 20 to 30
-    
-    // Check if we need a new page for support groups
-    if (y > pageHeight - 100) {
-        doc.addPage();
-        y = margin;
-    }
-    
-    // Support groups section
-    doc.setFontSize(14);
-    doc.setFont(undefined, 'bold');
-    doc.text('SUPPORT GROUPS BREAKDOWN', margin, y);
-    y += 10;
-    
-    await createSupportGroupTable(doc, card, margin, y, contentWidth);
-    
-    // If there are notes, add them
-    if (card.notes && card.notes.trim()) {
-        y = doc.lastAutoTable ? doc.lastAutoTable.finalY + 20 : y + 20;
-        
-        if (y > pageHeight - 50) {
-            doc.addPage();
-            y = margin;
-        }
-        
-        doc.setFontSize(12);
-        doc.setFont(undefined, 'bold');
-        doc.text('NOTES & ASSUMPTIONS', margin, y);
-        y += 8;
-        
-        doc.setFontSize(10);
-        doc.setFont(undefined, 'normal');
-        const noteLines = doc.splitTextToSize(card.notes, contentWidth);
-        noteLines.forEach(line => {
-            if (y > pageHeight - 20) {
-                doc.addPage();
-                y = margin;
-            }
-            doc.text(line, margin, y);
-            y += 5;
-        });
-    }
-}
 
 async function getBase64FromUrl(url) {
     const response = await fetch(url);
@@ -3425,21 +3328,40 @@ async function generateMultiPeriodReport() {
         
         // Generate QR Code for multi-period data
         let qrCodeDataUrl = null;
-    try {
-        // First save to Supabase to get a token
-        const token = await saveFundingPeriod(card);
-        if (token) {
-            // Use the token for QR code instead of full data
-            qrCodeDataUrl = await generateQRCode(token);
-        } else {
-            // If save fails, fallback to embedding full data
-            const qrData = buildQRData(card);
-            qrCodeDataUrl = await generateQRCode(JSON.stringify(qrData));
+        try {
+            // Create a token for multi-period report
+            const token = generateToken(8);
+            
+            // Save multi-period data to Supabase
+            const multiPeriodData = {
+                type: 'multi-period',
+                periods: state.cards.length,
+                participant: state.cards[0].participant,
+                cards: state.cards
+            };
+            
+            const { error } = await supabaseClient
+                .from('funding_periods')
+                .insert({
+                    token: token,
+                    data: multiPeriodData,
+                    participant_name: state.cards[0].participant.name || null,
+                    ndis_number: state.cards[0].participant.ndisNumber || null,
+                    period_start: state.cards[0].period.start || null,
+                    period_end: state.cards[state.cards.length - 1].period.end || null,
+                    total_amount: state.cards.reduce((sum, card) => {
+                        const totals = computeCardTotals(card);
+                        return sum + (totals.usedCents / 100);
+                    }, 0)
+                });
+            
+            if (!error) {
+                qrCodeDataUrl = await generateQRCode(token);
+            }
+        } catch (error) {
+            console.error('Error generating QR code:', error);
+            // Continue without QR if it fails
         }
-    } catch (error) {
-        console.error('Error generating QR code:', error);
-        // Continue without QR if it fails
-    }
         
         // Logo on left
         try {
@@ -3504,8 +3426,19 @@ async function generateMultiPeriodReport() {
         doc.text('Executive Summary', margin, y);
         y += 15;
         
-        // Create summary table
-        await createExecutiveSummaryTable(doc, margin, y, contentWidth);
+        // Create summary table with enhanced columns
+        y = await createExecutiveSummaryTable(doc, margin, y, contentWidth);
+        
+        // Add page numbers to all pages
+        const totalPages = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= totalPages; i++) {
+            doc.setPage(i);
+            doc.setFontSize(9);
+            doc.setFont(undefined, 'normal');
+            doc.setTextColor(128, 128, 128);
+            doc.text(`Page ${i} of ${totalPages}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+            doc.setTextColor(0, 0, 0);
+        }
         
         // Generate individual period reports
         doc.addPage();
@@ -3513,26 +3446,86 @@ async function generateMultiPeriodReport() {
         for (let i = 0; i < state.cards.length; i++) {
             if (i > 0) doc.addPage();
             
-            // Add page number function
-            const addPageNumber = () => {
-                const pageNum = doc.internal.getCurrentPageInfo().pageNumber;
+            // Generate period section with enhanced features
+            await generatePeriodSection(doc, state.cards[i], i + 1);
+        }
+        
+        // Add Grand Summary on new page
+        doc.addPage();
+        y = margin;
+        
+        // Grand Summary
+        y = await createGrandSummarySection(doc, margin, y, contentWidth);
+        
+        // Add visual summary chart if space allows
+        if (y < pageHeight - 100) {
+            y += 20;
+            doc.setFontSize(14);
+            doc.setFont(undefined, 'bold');
+            doc.text('EXPENDITURE TREND', margin, y);
+            y += 10;
+            
+            // Create simple bar visualization
+            const barHeight = 15;
+            const maxBarWidth = contentWidth * 0.7;
+            
+            state.cards.forEach((card, index) => {
+                const totals = computeCardTotals(card);
+                const budget = parseFloat(card.budget.total) || 0;
+                const carryOver = parseFloat(card.budget.carryOver) || 0;
+                const totalAvailable = budget + carryOver;
+                const used = totals.usedCents / 100;
+                const percentUsed = totalAvailable > 0 ? (used / totalAvailable) : 0;
+                
+                // Period label
                 doc.setFontSize(9);
                 doc.setFont(undefined, 'normal');
-                doc.setTextColor(128, 128, 128);
-                doc.text(`Page ${pageNum}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
-                doc.setTextColor(0, 0, 0);
-            };
+                doc.text(`Period ${index + 1}:`, margin, y + 10);
+                
+                // Background bar
+                doc.setFillColor(...lightGray);
+                doc.rect(margin + 50, y + 2, maxBarWidth, barHeight, 'F');
+                
+                // Used bar
+                const usedWidth = maxBarWidth * percentUsed;
+                const barColor = percentUsed > 0.9 ? errorColor : percentUsed > 0.75 ? [255, 193, 7] : primaryColor;
+                doc.setFillColor(...barColor);
+                doc.rect(margin + 50, y + 2, usedWidth, barHeight, 'F');
+                
+                // Percentage text
+                doc.setFontSize(8);
+                doc.text(`${(percentUsed * 100).toFixed(1)}%`, margin + 55 + maxBarWidth, y + 10);
+                
+                y += barHeight + 5;
+            });
+        }
+        
+        // Update all page numbers
+        const finalTotalPages = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= finalTotalPages; i++) {
+            doc.setPage(i);
+            doc.setFontSize(9);
+            doc.setFont(undefined, 'normal');
+            doc.setTextColor(128, 128, 128);
+            doc.setDrawColor(200, 200, 200);
             
-            // Generate period section
-            await generatePeriodSection(doc, state.cards[i], i + 1);
+            // Add footer line
+            doc.line(margin, pageHeight - 15, pageWidth - margin, pageHeight - 15);
             
-            // Add page number to current page
-            addPageNumber();
+            // Page numbers
+            doc.text(`Page ${i} of ${finalTotalPages}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+            
+            // Report generated date
+            const genDate = new Date().toLocaleDateString('en-AU');
+            doc.text(`Generated: ${genDate}`, margin, pageHeight - 10);
+            
+            doc.setTextColor(0, 0, 0);
         }
         
         // Save with appropriate filename
         const safeName = participantName.replace(/[^a-zA-Z0-9]/g, '_');
-        doc.save(`Multi_Period_Report_${safeName}.pdf`);
+        const dateStr = new Date().toISOString().split('T')[0];
+        doc.save(`Multi_Period_Report_${safeName}_${dateStr}.pdf`);
         
         hideLoading();
     } catch (error) {
@@ -3542,103 +3535,102 @@ async function generateMultiPeriodReport() {
 }
 
 async function createExecutiveSummaryTable(doc, x, y, width) {
-    const headers = ['Period', 'Dates', 'Budget', 'Used', 'Remaining'];
-    const colWidths = [10, 35, 20, 20, 15]; // Adjusted widths without status column
+    // Date formatting helpers
+    const fmtDate = s => new Date(s + 'T00:00:00').toLocaleDateString(
+        'en-AU', { day: 'numeric', month: 'short', year: 'numeric' }
+    );
+    const dateRange = (a, b) => `${fmtDate(a)} – ${fmtDate(b)}`;
     
     const data = [];
     
     // Prepare data rows
     state.cards.forEach((card, index) => {
         const totals = computeCardTotals(card);
-        const used = totals.usedCents / 100;
-        
-        let available, remaining;
-        
-        if (card.settings.calculateByGroup) {
-            available = totals.totalAvailableCents / 100;
-            remaining = totals.totalRemainingCents / 100;
-        } else {
-            const totalBudget = parseFloat(card.budget.total) || 0;
-            const carryOver = parseFloat(card.budget.carryOver) || 0;
-            const excluded = parseFloat(card.budget.excluded) || 0;
-            available = totalBudget + carryOver - excluded;
-            remaining = available - used;
-        }
+        const expenditure = totals.usedCents / 100;
+        const baseBudget = parseFloat(card.budget.total) || 0;
+        const carryOver = parseFloat(card.budget.carryOver) || 0;
+        const excluded = parseFloat(card.budget.excluded) || 0;
+        const available = baseBudget + carryOver - excluded;
+        const remaining = available - expenditure;
         
         data.push([
             `${index + 1}`,
-            `${formatDateDDMMYYYY(card.period.start)} - ${formatDateDDMMYYYY(card.period.end)}`,
+            dateRange(card.period.start, card.period.end),
+            formatCurrency(baseBudget),
             formatCurrency(available),
-            formatCurrency(used),
+            formatCurrency(expenditure),
             formatCurrency(remaining)
         ]);
     });
     
     // Calculate grand totals
-    let grandBudget = 0;
-    let grandUsed = 0;
+    let totalBaseBudget = 0;
+    let totalAvailable = 0;
+    let totalExpenditure = 0;
     
     state.cards.forEach(card => {
         const totals = computeCardTotals(card);
-        const used = totals.usedCents / 100;
+        const expenditure = totals.usedCents / 100;
+        const baseBudget = parseFloat(card.budget.total) || 0;
+        const carryOver = parseFloat(card.budget.carryOver) || 0;
+        const excluded = parseFloat(card.budget.excluded) || 0;
         
-        let available;
-        if (card.settings.calculateByGroup) {
-            available = totals.totalAvailableCents / 100;
-        } else {
-            const totalBudget = parseFloat(card.budget.total) || 0;
-            const carryOver = parseFloat(card.budget.carryOver) || 0;
-            const excluded = parseFloat(card.budget.excluded) || 0;
-            available = totalBudget + carryOver - excluded;
-        }
-        
-        grandBudget += available;
-        grandUsed += used;
+        totalBaseBudget += baseBudget;
+        totalAvailable += (baseBudget + carryOver - excluded);
+        totalExpenditure += expenditure;
     });
+    
+    const totalRemaining = totalAvailable - totalExpenditure;
     
     // Add total row
     data.push([
         'TOTAL',
         '',
-        formatCurrency(grandBudget),
-        formatCurrency(grandUsed),
-        formatCurrency(grandBudget - grandUsed)
+        formatCurrency(totalBaseBudget),
+        formatCurrency(totalAvailable),
+        formatCurrency(totalExpenditure),
+        formatCurrency(totalRemaining)
     ]);
     
-    // Use autoTable for clean formatting
+    // Create the table with tighter margins and smaller font
     doc.autoTable({
         startY: y,
-        head: [headers],
+        head: [['Period', 'Dates', 'Base Budget', 'Available', 'Expenditure', 'Remaining']],
         body: data,
-        margin: { left: x, right: 20 },
-        columnStyles: {
-            0: { cellWidth: (width * colWidths[0]) / 100, halign: 'center' },
-            1: { cellWidth: (width * colWidths[1]) / 100 },
-            2: { cellWidth: (width * colWidths[2]) / 100, halign: 'right' },
-            3: { cellWidth: (width * colWidths[3]) / 100, halign: 'right' },
-            4: { cellWidth: (width * colWidths[4]) / 100, halign: 'right' }
+        margin: { left: 10, right: 10 }, // Reduced margins
+        styles: { 
+            fontSize: 8, // Reduced from 9
+            cellPadding: 2, // Reduced from 3
+            overflow: 'ellipsize'
         },
-        styles: {
-            fontSize: 8,
-            cellPadding: 3
-        },
-        headStyles: {
-            fillColor: [37, 99, 235],
+        headStyles: { 
+            fillColor: [37, 99, 235], 
             textColor: [255, 255, 255],
-            fontStyle: 'bold'
+            fontStyle: 'bold',
+            fontSize: 8
+        },
+        columnStyles: {
+            0: { cellWidth: 12 }, // Reduced from 18
+            1: { cellWidth: 48 }, // Reduced from 64
+            2: { cellWidth: 26, halign: 'right' }, // Reduced from 28
+            3: { cellWidth: 26, halign: 'right' }, // Reduced from 30
+            4: { cellWidth: 28, halign: 'right' }, // Reduced from 30
+            5: { cellWidth: 26, halign: 'right' }  // Reduced from 30
         },
         alternateRowStyles: {
             fillColor: [248, 249, 250]
         },
+        footStyles: {
+            fillColor: [240, 240, 240],
+            fontStyle: 'bold'
+        },
         didDrawCell: (data) => {
-            // Bold and highlight total row
+            // Bold the total row
             if (data.row.index === state.cards.length) {
-                doc.setFillColor(37, 99, 235);
-                doc.setTextColor(255, 255, 255);
                 doc.setFont(undefined, 'bold');
             }
             // Highlight negative remaining in red
-            if (data.column.index === 4 && data.row.index < state.cards.length) {
+            if (data.column.index === 5 && data.row.index < state.cards.length) {
                 const value = parseFloat(data.cell.raw.replace(/[$,]/g, ''));
                 if (value < 0) {
                     doc.setTextColor(239, 68, 68);
@@ -3647,77 +3639,384 @@ async function createExecutiveSummaryTable(doc, x, y, width) {
         }
     });
     
+    // Add footnote about adjustments if there are any
+    let hasAdjustments = false;
+    state.cards.forEach(card => {
+        if (card.budget.excluded && card.budget.excluded > 0) {
+            hasAdjustments = true;
+        }
+    });
+    
+    if (hasAdjustments) {
+        y = doc.lastAutoTable.finalY + 5;
+        doc.setFontSize(7);
+        doc.setTextColor(100, 100, 100);
+        doc.text('* Available amount includes manual adjustments/exclusions', 10, y);
+        doc.setTextColor(0, 0, 0);
+        y += 5;
+    }
+    
+    // Add carryover summary below table
+    y = doc.lastAutoTable.finalY + 8;
+    doc.setFontSize(8);
+    doc.setFont(undefined, 'normal');
+    
+    // Calculate total carryover
+    let totalCarryover = 0;
+    state.cards.forEach((card, index) => {
+        if (index > 0) { // Skip first period
+            totalCarryover += parseFloat(card.budget.carryOver) || 0;
+        }
+    });
+    
+    if (totalCarryover > 0) {
+        doc.text(`Total carryover between periods: ${formatCurrency(totalCarryover)}`, 10, y);
+        y += 4;
+    }
+    
+    doc.text(`Running balance at end: ${formatCurrency(totalRemaining)}`, 10, y);
+    
+    return y + 10;
+}
+async function createDayTypeSummaryTable(doc, card, x, y, width) {
+    // Use the existing countDaysInPeriod function
+    const dayCounts = countDaysInPeriod(card.period.start, card.period.end, card);
+    
+    // Get public holidays in period with proper date formatting
+    const phDates = [];
+    const startDate = new Date(card.period.start + 'T00:00:00Z');
+    const endDate = new Date(card.period.end + 'T00:00:00Z');
+    
+    state.publicHolidays.forEach(ph => {
+        const phDate = new Date(ph.date + 'T00:00:00Z');
+        if (phDate >= startDate && phDate <= endDate) {
+            phDates.push({
+                date: phDate,
+                name: ph.name
+            });
+        }
+    });
+    
+    // Calculate totals by day type by iterating through actual dates
+    let weekdayHours = 0, weekdayCost = 0;
+    let saturdayHours = 0, saturdayCost = 0; 
+    let sundayHours = 0, sundayCost = 0;
+    let phHours = 0, phCost = 0;
+    
+    // Process each date in the period
+    eachDateInclusive(card.period.start, card.period.end, (date) => {
+        const isPH = isPublicHoliday(date, card.state);
+        const dayOfWeek = getDayOfWeek(date);
+        
+        card.groups.forEach(group => {
+            group.items.forEach(item => {
+                if (!item.selected) return;
+                
+                const isSleepover = isSleepoverItem(item);
+                
+                // Apply same gating logic as computeCardTotals
+                if (isPH && !card.settings.includePH) return;
+                
+                if (isPH) {
+                    if (isSleepover) {
+                        // Sleepover allowed on PH at standard rate
+                    } else {
+                        if (!item.flags.isPublicHoliday) return;
+                    }
+                } else {
+                    // Non-PH day
+                    if (item.flags.isPublicHoliday) return;
+                    if (item.flags.isWeekday && !isWeekday(date)) return;
+                    if (item.flags.isSaturday && !isSaturday(date)) return;
+                    if (item.flags.isSunday && !isSunday(date)) return;
+                }
+                
+                const quantity = resolveQuantityForDate(item, date, dayOfWeek, { 
+                    isPH, 
+                    isSleepover,
+                    isFirstDay: date.getTime() === startDate.getTime()
+                });
+                
+                if (quantity > 0 && item.unit === 'H') {
+                    const unitPrice = getUnitPrice(item, card, date, { isPH, isSleepover });
+                    const cost = quantity * unitPrice;
+                    
+                    if (isPH) {
+                        phHours += quantity;
+                        phCost += cost;
+                    } else if (isSaturday(date)) {
+                        saturdayHours += quantity;
+                        saturdayCost += cost;
+                    } else if (isSunday(date)) {
+                        sundayHours += quantity;
+                        sundayCost += cost;
+                    } else if (isWeekday(date)) {
+                        weekdayHours += quantity;
+                        weekdayCost += cost;
+                    }
+                }
+            });
+        });
+    });
+    
+    // Add weekly fixed items
+    card.groups.forEach(group => {
+        group.items.forEach(item => {
+            if (!item.selected || !item.hours?.weeklyFixed || item.hours.weeklyFixed <= 0) return;
+            
+            const weeks = Math.max(1, Math.ceil(dayCounts.raw.Mon + dayCounts.raw.Tue + dayCounts.raw.Wed + dayCounts.raw.Thu + dayCounts.raw.Fri + dayCounts.raw.Sat + dayCounts.raw.Sun) / 7);
+            const totalHours = weeks * item.hours.weeklyFixed;
+            const unitPrice = item.statePrice || 0;
+            const totalCost = totalHours * unitPrice;
+            
+            // Distribute weekly fixed hours across weekdays
+            weekdayHours += totalHours;
+            weekdayCost += totalCost;
+        });
+    });
+    
+    // Calculate weekday count (excluding PH)
+    const weekdayCount = dayCounts.excludingPH.Mon + dayCounts.excludingPH.Tue + 
+                        dayCounts.excludingPH.Wed + dayCounts.excludingPH.Thu + 
+                        dayCounts.excludingPH.Fri;
+    
+    // Format PH dates nicely
+    const phDateStrings = phDates.map(ph => {
+        const dateStr = ph.date.toLocaleDateString('en-AU', { 
+            day: 'numeric', 
+            month: 'short' 
+        });
+        return `${dateStr} (${ph.name})`;
+    });
+    
+    // Create table data
+    const data = [
+        ['Weekdays', 
+         weekdayCount.toString(), 
+         weekdayHours > 0 ? `${weekdayHours.toFixed(1)} hrs` : '—', 
+         weekdayCost > 0 ? formatCurrency(weekdayCost) : '—', 
+         '—'],
+        ['Saturdays', 
+         dayCounts.excludingPH.Sat.toString(), 
+         saturdayHours > 0 ? `${saturdayHours.toFixed(1)} hrs` : '—', 
+         saturdayCost > 0 ? formatCurrency(saturdayCost) : '—', 
+         '—'],
+        ['Sundays', 
+         dayCounts.excludingPH.Sun.toString(), 
+         sundayHours > 0 ? `${sundayHours.toFixed(1)} hrs` : '—', 
+         sundayCost > 0 ? formatCurrency(sundayCost) : '—', 
+         '—'],
+        ['Public Holidays', 
+         dayCounts.publicHolidays.toString(), 
+         phHours > 0 ? `${phHours.toFixed(1)} hrs` : '—', 
+         phCost > 0 ? formatCurrency(phCost) : '—', 
+         phDateStrings.length > 0 ? phDateStrings.join('; ') : '—']
+    ];
+    
+    // Add totals row
+    const totalDays = weekdayCount + dayCounts.excludingPH.Sat + dayCounts.excludingPH.Sun + dayCounts.publicHolidays;
+    const totalHours = weekdayHours + saturdayHours + sundayHours + phHours;
+    const totalCost = weekdayCost + saturdayCost + sundayCost + phCost;
+    
+    data.push([
+        'TOTAL',
+        totalDays.toString(),
+        totalHours > 0 ? `${totalHours.toFixed(1)} hrs` : '—',
+        totalCost > 0 ? formatCurrency(totalCost) : '—',
+        ''
+    ]);
+    
+    // Create the table
+    doc.autoTable({
+        startY: y,
+        head: [['Day Type', '# of Days', 'Total Hours', 'Total Cost', 'Dates/Details']],
+        body: data,
+        margin: { left: x, right: 20 },
+        columnStyles: {
+            0: { cellWidth: 30 },
+            1: { cellWidth: 20, halign: 'center' },
+            2: { cellWidth: 25, halign: 'right' },
+            3: { cellWidth: 30, halign: 'right' },
+            4: { cellWidth: 65, fontSize: 7 }
+        },
+        styles: {
+            fontSize: 8,
+            cellPadding: 2
+        },
+        headStyles: {
+            fillColor: [37, 99, 235],
+            textColor: [255, 255, 255]
+        },
+        footStyles: {
+            fillColor: [248, 249, 250],
+            textColor: [0, 0, 0],
+            fontStyle: 'bold'
+        },
+        didDrawCell: (data) => {
+            // Bold the total row
+            if (data.row.index === 4) {
+                doc.setFont(undefined, 'bold');
+            }
+        }
+    });
+    
     return doc.lastAutoTable.finalY + 10;
 }
 
-async function generatePeriodSection(doc, card, periodNumber) {
-    // This is a simplified version of the single report
-    // Reuses much of the existing generatePDFReport logic but adapted for multi-period context
+async function createGrandSummarySection(doc, x, y, width) {
+    // Calculate totals across all periods
+    let totalFunding = 0;
+    let totalUsed = 0;
+    let totalWeeks = 0;
+    let firstDate = null;
+    let lastDate = null;
     
+    state.cards.forEach((card, index) => {
+        const totals = computeCardTotals(card);
+        const budget = parseFloat(card.budget.total) || 0;
+        const carryOver = index === 0 ? 0 : parseFloat(card.budget.carryOver) || 0; // Don't double count carryover
+        totalFunding += budget;
+        totalUsed += totals.usedCents / 100;
+        totalWeeks += totals.weeks;
+        
+        if (!firstDate) firstDate = new Date(card.period.start);
+        lastDate = new Date(card.period.end);
+    });
+    
+    const percentUsed = totalFunding > 0 ? (totalUsed / totalFunding * 100) : 0;
+    const remaining = totalFunding - totalUsed;
+    const avgWeeklySpend = totalWeeks > 0 ? totalUsed / totalWeeks : 0;
+    
+    // Title
+    doc.setFontSize(16);
+    doc.setFont(undefined, 'bold');
+    doc.text('PLAN SUMMARY', x, y);
+    y += 12;
+    
+    // Create summary data
+    const data = [
+        ['Total Plan Funding', formatCurrency(totalFunding), 'Core budget for all periods'],
+        ['Total Expenditure', formatCurrency(totalUsed), `${percentUsed.toFixed(1)}% utilised`],
+        ['Remaining', formatCurrency(remaining), `${(100 - percentUsed).toFixed(1)}% remaining`],
+        ['Average Weekly Spend', formatCurrency(avgWeeklySpend), `Based on ${totalWeeks} weeks`],
+        ['Plan Duration', `${totalWeeks} weeks`, `${firstDate.toLocaleDateString('en-AU')} to ${lastDate.toLocaleDateString('en-AU')}`]
+    ];
+    
+    // Create the table
+    doc.autoTable({
+        startY: y,
+        head: [['Metric', 'Amount', 'Notes']],
+        body: data,
+        margin: { left: x, right: 20 },
+        columnStyles: {
+            0: { cellWidth: 50 },
+            1: { cellWidth: 40, halign: 'right' },
+            2: { cellWidth: 80 }
+        },
+        styles: {
+            fontSize: 10,
+            cellPadding: 3
+        },
+        headStyles: {
+            fillColor: [37, 99, 235],
+            textColor: [255, 255, 255]
+        },
+        alternateRowStyles: {
+            fillColor: [248, 249, 250]
+        }
+    });
+    
+    return doc.lastAutoTable.finalY + 10;
+}
+async function generatePeriodSection(doc, card, periodNumber) {
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 20;
     const contentWidth = pageWidth - (margin * 2);
-    const yLimit = pageHeight - 25;
-    
-    let y = 40; // Start lower since we have the period header
-    
-    // Helper functions
-    const ensureSpace = (needed = 10) => {
-        if (y + needed > yLimit) {
-            doc.addPage();
-            y = margin;
-            return true;
-        }
-        return false;
-    };
-    
-    const totals = computeCardTotals(card);
-    const used = totals.usedCents / 100;
-    const totalBudget = parseFloat(card.budget.total) || 0;
-    const carryOver = parseFloat(card.budget.carryOver) || 0;
-    const excluded = parseFloat(card.budget.excluded) || 0;
-    const available = totalBudget + carryOver - excluded;
-    const remaining = available - used;
     
     // Colors
     const primaryColor = [37, 99, 235];
     const grayColor = [128, 128, 128];
+    const lightGray = [248, 249, 250];
     
-    // Period dates
-    doc.setFontSize(11);
+    let y = margin;
+    
+    // Period header with background
+    doc.setFillColor(...lightGray);
+    doc.roundedRect(margin - 5, y - 5, contentWidth + 10, 35, 3, 3, 'F');
+    
+    doc.setFontSize(20);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(...primaryColor);
+    doc.text(`Period ${periodNumber}`, margin, y + 5);
+    
+    doc.setFontSize(12);
     doc.setFont(undefined, 'normal');
+    doc.setTextColor(0, 0, 0);
     const startDate = new Date(card.period.start);
     const endDate = new Date(card.period.end);
-    doc.text(`Period: ${startDate.toLocaleDateString('en-AU')} to ${endDate.toLocaleDateString('en-AU')}`, margin, y);
-    y += 15;
+    const periodText = `${startDate.toLocaleDateString('en-AU', { 
+        day: 'numeric', month: 'long', year: 'numeric' 
+    })} to ${endDate.toLocaleDateString('en-AU', { 
+        day: 'numeric', month: 'long', year: 'numeric' 
+    })}`;
+    doc.text(periodText, margin, y + 15);
+    doc.text(`State: ${card.state}`, margin, y + 22);
     
-    // Budget Summary
-    doc.setFontSize(12);
+    y += 45; // Move past header box
+    
+    // Budget summary section
+    doc.setFontSize(14);
     doc.setFont(undefined, 'bold');
-    doc.text('Budget Summary', margin, y);
+    doc.text('BUDGET SUMMARY', margin, y);
     y += 10;
     
-    // Use the enhanced table format for budget
-    await createBudgetTable(doc, card, margin, y, contentWidth);
-    y += 60;
+    if (card.settings.calculateByGroup) {
+        await createGroupBudgetSummaryTable(doc, card, margin, y, contentWidth);
+    } else {
+        await createBudgetTable(doc, card, margin, y, contentWidth);
+    }
     
-    // Support Groups with enhanced tables
-    ensureSpace(30);
-    doc.setFontSize(12);
+    y = doc.lastAutoTable.finalY + 20;
+    
+    // Day Type Summary
+    doc.setFontSize(14);
     doc.setFont(undefined, 'bold');
-    doc.text('Support Items', margin, y);
+    doc.text('DAY TYPE BREAKDOWN', margin, y);
     y += 10;
     
+    await createDayTypeSummaryTable(doc, card, margin, y, contentWidth);
+    
+    y = doc.lastAutoTable.finalY + 30; // Good spacing before support groups
+    
+    // Check if we need a new page for support groups
+    if (y > pageHeight - 100) {
+        doc.addPage();
+        y = margin;
+    }
+    
+    // Support groups section
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.text('SUPPORT GROUPS BREAKDOWN', margin, y);
+    y += 10;
+    
+    // Call the createSupportGroupTable for ALL groups with items
     for (const group of card.groups) {
-        const groupTotal = (totals.perGroupCents[group.regGroupNumber] || 0) / 100;
+        const groupTotal = (computeCardTotals(card).perGroupCents[group.regGroupNumber] || 0) / 100;
         if (groupTotal > 0) {
-            ensureSpace(40);
             await createSupportGroupTable(doc, group, card, margin, y, contentWidth);
-            y = doc.lastAutoTable.finalY + 10;
+            y = doc.lastAutoTable ? doc.lastAutoTable.finalY + 15 : y + 20;
+            
+            // Check if we need a new page after each group
+            if (y > pageHeight - 50) {
+                doc.addPage();
+                y = margin;
+            }
         }
     }
 }
+
 
 async function createBudgetTable(doc, card, x, y, width) {
     const totals = computeCardTotals(card);
@@ -3836,126 +4135,7 @@ async function createGroupBudgetSummaryTable(doc, card, x, y, width) {
     });
 }
 
-async function createSupportGroupTable(doc, group, card, x, y, width) {
-    const totals = computeCardTotals(card);
-    const groupTotal = (totals.perGroupCents[group.regGroupNumber] || 0) / 100;
-    
-    // Group header
-    doc.setFontSize(11);
-    doc.setFont(undefined, 'bold');
-    doc.text(group.regGroupName, x, y);
-    doc.setFont(undefined, 'normal');
-    doc.setFontSize(9);
-    doc.text(`(${group.regGroupNumber}) - Total: ${formatCurrency(groupTotal)}`, x, y + 5);
-    y += 10;
-    
-    // Calculate totals for each item using the same logic as computeCardTotals
-    const itemData = {};
-    const startDate = new Date(card.period.start + 'T00:00:00Z');
-    
-    eachDateInclusive(card.period.start, card.period.end, (date) => {
-        const isPH = isPublicHoliday(date, card.state);
-        const dayOfWeek = getDayOfWeek(date);
-        
-        group.items.forEach(item => {
-            if (!item.selected) return;
-            
-            const itemKey = item.supportItemNumber;
-            if (!itemData[itemKey]) {
-                itemData[itemKey] = {
-                    item: item,
-                    totalQuantity: 0,
-                    totalCents: 0
-                };
-            }
-            
-            const isSleepover = isSleepoverItem(item);
-            
-            // Apply same gating logic as computeCardTotals
-            if (isPH && !card.settings.includePH) return;
-            
-            if (isPH) {
-                if (isSleepover) {
-                    // Sleepover allowed on PH at standard rate
-                } else {
-                    if (!item.flags.isPublicHoliday) return;
-                }
-            } else {
-                // Non-PH day
-                if (item.flags.isPublicHoliday) return;
-                if (item.flags.isWeekday && !isWeekday(date)) return;
-                if (item.flags.isSaturday && !isSaturday(date)) return;
-                if (item.flags.isSunday && !isSunday(date)) return;
-            }
-            
-            const quantity = resolveQuantityForDate(item, date, dayOfWeek, { 
-                isPH, 
-                isSleepover,
-                isFirstDay: date.getTime() === startDate.getTime()
-            });
-            
-            if (quantity > 0) {
-                // Get the price WITH UPLIFT for this specific date
-                const unitPrice = getUnitPrice(item, card, date, { isPH, isSleepover });
-                const lineCents = Math.round(quantity * Math.round(unitPrice * 100));
-                
-                itemData[itemKey].totalQuantity += quantity;
-                itemData[itemKey].totalCents += lineCents;
-            }
-        });
-    });
-    
-    // Build table rows
-    const tableRows = [];
-    
-    Object.values(itemData).forEach(data => {
-        if (data.totalQuantity > 0) {
-            const usage = getItemUsageDescription(data.item);
-            const totalDollars = data.totalCents / 100;
-            // Calculate average rate (total dollars / total quantity)
-            const avgRate = data.totalQuantity > 0 ? totalDollars / data.totalQuantity : 0;
-            
-            tableRows.push([
-                data.item.supportItemName,
-                data.item.supportItemNumber,
-                usage,
-                data.totalQuantity.toString(),
-                formatCurrency(avgRate),
-                formatCurrency(totalDollars)
-            ]);
-        }
-    });
-    
-    if (tableRows.length === 0) {
-        doc.setFontSize(10);
-        doc.text('No support items with quantities entered', x, y);
-        return;
-    }
-    
-    // Create the table
-    doc.autoTable({
-        startY: y,
-        head: [['Support Item', 'Code', 'Usage', 'Qty', 'Avg Rate', 'Total']],
-        body: tableRows,
-        margin: { left: x, right: 20 },
-        columnStyles: {
-            0: { cellWidth: 45 },
-            1: { cellWidth: 20 },
-            2: { cellWidth: 30 },
-            3: { cellWidth: 16, halign: 'right' },
-            4: { cellWidth: 20, halign: 'right' },
-            5: { cellWidth: 20, halign: 'right' }
-        },
-        styles: {
-            fontSize: 8,
-            cellPadding: 2
-        },
-        headStyles: {
-            fillColor: [37, 99, 235],
-            textColor: [255, 255, 255]
-        }
-    });
-}
+
 // ===== Invoice Generation =====
 async function generateInvoiceReport(card) {
     const { jsPDF } = window.jspdf;
@@ -4112,21 +4292,43 @@ async function generatePDFReport(card) {
     
     // Generate QR Code
     let qrCodeDataUrl = null;
-    try {
-        // First save to Supabase to get a token
-        const token = await saveFundingPeriod(card);
-        if (token) {
-            // Use the token for QR code instead of full data
-            qrCodeDataUrl = await generateQRCode(token);
-        } else {
-            // If save fails, fallback to embedding full data
-            const qrData = buildQRData(card);
-            qrCodeDataUrl = await generateQRCode(JSON.stringify(qrData));
-        }
-    } catch (error) {
-        console.error('Error generating QR code:', error);
-        // Continue without QR if it fails
+try {
+    // For multi-period, we need to create a combined data structure
+    const multiPeriodData = {
+        type: 'multi-period',
+        periods: state.cards.length,
+        participant: state.cards[0].participant,
+        cards: state.cards.map(card => ({
+            ...card,
+            // Include computed totals
+            totals: computeCardTotals(card)
+        }))
+    };
+    
+    // Save to Supabase and get token
+    const { error } = await supabaseClient
+        .from('funding_periods')
+        .insert({
+            token: generateToken(8),
+            data: multiPeriodData,
+            participant_name: state.cards[0].participant.name || null,
+            ndis_number: state.cards[0].participant.ndisNumber || null,
+            period_start: state.cards[0].period.start || null,
+            period_end: state.cards[state.cards.length - 1].period.end || null,
+            total_amount: state.cards.reduce((sum, card) => {
+                const totals = computeCardTotals(card);
+                return sum + (totals.usedCents / 100);
+            }, 0)
+        });
+    
+    if (!error) {
+        qrCodeDataUrl = await generateQRCode(token);
     }
+} catch (error) {
+    console.error('Error generating QR code:', error);
+    // Continue without QR if it fails
+}
+
     // HEADER SECTION
     // Logo on left
     try {
@@ -4330,11 +4532,13 @@ async function generatePDFReport(card) {
             let itemWeeklyTotal = 0;
             let hoursDetail = [];
             
-            // Collect hours
-            if (item.hours.weekday > 0) {
-                itemWeeklyTotal += item.hours.weekday * 5;
-                hoursDetail.push(`Mon-Fri: ${item.hours.weekday}h each`);
-            } else {
+            if (item.hours.weeklyFixed > 0) {
+    itemWeeklyTotal = item.hours.weeklyFixed;
+    hoursDetail.push(`${item.hours.weeklyFixed}h fixed per week`);
+} else if (item.hours.weekday > 0) {
+    itemWeeklyTotal += item.hours.weekday * 5;
+    hoursDetail.push(`Mon-Fri: ${item.hours.weekday}h each`);
+} else {
                 ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach(day => {
                     if (item.hours[day] > 0) {
                         itemWeeklyTotal += item.hours[day];
@@ -4909,6 +5113,51 @@ function buildCsvRows(card) {
         });
     });
     
+    // After date iteration, add weekly fixed items as weekly entries
+    card.groups.forEach(group => {
+        group.items.forEach(item => {
+            if (!item.selected) return;
+            if (!item.hours?.weeklyFixed || item.hours.weeklyFixed <= 0) return;
+            
+            // Add one row per week for weekly fixed items
+            let currentWeekStart = new Date(card.period.start + 'T00:00:00Z');
+            const endDate = new Date(card.period.end + 'T00:00:00Z');
+            
+            while (currentWeekStart <= endDate) {
+                const weekEnd = new Date(currentWeekStart);
+                weekEnd.setDate(weekEnd.getDate() + 6);
+                
+                // Don't exceed the period end date
+                const actualWeekEnd = weekEnd > endDate ? endDate : weekEnd;
+                
+                // Get the unit price (with uplift if applicable)
+                const unitPrice = getUnitPrice(item, card, actualWeekEnd, { isPH: false, isSleepover: false });
+                
+                // Generate participant initials for ClaimReference
+                const participantInitials = card.participant.name
+                    .split(' ')
+                    .map(word => word.charAt(0).toUpperCase())
+                    .join('');
+                
+                rows.push([
+                    card.participant.name || '',
+                    card.participant.ndisNumber || '',
+                    '34787739579', // ABN of Support Provider
+                    formatDateDDMMYYYY(currentWeekStart),
+                    formatDateDDMMYYYY(actualWeekEnd),
+                    item.supportItemNumber,
+                    participantInitials || 'XX', // ClaimReference - participant initials
+                    '4050125851', // RegistrationNumber
+                    item.hours.weeklyFixed.toFixed(2),
+                    unitPrice.toFixed(2),
+                    'P2'
+                ].join(','));
+                
+                currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+            }
+        });
+    });
+    
     return rows.join('\n');
 }
 
@@ -5410,65 +5659,76 @@ function renderItem(itemData) {
     // Create hours/quantity inputs based on item type
     const inputsContainer = itemEl.querySelector('.item-inputs');
     
-    // Replace the section starting from line 5413 (approximately) with this:
-
-
     if (itemData.unit === 'H') {
-    // Hour-based items
-    if (itemData.flags.isWeekday) {
-        const weekdayGroup = createWeekdayInputGroup(itemData);
-        inputsContainer.appendChild(weekdayGroup);
-    } else if (itemData.flags.isSaturday) {
-        const saturdayInput = createHoursInput('Saturday', itemData.hours?.saturday || 0);
-        inputsContainer.appendChild(saturdayInput);
-    } else if (itemData.flags.isSunday) {
-        const sundayInput = createHoursInput('Sunday', itemData.hours?.sunday || 0);
-        inputsContainer.appendChild(sundayInput);
-    } else if (itemData.flags.isPublicHoliday) {
-        const phInput = createHoursInput('PH', itemData.hours?.publicHoliday || 0);
-        inputsContainer.appendChild(phInput);
-    } else {
-        // Default for other hourly items - show weekday input group
-        const weekdayGroup = createWeekdayInputGroup(itemData);
-        inputsContainer.appendChild(weekdayGroup);
+        // Hour-based items - existing logic
+        if (itemData.flags.isWeekday) {
+            const weekdayGroup = createWeekdayInputGroup(itemData);
+            inputsContainer.appendChild(weekdayGroup);
+        } else if (itemData.flags.isSaturday) {
+            const saturdayInput = createHoursInput('Saturday', itemData.hours?.saturday || 0);
+            inputsContainer.appendChild(saturdayInput);
+        } else if (itemData.flags.isSunday) {
+            const sundayInput = createHoursInput('Sunday', itemData.hours?.sunday || 0);
+            inputsContainer.appendChild(sundayInput);
+        } else if (itemData.flags.isPublicHoliday) {
+            const phInput = createHoursInput('PH', itemData.hours?.publicHoliday || 0);
+            inputsContainer.appendChild(phInput);
+        } else {
+            // Default for other hourly items without specific day flags
+            const weekdayGroup = createWeekdayInputGroup(itemData);
+            inputsContainer.appendChild(weekdayGroup);
+        }
+    } else if (itemData.unit === 'E') {
+
+        // Each-based items - new logic
+        const eType = getEItemType(itemData.supportItemName);
+        
+        switch (eType) {
+            case 'daily':
+                const dailyInputs = createDailyCheckboxes(itemData);
+                inputsContainer.appendChild(dailyInputs);
+                break;
+            case 'one-time':
+                const oneTimeInput = createQuantityInput('Quantity', itemData.quantity || 0, true);
+                inputsContainer.appendChild(oneTimeInput);
+                break;
+            case 'per-occurrence':
+                const occurrenceInput = createQuantityInput('Per Day', itemData.quantity || 0, false);
+                inputsContainer.appendChild(occurrenceInput);
+                break;
+            default:
+                const standardInput = createQuantityInput('Quantity', itemData.quantity || 0, true);
+                inputsContainer.appendChild(standardInput);
+        }
     }
-} else if (itemData.unit === 'E' || itemData.unit === 'D') {
-    // Each-based and Day-based items
-    const eType = getEItemType(itemData.supportItemName);
     
-    switch (eType) {
-        case 'daily':
-            const dailyInputs = createDailyCheckboxes(itemData);
-            inputsContainer.appendChild(dailyInputs);
-            break;
-        case 'one-time':
-            const oneTimeInput = createQuantityInput('Quantity', itemData.quantity || 0, true);
-            inputsContainer.appendChild(oneTimeInput);
-            break;
-        case 'per-occurrence':
-            const occurrenceInput = createQuantityInput('Per Day', itemData.quantity || 0, false);
-            inputsContainer.appendChild(occurrenceInput);
-            break;
-        default:
-            const standardInput = createQuantityInput('Quantity', itemData.quantity || 0, true);
-            inputsContainer.appendChild(standardInput);
+    // Item selection handler - FIXED VERSION
+    checkbox.onchange = (e) => {
+    if (e.target.checked) {
+        itemEl.classList.add('selected');
+    } else {
+        itemEl.classList.remove('selected');
     }
+    
+    setTimeout(() => {
+        const cardEl = itemEl.closest('.budget-card');
+        updateCardFromDOM(cardEl);
+        saveState(); // Add this
+    }, 10);
+};
+  
+    return itemEl;
 }
 
-// And also update the getEItemType function to include household/cleaning items:
+
 function getEItemType(itemName) {
     const name = itemName.toLowerCase();
     
-    // Check for daily/nightly items (including household activities)
+    // Check for daily/nightly items
     if (name.includes('sleepover') || 
         name.includes('overnight') || 
         name.includes('night-time') ||
-        name.includes('on-call') ||
-        name.includes('cleaning') ||
-        name.includes('household') ||
-        name.includes('domestic') ||
-        name.includes('gardening') ||
-        name.includes('maintenance')) {
+        name.includes('on-call')) {
         return 'daily';
     }
     
@@ -5490,24 +5750,6 @@ function getEItemType(itemName) {
     
     // Default
     return 'standard';
-}
-    
-    // Item selection handler - FIXED VERSION
-    checkbox.onchange = (e) => {
-    if (e.target.checked) {
-        itemEl.classList.add('selected');
-    } else {
-        itemEl.classList.remove('selected');
-    }
-    
-    setTimeout(() => {
-        const cardEl = itemEl.closest('.budget-card');
-        updateCardFromDOM(cardEl);
-        saveState(); // Add this
-    }, 10);
-};
-  
-    return itemEl;
 }
 
 function createDailyCheckboxes(itemData) {
@@ -5581,48 +5823,16 @@ function createWeekdayInputGroup(itemData) {
     const container = document.createElement('div');
     container.className = 'hours-input-group';
     
-    // Add a mode selector
-    const modeContainer = document.createElement('div');
-    modeContainer.className = 'input-mode-selector';
-    modeContainer.style.marginBottom = '0.5rem';
+    // Main weekday input
+    const mainInput = createHoursInput('Weekday', itemData.hours?.weekday || 0);
+    container.appendChild(mainInput);
     
-    // Generate a unique name for this radio group based on the item
-    // Use the item's support number or a timestamp to ensure uniqueness
-    const radioGroupName = 'hours-mode-' + (itemData.supportItemNumber || Date.now() + Math.random());
+    // Weekly fixed input (hidden by default)
+    const weeklyInput = createHoursInput('Weekly Fixed', itemData.hours?.weeklyFixed || 0);
+    weeklyInput.classList.add('hidden');
+    weeklyInput.dataset.mode = 'weekly';
     
-    // Radio buttons for mode selection
-    const modes = [
-        { value: 'weekday', label: 'Weekday Hours', checked: true },
-        { value: 'perday', label: 'Per-day Breakdown', checked: false },
-        { value: 'weekly', label: 'Weekly Total', checked: false }
-    ];
-    
-    modes.forEach(mode => {
-        const radioGroup = document.createElement('label');
-        radioGroup.style.display = 'inline-flex';
-        radioGroup.style.alignItems = 'center';
-        radioGroup.style.marginRight = '1rem';
-        radioGroup.style.fontSize = '0.75rem';
-        radioGroup.style.cursor = 'pointer';
-        
-        const radio = document.createElement('input');
-        radio.type = 'radio';
-        radio.name = radioGroupName; // Use the same name for all radios in this group
-        radio.value = mode.value;
-        radio.checked = mode.checked;
-        radio.style.marginRight = '0.25rem';
-        
-        radioGroup.appendChild(radio);
-        radioGroup.appendChild(document.createTextNode(mode.label));
-        modeContainer.appendChild(radioGroup);
-    });
-    
-    container.appendChild(modeContainer);
-    
-    // Create all three input containers
-    const weekdayInput = createHoursInput('Hours per Weekday', itemData.hours?.weekday || 0);
-    weekdayInput.classList.add('weekday-mode');
-    
+    // Per-day container
     const perDayContainer = document.createElement('div');
     perDayContainer.className = 'per-day-inputs hidden';
     ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].forEach(day => {
@@ -5630,52 +5840,44 @@ function createWeekdayInputGroup(itemData) {
         perDayContainer.appendChild(dayInput);
     });
     
-    const weeklyInput = createHoursInput('Total Weekly Hours', itemData.hours?.weekly || 0);
-    weeklyInput.classList.add('weekly-mode', 'hidden');
+    // Toggle with cycling through three modes
+    const toggle = document.createElement('div');
+    toggle.className = 'per-day-toggle';
+    toggle.textContent = 'Per-day breakdown';
     
-    // Add help text for weekly mode
-    const weeklyHelp = document.createElement('div');
-    weeklyHelp.className = 'help-text hidden';
-    weeklyHelp.style.fontSize = '0.625rem';
-    weeklyHelp.style.color = 'var(--text-muted)';
-    weeklyHelp.style.marginTop = '0.25rem';
-    weeklyHelp.textContent = 'Hours will be scheduled flexibly throughout the week';
+    let currentMode = 'weekday'; // weekday, perday, weekly
     
-    // Mode switching logic
-    const radios = modeContainer.querySelectorAll('input[type="radio"]');
-    radios.forEach(radio => {
-        radio.addEventListener('change', (e) => {
-            if (!e.target.checked) return;
-            
-            // Hide all modes
-            weekdayInput.classList.add('hidden');
-            perDayContainer.classList.add('hidden');
-            weeklyInput.classList.add('hidden');
-            weeklyHelp.classList.add('hidden');
-            
-            // Show selected mode
-            switch (e.target.value) {
-                case 'weekday':
-                    weekdayInput.classList.remove('hidden');
-                    break;
-                case 'perday':
-                    perDayContainer.classList.remove('hidden');
-                    break;
-                case 'weekly':
-                    weeklyInput.classList.remove('hidden');
-                    weeklyHelp.classList.remove('hidden');
-                    break;
-            }
-            
-            // Update the data
-            updateCardFromDOM(container.closest('.budget-card'));
-        });
-    });
+    toggle.onclick = () => {
+        // Hide all
+        mainInput.classList.add('hidden');
+        weeklyInput.classList.add('hidden');
+        perDayContainer.classList.add('hidden');
+        
+        // Cycle to next mode
+        if (currentMode === 'weekday') {
+            currentMode = 'perday';
+            perDayContainer.classList.remove('hidden');
+            toggle.textContent = 'Weekly fixed';
+        } else if (currentMode === 'perday') {
+            currentMode = 'weekly';
+            weeklyInput.classList.remove('hidden');
+            toggle.textContent = 'Single value';
+        } else {
+            currentMode = 'weekday';
+            mainInput.classList.remove('hidden');
+            toggle.textContent = 'Per-day breakdown';
+        }
+        
+        // Store current mode in container for reading later
+        container.dataset.currentMode = currentMode;
+        
+        // Trigger update
+        updateCardFromDOM(container.closest('.budget-card'));
+    };
     
-    container.appendChild(weekdayInput);
-    container.appendChild(perDayContainer);
+    container.appendChild(toggle);
     container.appendChild(weeklyInput);
-    container.appendChild(weeklyHelp);
+    container.appendChild(perDayContainer);
     
     return container;
 }
@@ -5824,18 +6026,11 @@ function getUnitPrice(item, card, date, { isPH, isSleepover }) {
 }
 
 function resolveQuantityForDate(item, date, dayOfWeek, { isPH, isSleepover, isFirstDay }) {
-    if (item.unit === 'H') {
-        // Hours logic
-        if (item.hours) {
-            // Handle weekly hours - distribute evenly across weekdays
-            if (item.hours.weekly !== undefined && isWeekday(date)) {
-                // Distribute weekly hours evenly across 5 weekdays
-                // This will work regardless of public holidays
-                return item.hours.weekly / 5;
-            }
-            
-            // Skip if it's a PH and we're not a PH item
-            if (isPH && !item.flags.isPublicHoliday) return 0;
+  if (item.unit === 'H') {
+    // Hours logic
+    if (item.hours) {
+      // Skip if it's a PH and we're not a PH item
+      if (isPH && !item.flags.isPublicHoliday) return 0;
       
       // First check for specific day-of-week value (Mon, Tue, etc.)
       if (item.hours[dayOfWeek] !== undefined) {
@@ -5966,14 +6161,50 @@ function computeCardTotals(card) {
     });
   });
   
+  card.groups.forEach(group => {
+    group.items.forEach(item => {
+        if (!item.selected || !item.hours?.weeklyFixed) return;
+        
+        // Weekly fixed items are calculated as: weeks × hours × rate
+        const weeks = result.weeks;
+        const totalHours = weeks * item.hours.weeklyFixed;
+        const unitPrice = item.statePrice || 0;
+        const totalCents = Math.round(totalHours * unitPrice * 100);
+        
+        result.usedCents += totalCents;
+        result.perGroupCents[group.regGroupNumber] += totalCents;
+    });
+});
   // Calculate weeks
   result.weeks = Math.max(1, Math.ceil(result.daysCount / 7));
-  
-  // Calculate total remaining if using group budgets
-  if (card.settings.calculateByGroup) {
+
+  card.groups.forEach(group => {
+    group.items.forEach(item => {
+        if (!item.selected) return;
+        if (!item.hours?.weeklyFixed || item.hours.weeklyFixed <= 0) return;
+        
+        // Weekly fixed items are calculated as: weeks × weeklyFixed hours × rate
+        const totalHours = result.weeks * item.hours.weeklyFixed;
+        const unitPrice = item.statePrice || 0;
+        
+        // Apply uplift if enabled (using end date for consistency)
+        let finalPrice = unitPrice;
+        if (card.settings.uplift.enabled && card.period.end) {
+            const endDate = new Date(card.period.end + 'T00:00:00Z');
+            finalPrice = applyJulyUplift(unitPrice, endDate, item.effectiveTo, card.settings.uplift.percent);
+        }
+        
+        const totalCents = Math.round(totalHours * finalPrice * 100);
+        
+        result.usedCents += totalCents;
+        result.perGroupCents[group.regGroupNumber] = (result.perGroupCents[group.regGroupNumber] || 0) + totalCents;
+    });
+});
+
+// Calculate total remaining if using group budgets
+if (card.settings.calculateByGroup) {
     result.totalRemainingCents = result.totalAvailableCents - result.usedCents;
-  }
-  
+}
   return result;
 }
 
@@ -6956,33 +7187,41 @@ function updateCardFromDOM(cardEl) {
             if (isSelected) {
                 // Read hours/quantity from inputs
                 if (catalogueItem.unit === 'H') {
-    if (catalogueItem.flags.isWeekday) {
-        // Check which mode is selected
-        const modeRadio = itemEl.querySelector('input[type="radio"]:checked');
-        const mode = modeRadio ? modeRadio.value : 'weekday';
-        
-        if (mode === 'weekly') {
-            // Weekly total mode
-            const weeklyInput = itemEl.querySelector('.weekly-mode .hours-input');
-            if (weeklyInput) {
-                itemData.hours.weekly = validateHours(weeklyInput.value);
-            }
-        } else if (mode === 'perday') {
-            // Per-day values
-            ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].forEach((day, i) => {
-                const input = perDayInputs.children[i].querySelector('.hours-input');
-                if (input) {
-                    itemData.hours[day] = validateHours(input.value);
-                }
-            });
-        } else {
-            // Single weekday value
-            const weekdayInput = itemEl.querySelector('.weekday-mode .hours-input');
-            if (weekdayInput) {
-                itemData.hours.weekday = validateHours(weekdayInput.value);
-            }
-        }
+                    if (catalogueItem.flags.isWeekday) {
+                        // Check which input is visible to determine the mode
+                        const hoursGroup = itemEl.querySelector('.hours-input-group');
+                        const currentMode = hoursGroup?.dataset.currentMode || 'weekday';
+                        
+                        if (currentMode === 'weekly') {
+                            // Weekly fixed mode
+                            const weeklyInput = itemEl.querySelector('[data-mode="weekly"] .hours-input');
+                            if (weeklyInput) {
+                                itemData.hours.weeklyFixed = validateHours(weeklyInput.value);
+                            }
+                        } else if (currentMode === 'perday') {
+                            // Per-day values
+                            const perDayInputs = itemEl.querySelector('.per-day-inputs');
+                            if (perDayInputs) {
+                                ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].forEach((day, i) => {
+                                    const input = perDayInputs.children[i].querySelector('.hours-input');
+                                    if (input) {
+                                        itemData.hours[day] = validateHours(input.value);
+                                    }
+                                });
+                            }
+                        } else {
+                            // Single weekday value (default)
+                            const weekdayInputs = itemEl.querySelectorAll('.hours-input');
+                            weekdayInputs.forEach(input => {
+                                if (!input.parentElement.classList.contains('hidden') && 
+                                    !input.closest('.per-day-inputs') && 
+                                    !input.dataset.mode) {
+                                    itemData.hours.weekday = validateHours(input.value);
+                                }
+                            });
+                        }
                     } else {
+                        // For non-weekday items (Saturday, Sunday, PH)
                         const input = itemEl.querySelector('.hours-input');
                         if (input) {
                             if (catalogueItem.flags.isSaturday) {
@@ -6991,6 +7230,31 @@ function updateCardFromDOM(cardEl) {
                                 itemData.hours.sunday = validateHours(input.value);
                             } else if (catalogueItem.flags.isPublicHoliday) {
                                 itemData.hours.publicHoliday = validateHours(input.value);
+                            } else {
+                                // Default hourly items without specific flags
+                                // Check for the three-mode system
+                                const hoursGroup = itemEl.querySelector('.hours-input-group');
+                                const currentMode = hoursGroup?.dataset.currentMode || 'weekday';
+                                
+                                if (currentMode === 'weekly') {
+                                    const weeklyInput = itemEl.querySelector('[data-mode="weekly"] .hours-input');
+                                    if (weeklyInput) {
+                                        itemData.hours.weeklyFixed = validateHours(weeklyInput.value);
+                                    }
+                                } else if (currentMode === 'perday') {
+                                    const perDayInputs = itemEl.querySelector('.per-day-inputs');
+                                    if (perDayInputs) {
+                                        ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].forEach((day, i) => {
+                                            const input = perDayInputs.children[i].querySelector('.hours-input');
+                                            if (input) {
+                                                itemData.hours[day] = validateHours(input.value);
+                                            }
+                                        });
+                                    }
+                                } else {
+                                    // Default to weekday hours
+                                    itemData.hours.weekday = validateHours(input.value);
+                                }
                             }
                         }
                     }
@@ -7016,7 +7280,6 @@ function updateCardFromDOM(cardEl) {
             
             groupData.items.push(itemData);
         });
-        
         // Read group budget values if calculate by group is enabled
         const budgetAmountInput = groupEl.querySelector('.group-budget-amount');
         const excludedAmountInput = groupEl.querySelector('.group-excluded-amount');
