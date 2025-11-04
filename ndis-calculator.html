@@ -3679,13 +3679,15 @@ async function createExecutiveSummaryTable(doc, x, y, width) {
     return y + 10;
 }
 async function createDayTypeSummaryTable(doc, card, x, y, width) {
-    // Use the existing countDaysInPeriod function
-    const dayCounts = countDaysInPeriod(card.period.start, card.period.end, card);
+    // Convert date strings to Date objects properly
+    const startDate = new Date(card.period.start + 'T00:00:00Z');
+    const endDate = new Date(card.period.end + 'T00:00:00Z');
+    
+    // Use the existing countDaysInPeriod function with Date objects
+    const dayCounts = countDaysInPeriod(startDate, endDate, card);
     
     // Get public holidays in period with proper date formatting
     const phDates = [];
-    const startDate = new Date(card.period.start + 'T00:00:00Z');
-    const endDate = new Date(card.period.end + 'T00:00:00Z');
     
     state.publicHolidays.forEach(ph => {
         const phDate = new Date(ph.date + 'T00:00:00Z');
@@ -3760,11 +3762,13 @@ async function createDayTypeSummaryTable(doc, card, x, y, width) {
     });
     
     // Add weekly fixed items
+    const totals = computeCardTotals(card);
+    const weeks = totals.weeks;
+    
     card.groups.forEach(group => {
         group.items.forEach(item => {
             if (!item.selected || !item.hours?.weeklyFixed || item.hours.weeklyFixed <= 0) return;
             
-            const weeks = Math.max(1, Math.ceil(dayCounts.raw.Mon + dayCounts.raw.Tue + dayCounts.raw.Wed + dayCounts.raw.Thu + dayCounts.raw.Fri + dayCounts.raw.Sat + dayCounts.raw.Sun) / 7);
             const totalHours = weeks * item.hours.weeklyFixed;
             const unitPrice = item.statePrice || 0;
             const totalCost = totalHours * unitPrice;
@@ -3831,13 +3835,13 @@ async function createDayTypeSummaryTable(doc, card, x, y, width) {
         startY: y,
         head: [['Day Type', '# of Days', 'Total Hours', 'Total Cost', 'Dates/Details']],
         body: data,
-        margin: { left: x, right: 20 },
+        margin: { left: x, right: 10 },
         columnStyles: {
             0: { cellWidth: 30 },
             1: { cellWidth: 20, halign: 'center' },
             2: { cellWidth: 25, halign: 'right' },
             3: { cellWidth: 30, halign: 'right' },
-            4: { cellWidth: 65, fontSize: 7 }
+            4: { cellWidth: 75, fontSize: 7 }
         },
         styles: {
             fontSize: 8,
@@ -3862,7 +3866,6 @@ async function createDayTypeSummaryTable(doc, card, x, y, width) {
     
     return doc.lastAutoTable.finalY + 10;
 }
-
 async function createGrandSummarySection(doc, x, y, width) {
     // Calculate totals across all periods
     let totalFunding = 0;
