@@ -2587,7 +2587,7 @@ async function createSupportGroupTable(doc, group, card, x, y, width) {
     // Create the table
     doc.autoTable({
         startY: y,
-        head: [['Support Item', 'Code', 'Usage', 'Qty', 'Avg Rate', 'Total']],
+        head: [['Support Item', 'Code', 'Usage', 'Qty', 'Rate', 'Total']],
         body: tableRows,
         margin: { left: x, right: 20 },
         columnStyles: {
@@ -3502,26 +3502,20 @@ async function generateMultiPeriodReport() {
         
         // Update all page numbers
         const finalTotalPages = doc.internal.getNumberOfPages();
-        for (let i = 1; i <= finalTotalPages; i++) {
-            doc.setPage(i);
-            doc.setFontSize(9);
-            doc.setFont(undefined, 'normal');
-            doc.setTextColor(128, 128, 128);
-            doc.setDrawColor(200, 200, 200);
-            
-            // Add footer line
-            doc.line(margin, pageHeight - 15, pageWidth - margin, pageHeight - 15);
-            
-            // Page numbers
-            doc.text(`Page ${i} of ${finalTotalPages}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
-            
-            // Report generated date
-            const genDate = new Date().toLocaleDateString('en-AU');
-            doc.text(`Generated: ${genDate}`, margin, pageHeight - 10);
-            
-            doc.setTextColor(0, 0, 0);
-        }
+for (let i = 1; i <= finalTotalPages; i++) {
+    doc.setPage(i);
+    doc.setFontSize(9);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(128, 128, 128);
         
+    // Generated date
+    const genDate = new Date().toLocaleDateString('en-AU');
+    doc.text(`Generated: ${genDate}`, 10, pageHeight - 10);
+    
+    doc.setTextColor(0, 0, 0);
+}
+
+
         // Save with appropriate filename
         const safeName = participantName.replace(/[^a-zA-Z0-9]/g, '_');
         const dateStr = new Date().toISOString().split('T')[0];
@@ -3535,337 +3529,220 @@ async function generateMultiPeriodReport() {
 }
 
 async function createExecutiveSummaryTable(doc, x, y, width) {
-    // Date formatting helpers
     const fmtDate = s => new Date(s + 'T00:00:00').toLocaleDateString(
         'en-AU', { day: 'numeric', month: 'short', year: 'numeric' }
     );
-    const dateRange = (a, b) => `${fmtDate(a)} – ${fmtDate(b)}`;
+    
+    const baseAmount = parseFloat(state.cards[0].budget.total) || 0;
+    
+    // Build notes for adjustments/exclusions
+    const notes = [];
+    state.cards.forEach((card, index) => {
+        const excluded = parseFloat(card.budget.excluded) || 0;
+        if (excluded !== 0) {
+            notes.push(`P${index + 1} Excl -${formatCurrency(excluded)}`);
+        }
+    });
+    
+    // Show base amount above table
+    doc.setFontSize(9);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Base per period: ${formatCurrency(baseAmount)}`, x, y);
+    doc.setTextColor(0, 0, 0);
+    y += 8;
+    
+    // Calculate totals
+    let totalSpent = 0;
+    let finalRemaining = 0;
     
     const data = [];
     
-    // Prepare data rows
+    // Prepare data rows with proper carry reconciliation
     state.cards.forEach((card, index) => {
         const totals = computeCardTotals(card);
-        const expenditure = totals.usedCents / 100;
-        const baseBudget = parseFloat(card.budget.total) || 0;
-        const carryOver = parseFloat(card.budget.carryOver) || 0;
+        const spent = totals.usedCents / 100;
+        const carryIn = parseFloat(card.budget.carryOver) || 0;
         const excluded = parseFloat(card.budget.excluded) || 0;
-        const available = baseBudget + carryOver - excluded;
-        const remaining = available - expenditure;
+        const available = baseAmount + carryIn - excluded;
+        const remaining = available - spent;
+        
+        totalSpent += spent;
+        if (index === state.cards.length - 1) {
+            finalRemaining = remaining;
+        }
+        
+        // Use the new rate label logic
+        const rateStatus = getRateLabel(card.period.start, card.period.end);
         
         data.push([
             `${index + 1}`,
-            dateRange(card.period.start, card.period.end),
-            formatCurrency(baseBudget),
+            formatCurrency(carryIn),
             formatCurrency(available),
-            formatCurrency(expenditure),
-            formatCurrency(remaining)
+            formatCurrency(spent),
+            formatCurrency(remaining),
+            rateStatus
         ]);
     });
     
-    // Calculate grand totals
-    let totalBaseBudget = 0;
-    let totalAvailable = 0;
-    let totalExpenditure = 0;
+    // Show totals above table
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'bold');
+    doc.text(`Total Spent: ${formatCurrency(totalSpent)}     Final Balance: ${formatCurrency(finalRemaining)}`, x, y);
+    y += 8;
     
-    state.cards.forEach(card => {
-        const totals = computeCardTotals(card);
-        const expenditure = totals.usedCents / 100;
-        const baseBudget = parseFloat(card.budget.total) || 0;
-        const carryOver = parseFloat(card.budget.carryOver) || 0;
-        const excluded = parseFloat(card.budget.excluded) || 0;
-        
-        totalBaseBudget += baseBudget;
-        totalAvailable += (baseBudget + carryOver - excluded);
-        totalExpenditure += expenditure;
-    });
-    
-    const totalRemaining = totalAvailable - totalExpenditure;
-    
-    // Add total row
-    data.push([
-        'TOTAL',
-        '',
-        formatCurrency(totalBaseBudget),
-        formatCurrency(totalAvailable),
-        formatCurrency(totalExpenditure),
-        formatCurrency(totalRemaining)
-    ]);
-    
-    // Create the table with tighter margins and smaller font
+    // Create the table - use auto width
     doc.autoTable({
         startY: y,
-        head: [['Period', 'Dates', 'Base Budget', 'Available', 'Expenditure', 'Remaining']],
+        head: [['Period', 'Carryover', 'Available', 'Spent', 'Remain', 'Rates']],
         body: data,
-        margin: { left: 10, right: 10 }, // Reduced margins
+        margin: { left: x, right: 10 },
+        tableWidth: 'auto', // Let it auto-size
         styles: { 
-            fontSize: 8, // Reduced from 9
-            cellPadding: 2, // Reduced from 3
-            overflow: 'ellipsize'
+            fontSize: 8,
+            cellPadding: 2,
+            overflow: 'linebreak' // Allow text to wrap if needed
         },
         headStyles: { 
             fillColor: [37, 99, 235], 
             textColor: [255, 255, 255],
-            fontStyle: 'bold',
-            fontSize: 8
+            fontStyle: 'bold'
         },
         columnStyles: {
-            0: { cellWidth: 12 }, // Reduced from 18
-            1: { cellWidth: 48 }, // Reduced from 64
-            2: { cellWidth: 26, halign: 'right' }, // Reduced from 28
-            3: { cellWidth: 26, halign: 'right' }, // Reduced from 30
-            4: { cellWidth: 28, halign: 'right' }, // Reduced from 30
-            5: { cellWidth: 26, halign: 'right' }  // Reduced from 30
+            0: { cellWidth: 15, halign: 'center' },
+            1: { cellWidth: 'auto', halign: 'right' },
+            2: { cellWidth: 'auto', halign: 'right' },
+            3: { cellWidth: 'auto', halign: 'right' },
+            4: { cellWidth: 'auto', halign: 'right' },
+            5: { cellWidth: 20, halign: 'center' }
         },
         alternateRowStyles: {
             fillColor: [248, 249, 250]
-        },
-        footStyles: {
-            fillColor: [240, 240, 240],
-            fontStyle: 'bold'
-        },
-        didDrawCell: (data) => {
-            // Bold the total row
-            if (data.row.index === state.cards.length) {
-                doc.setFont(undefined, 'bold');
-            }
-            // Highlight negative remaining in red
-            if (data.column.index === 5 && data.row.index < state.cards.length) {
-                const value = parseFloat(data.cell.raw.replace(/[$,]/g, ''));
-                if (value < 0) {
-                    doc.setTextColor(239, 68, 68);
-                }
-            }
         }
     });
     
-    // Add footnote about adjustments if there are any
-    let hasAdjustments = false;
-    state.cards.forEach(card => {
-        if (card.budget.excluded && card.budget.excluded > 0) {
-            hasAdjustments = true;
-        }
-    });
+    y = doc.lastAutoTable.finalY + 5;
     
-    if (hasAdjustments) {
-        y = doc.lastAutoTable.finalY + 5;
-        doc.setFontSize(7);
-        doc.setTextColor(100, 100, 100);
-        doc.text('* Available amount includes manual adjustments/exclusions', 10, y);
-        doc.setTextColor(0, 0, 0);
+    // Add caption
+    doc.setFontSize(8);
+    doc.setFont(undefined, 'italic');
+    doc.setTextColor(100, 100, 100);
+    doc.text('Available reflects carryover and adjustments. Support item rate updates apply from 1 Jul only.', x, y);
+    y += 5;
+    
+    // Add notes if any
+    if (notes.length > 0) {
+        doc.setFont(undefined, 'normal');
+        doc.text(`Notes: ${notes.join('; ')}`, x, y);
         y += 5;
     }
     
-    // Add carryover summary below table
-    y = doc.lastAutoTable.finalY + 8;
-    doc.setFontSize(8);
-    doc.setFont(undefined, 'normal');
+    doc.setTextColor(0, 0, 0);
     
-    // Calculate total carryover
-    let totalCarryover = 0;
-    state.cards.forEach((card, index) => {
-        if (index > 0) { // Skip first period
-            totalCarryover += parseFloat(card.budget.carryOver) || 0;
-        }
-    });
+    return y + 5;
+}
+function getRateLabel(startDate, endDate) {
+    const currentStart = new Date('2025-07-01');
+    const currentEnd = new Date('2026-06-30');
+    const nextStart = new Date('2026-07-01');
     
-    if (totalCarryover > 0) {
-        doc.text(`Total carryover between periods: ${formatCurrency(totalCarryover)}`, 10, y);
-        y += 4;
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    // Pre: ends before current catalogue
+    if (end < currentStart) {
+        return "Pre";
     }
     
-    doc.text(`Running balance at end: ${formatCurrency(totalRemaining)}`, 10, y);
+    // Post: starts after current catalogue
+    if (start >= nextStart) {
+        return "Post";
+    }
     
-    return y + 10;
+    // Partial: crosses into next catalogue
+    if (start < nextStart && end >= nextStart) {
+        return "Partial";
+    }
+    
+    // Current: entirely within current catalogue
+    return "Current";
 }
+// Day Type summary: Day Type | # of Days | Dates/Details (PH only)
 async function createDayTypeSummaryTable(doc, card, x, y, width) {
-    // Convert date strings to Date objects properly
-    const startDate = new Date(card.period.start + 'T00:00:00Z');
-    const endDate = new Date(card.period.end + 'T00:00:00Z');
-    
-    // Use the existing countDaysInPeriod function with Date objects
-    const dayCounts = countDaysInPeriod(startDate, endDate, card);
-    
-    // Get public holidays in period with proper date formatting
-    const phDates = [];
-    
-    state.publicHolidays.forEach(ph => {
-        const phDate = new Date(ph.date + 'T00:00:00Z');
-        if (phDate >= startDate && phDate <= endDate) {
-            phDates.push({
-                date: phDate,
-                name: ph.name
-            });
-        }
-    });
-    
-    // Calculate totals by day type by iterating through actual dates
-    let weekdayHours = 0, weekdayCost = 0;
-    let saturdayHours = 0, saturdayCost = 0; 
-    let sundayHours = 0, sundayCost = 0;
-    let phHours = 0, phCost = 0;
-    
-    // Process each date in the period
-    eachDateInclusive(card.period.start, card.period.end, (date) => {
-        const isPH = isPublicHoliday(date, card.state);
-        const dayOfWeek = getDayOfWeek(date);
-        
-        card.groups.forEach(group => {
-            group.items.forEach(item => {
-                if (!item.selected) return;
-                
-                const isSleepover = isSleepoverItem(item);
-                
-                // Apply same gating logic as computeCardTotals
-                if (isPH && !card.settings.includePH) return;
-                
-                if (isPH) {
-                    if (isSleepover) {
-                        // Sleepover allowed on PH at standard rate
-                    } else {
-                        if (!item.flags.isPublicHoliday) return;
-                    }
-                } else {
-                    // Non-PH day
-                    if (item.flags.isPublicHoliday) return;
-                    if (item.flags.isWeekday && !isWeekday(date)) return;
-                    if (item.flags.isSaturday && !isSaturday(date)) return;
-                    if (item.flags.isSunday && !isSunday(date)) return;
-                }
-                
-                const quantity = resolveQuantityForDate(item, date, dayOfWeek, { 
-                    isPH, 
-                    isSleepover,
-                    isFirstDay: date.getTime() === startDate.getTime()
-                });
-                
-                if (quantity > 0 && item.unit === 'H') {
-                    const unitPrice = getUnitPrice(item, card, date, { isPH, isSleepover });
-                    const cost = quantity * unitPrice;
-                    
-                    if (isPH) {
-                        phHours += quantity;
-                        phCost += cost;
-                    } else if (isSaturday(date)) {
-                        saturdayHours += quantity;
-                        saturdayCost += cost;
-                    } else if (isSunday(date)) {
-                        sundayHours += quantity;
-                        sundayCost += cost;
-                    } else if (isWeekday(date)) {
-                        weekdayHours += quantity;
-                        weekdayCost += cost;
-                    }
-                }
-            });
-        });
-    });
-    
-    // Add weekly fixed items
-    const totals = computeCardTotals(card);
-    const weeks = totals.weeks;
-    
-    card.groups.forEach(group => {
-        group.items.forEach(item => {
-            if (!item.selected || !item.hours?.weeklyFixed || item.hours.weeklyFixed <= 0) return;
-            
-            const totalHours = weeks * item.hours.weeklyFixed;
-            const unitPrice = item.statePrice || 0;
-            const totalCost = totalHours * unitPrice;
-            
-            // Distribute weekly fixed hours across weekdays
-            weekdayHours += totalHours;
-            weekdayCost += totalCost;
-        });
-    });
-    
-    // Calculate weekday count (excluding PH)
-    const weekdayCount = dayCounts.excludingPH.Mon + dayCounts.excludingPH.Tue + 
-                        dayCounts.excludingPH.Wed + dayCounts.excludingPH.Thu + 
-                        dayCounts.excludingPH.Fri;
-    
-    // Format PH dates nicely
-    const phDateStrings = phDates.map(ph => {
-        const dateStr = ph.date.toLocaleDateString('en-AU', { 
-            day: 'numeric', 
-            month: 'short' 
-        });
-        return `${dateStr} (${ph.name})`;
-    });
-    
-    // Create table data
-    const data = [
-        ['Weekdays', 
-         weekdayCount.toString(), 
-         weekdayHours > 0 ? `${weekdayHours.toFixed(1)} hrs` : '—', 
-         weekdayCost > 0 ? formatCurrency(weekdayCost) : '—', 
-         '—'],
-        ['Saturdays', 
-         dayCounts.excludingPH.Sat.toString(), 
-         saturdayHours > 0 ? `${saturdayHours.toFixed(1)} hrs` : '—', 
-         saturdayCost > 0 ? formatCurrency(saturdayCost) : '—', 
-         '—'],
-        ['Sundays', 
-         dayCounts.excludingPH.Sun.toString(), 
-         sundayHours > 0 ? `${sundayHours.toFixed(1)} hrs` : '—', 
-         sundayCost > 0 ? formatCurrency(sundayCost) : '—', 
-         '—'],
-        ['Public Holidays', 
-         dayCounts.publicHolidays.toString(), 
-         phHours > 0 ? `${phHours.toFixed(1)} hrs` : '—', 
-         phCost > 0 ? formatCurrency(phCost) : '—', 
-         phDateStrings.length > 0 ? phDateStrings.join('; ') : '—']
-    ];
-    
-    // Add totals row
-    const totalDays = weekdayCount + dayCounts.excludingPH.Sat + dayCounts.excludingPH.Sun + dayCounts.publicHolidays;
-    const totalHours = weekdayHours + saturdayHours + sundayHours + phHours;
-    const totalCost = weekdayCost + saturdayCost + sundayCost + phCost;
-    
-    data.push([
-        'TOTAL',
-        totalDays.toString(),
-        totalHours > 0 ? `${totalHours.toFixed(1)} hrs` : '—',
-        totalCost > 0 ? formatCurrency(totalCost) : '—',
-        ''
-    ]);
-    
-    // Create the table
-    doc.autoTable({
-        startY: y,
-        head: [['Day Type', '# of Days', 'Total Hours', 'Total Cost', 'Dates/Details']],
-        body: data,
-        margin: { left: x, right: 10 },
-        columnStyles: {
-            0: { cellWidth: 30 },
-            1: { cellWidth: 20, halign: 'center' },
-            2: { cellWidth: 25, halign: 'right' },
-            3: { cellWidth: 30, halign: 'right' },
-            4: { cellWidth: 75, fontSize: 7 }
-        },
-        styles: {
-            fontSize: 8,
-            cellPadding: 2
-        },
-        headStyles: {
-            fillColor: [37, 99, 235],
-            textColor: [255, 255, 255]
-        },
-        footStyles: {
-            fillColor: [248, 249, 250],
-            textColor: [0, 0, 0],
-            fontStyle: 'bold'
-        },
-        didDrawCell: (data) => {
-            // Bold the total row
-            if (data.row.index === 4) {
-                doc.setFont(undefined, 'bold');
-            }
-        }
-    });
-    
-    return doc.lastAutoTable.finalY + 10;
+  // Local midnight to avoid UTC skew
+  const startDate = new Date(`${card.period.start}T00:00:00`);
+  const endDate   = new Date(`${card.period.end}T00:00:00`);
+
+  // Use the same function you already have
+  const dayCounts = countDaysInPeriod(startDate, endDate, card);
+
+  // Collect PH dates for this period (from card.state)
+  const phDates = [];
+  (card.state.publicHolidays || []).forEach(ph => {
+    const phDate = new Date(`${ph.date}T00:00:00`);
+    if (phDate >= startDate && phDate <= endDate) {
+      phDates.push({ date: phDate, name: ph.name });
+    }
+  });
+
+  const phDateStrings = phDates.map(ph => {
+    const dateStr = ph.date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+    return `${dateStr} (${ph.name})`;
+  });
+
+  // Weekday count (excluding PH)
+  const weekdayCount =
+    (dayCounts.excludingPH?.Mon || 0) +
+    (dayCounts.excludingPH?.Tue || 0) +
+    (dayCounts.excludingPH?.Wed || 0) +
+    (dayCounts.excludingPH?.Thu || 0) +
+    (dayCounts.excludingPH?.Fri || 0);
+
+  // Build table body (no hours/costs at all)
+  const data = [
+    ['Weekdays',        String(weekdayCount),                     '—'],
+    ['Saturdays',       String(dayCounts.excludingPH?.Sat || 0),  '—'],
+    ['Sundays',         String(dayCounts.excludingPH?.Sun || 0),  '—'],
+    ['Public Holidays', String(dayCounts.publicHolidays || 0),
+                        phDateStrings.length ? phDateStrings.join('; ') : '—']
+  ];
+
+  // Totals row (days only)
+  const totalDays =
+    weekdayCount +
+    (dayCounts.excludingPH?.Sat || 0) +
+    (dayCounts.excludingPH?.Sun || 0) +
+    (dayCounts.publicHolidays || 0);
+
+  data.push(['TOTAL', String(totalDays), '']);
+
+  // Render: 3 columns now
+  doc.autoTable({
+    startY: y,
+    head: [['Day Type', '# of Days', 'Dates/Details']],
+    body: data,
+    margin: { left: x, right: 10 },
+    columnStyles: {
+      0: { cellWidth: 35 },                   // Day Type
+      1: { cellWidth: 20, halign: 'center' }, // # of Days
+      2: { cellWidth: 105, fontSize: 7 }      // Dates/Details (PH list)
+    },
+    styles: { fontSize: 8, cellPadding: 2 },
+    headStyles: { fillColor: [37, 99, 235], textColor: [255, 255, 255] }
+  });
+
+  // Optional tiny caption
+  y = doc.lastAutoTable.finalY + 5;
+  doc.setFontSize(7);
+  doc.setFont(undefined, 'italic');
+  doc.setTextColor(100, 100, 100);
+  doc.text('Counts exclude public holidays from weekdays; PH dates shown in “Dates/Details”.', x, y);
+  doc.setTextColor(0, 0, 0);
+
+  return y + 10;
 }
+
+
 async function createGrandSummarySection(doc, x, y, width) {
     // Calculate totals across all periods
     let totalFunding = 0;
@@ -4046,8 +3923,8 @@ async function createBudgetTable(doc, card, x, y, width) {
         margin: { left: x, right: 20 },
         tableWidth: 'auto',
         columnStyles: {
-            0: { cellWidth: 80 },
-            1: { cellWidth: 50, halign: 'right' }
+            0: { cellWidth: 60 },
+            1: { cellWidth: 'auto', halign: 'right' }
         },
         styles: {
             fontSize: 10,
@@ -5826,61 +5703,130 @@ function createWeekdayInputGroup(itemData) {
     const container = document.createElement('div');
     container.className = 'hours-input-group';
     
-    // Main weekday input
-    const mainInput = createHoursInput('Weekday', itemData.hours?.weekday || 0);
-    container.appendChild(mainInput);
+    // Add a mode selector
+    const modeContainer = document.createElement('div');
+    modeContainer.className = 'input-mode-selector';
+    modeContainer.style.marginBottom = '0.5rem';
     
-    // Weekly fixed input (hidden by default)
-    const weeklyInput = createHoursInput('Weekly Fixed', itemData.hours?.weeklyFixed || 0);
-    weeklyInput.classList.add('hidden');
-    weeklyInput.dataset.mode = 'weekly';
+    // Generate a unique name for this radio group based on the item
+    const radioGroupName = 'hours-mode-' + (itemData.supportItemNumber || Date.now() + Math.random());
     
-    // Per-day container
+    // Determine initial mode based on existing data
+    let initialMode = 'weekday'; // default
+    if (itemData.hours?.weeklyFixed !== undefined && itemData.hours.weeklyFixed > 0) {
+        initialMode = 'weekly';
+    } else if (itemData.hours?.Mon || itemData.hours?.Tue || itemData.hours?.Wed || 
+               itemData.hours?.Thu || itemData.hours?.Fri) {
+        initialMode = 'perday';
+    } else if (itemData.hours?.weekday !== undefined && itemData.hours.weekday > 0) {
+        initialMode = 'weekday';
+    }
+    
+    // Store current mode in container for reading later
+    container.dataset.currentMode = initialMode;
+    
+    // Radio buttons for mode selection
+    const modes = [
+        { value: 'weekday', label: 'Weekday Hours', checked: initialMode === 'weekday' },
+        { value: 'perday', label: 'Per-day Breakdown', checked: initialMode === 'perday' },
+        { value: 'weekly', label: 'Weekly Total', checked: initialMode === 'weekly' }
+    ];
+    
+    modes.forEach(mode => {
+        const radioGroup = document.createElement('label');
+        radioGroup.style.display = 'inline-flex';
+        radioGroup.style.alignItems = 'center';
+        radioGroup.style.marginRight = '1rem';
+        radioGroup.style.fontSize = '0.75rem';
+        radioGroup.style.cursor = 'pointer';
+        
+        const radio = document.createElement('input');
+        radio.type = 'radio';
+        radio.name = radioGroupName; // Use the same name for all radios in this group
+        radio.value = mode.value;
+        radio.checked = mode.checked;
+        radio.style.marginRight = '0.25rem';
+        
+        radioGroup.appendChild(radio);
+        radioGroup.appendChild(document.createTextNode(mode.label));
+        modeContainer.appendChild(radioGroup);
+    });
+    
+    container.appendChild(modeContainer);
+    
+    // Create all three input containers
+    const weekdayInput = createHoursInput('Hours per Weekday', itemData.hours?.weekday || 0);
+    weekdayInput.classList.add('weekday-mode');
+    if (initialMode !== 'weekday') {
+        weekdayInput.classList.add('hidden');
+    }
+    
     const perDayContainer = document.createElement('div');
-    perDayContainer.className = 'per-day-inputs hidden';
+    perDayContainer.className = 'per-day-inputs';
+    if (initialMode !== 'perday') {
+        perDayContainer.classList.add('hidden');
+    }
     ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].forEach(day => {
         const dayInput = createHoursInput(day, itemData.hours?.[day] || 0);
         perDayContainer.appendChild(dayInput);
     });
     
-    // Toggle with cycling through three modes
-    const toggle = document.createElement('div');
-    toggle.className = 'per-day-toggle';
-    toggle.textContent = 'Per-day breakdown';
-    
-    let currentMode = 'weekday'; // weekday, perday, weekly
-    
-    toggle.onclick = () => {
-        // Hide all
-        mainInput.classList.add('hidden');
+    const weeklyInput = createHoursInput('Total Weekly Hours', itemData.hours?.weeklyFixed || 0);
+    weeklyInput.classList.add('weekly-mode');
+    weeklyInput.dataset.mode = 'weekly';
+    if (initialMode !== 'weekly') {
         weeklyInput.classList.add('hidden');
-        perDayContainer.classList.add('hidden');
-        
-        // Cycle to next mode
-        if (currentMode === 'weekday') {
-            currentMode = 'perday';
-            perDayContainer.classList.remove('hidden');
-            toggle.textContent = 'Weekly fixed';
-        } else if (currentMode === 'perday') {
-            currentMode = 'weekly';
-            weeklyInput.classList.remove('hidden');
-            toggle.textContent = 'Single value';
-        } else {
-            currentMode = 'weekday';
-            mainInput.classList.remove('hidden');
-            toggle.textContent = 'Per-day breakdown';
-        }
-        
-        // Store current mode in container for reading later
-        container.dataset.currentMode = currentMode;
-        
-        // Trigger update
-        updateCardFromDOM(container.closest('.budget-card'));
-    };
+    }
     
-    container.appendChild(toggle);
-    container.appendChild(weeklyInput);
+    // Add help text for weekly mode
+    const weeklyHelp = document.createElement('div');
+    weeklyHelp.className = 'help-text';
+    if (initialMode !== 'weekly') {
+        weeklyHelp.classList.add('hidden');
+    }
+    weeklyHelp.style.fontSize = '0.625rem';
+    weeklyHelp.style.color = 'var(--text-muted)';
+    weeklyHelp.style.marginTop = '0.25rem';
+    weeklyHelp.textContent = 'Hours will be scheduled flexibly throughout the week';
+    
+    // Mode switching logic
+    const radios = modeContainer.querySelectorAll('input[type="radio"]');
+    radios.forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            if (!e.target.checked) return;
+            
+            // Update the stored mode
+            container.dataset.currentMode = e.target.value;
+            
+            // Hide all modes
+            weekdayInput.classList.add('hidden');
+            perDayContainer.classList.add('hidden');
+            weeklyInput.classList.add('hidden');
+            weeklyHelp.classList.add('hidden');
+            
+            // Show selected mode
+            switch (e.target.value) {
+                case 'weekday':
+                    weekdayInput.classList.remove('hidden');
+                    break;
+                case 'perday':
+                    perDayContainer.classList.remove('hidden');
+                    break;
+                case 'weekly':
+                    weeklyInput.classList.remove('hidden');
+                    weeklyHelp.classList.remove('hidden');
+                    break;
+            }
+            
+            // Update the data
+            updateCardFromDOM(container.closest('.budget-card'));
+        });
+    });
+    
+    container.appendChild(weekdayInput);
     container.appendChild(perDayContainer);
+    container.appendChild(weeklyInput);
+    container.appendChild(weeklyHelp);
     
     return container;
 }
