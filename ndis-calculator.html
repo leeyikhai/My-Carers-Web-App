@@ -6,6 +6,7 @@
     <title>NDIS Budget Calculator</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="icon" type="image/png" sizes="16x16" href="https://gqchhsayqxttewthcsah.supabase.co/storage/v1/object/public/Branding/mc-favicon-16x16.png">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <!-- QR Code generation - using qrcodejs instead -->
@@ -5409,71 +5410,65 @@ function renderItem(itemData) {
     // Create hours/quantity inputs based on item type
     const inputsContainer = itemEl.querySelector('.item-inputs');
     
+    // Replace the section starting from line 5413 (approximately) with this:
+
+
     if (itemData.unit === 'H') {
-        // Hour-based items - existing logic
-        if (itemData.flags.isWeekday) {
-            const weekdayGroup = createWeekdayInputGroup(itemData);
-            inputsContainer.appendChild(weekdayGroup);
-        } else if (itemData.flags.isSaturday) {
-            const saturdayInput = createHoursInput('Saturday', itemData.hours?.saturday || 0);
-            inputsContainer.appendChild(saturdayInput);
-        } else if (itemData.flags.isSunday) {
-            const sundayInput = createHoursInput('Sunday', itemData.hours?.sunday || 0);
-            inputsContainer.appendChild(sundayInput);
-        } else if (itemData.flags.isPublicHoliday) {
-            const phInput = createHoursInput('PH', itemData.hours?.publicHoliday || 0);
-            inputsContainer.appendChild(phInput);
-        }
-    } else if (itemData.unit === 'E') {
-        // Each-based items - new logic
-        const eType = getEItemType(itemData.supportItemName);
-        
-        switch (eType) {
-            case 'daily':
-                const dailyInputs = createDailyCheckboxes(itemData);
-                inputsContainer.appendChild(dailyInputs);
-                break;
-            case 'one-time':
-                const oneTimeInput = createQuantityInput('Quantity', itemData.quantity || 0, true);
-                inputsContainer.appendChild(oneTimeInput);
-                break;
-            case 'per-occurrence':
-                const occurrenceInput = createQuantityInput('Per Day', itemData.quantity || 0, false);
-                inputsContainer.appendChild(occurrenceInput);
-                break;
-            default:
-                const standardInput = createQuantityInput('Quantity', itemData.quantity || 0, true);
-                inputsContainer.appendChild(standardInput);
-        }
-    }
-    
-    // Item selection handler - FIXED VERSION
-    checkbox.onchange = (e) => {
-    if (e.target.checked) {
-        itemEl.classList.add('selected');
+    // Hour-based items
+    if (itemData.flags.isWeekday) {
+        const weekdayGroup = createWeekdayInputGroup(itemData);
+        inputsContainer.appendChild(weekdayGroup);
+    } else if (itemData.flags.isSaturday) {
+        const saturdayInput = createHoursInput('Saturday', itemData.hours?.saturday || 0);
+        inputsContainer.appendChild(saturdayInput);
+    } else if (itemData.flags.isSunday) {
+        const sundayInput = createHoursInput('Sunday', itemData.hours?.sunday || 0);
+        inputsContainer.appendChild(sundayInput);
+    } else if (itemData.flags.isPublicHoliday) {
+        const phInput = createHoursInput('PH', itemData.hours?.publicHoliday || 0);
+        inputsContainer.appendChild(phInput);
     } else {
-        itemEl.classList.remove('selected');
+        // Default for other hourly items - show weekday input group
+        const weekdayGroup = createWeekdayInputGroup(itemData);
+        inputsContainer.appendChild(weekdayGroup);
     }
+} else if (itemData.unit === 'E' || itemData.unit === 'D') {
+    // Each-based and Day-based items
+    const eType = getEItemType(itemData.supportItemName);
     
-    setTimeout(() => {
-        const cardEl = itemEl.closest('.budget-card');
-        updateCardFromDOM(cardEl);
-        saveState(); // Add this
-    }, 10);
-};
-  
-    return itemEl;
+    switch (eType) {
+        case 'daily':
+            const dailyInputs = createDailyCheckboxes(itemData);
+            inputsContainer.appendChild(dailyInputs);
+            break;
+        case 'one-time':
+            const oneTimeInput = createQuantityInput('Quantity', itemData.quantity || 0, true);
+            inputsContainer.appendChild(oneTimeInput);
+            break;
+        case 'per-occurrence':
+            const occurrenceInput = createQuantityInput('Per Day', itemData.quantity || 0, false);
+            inputsContainer.appendChild(occurrenceInput);
+            break;
+        default:
+            const standardInput = createQuantityInput('Quantity', itemData.quantity || 0, true);
+            inputsContainer.appendChild(standardInput);
+    }
 }
 
-
+// And also update the getEItemType function to include household/cleaning items:
 function getEItemType(itemName) {
     const name = itemName.toLowerCase();
     
-    // Check for daily/nightly items
+    // Check for daily/nightly items (including household activities)
     if (name.includes('sleepover') || 
         name.includes('overnight') || 
         name.includes('night-time') ||
-        name.includes('on-call')) {
+        name.includes('on-call') ||
+        name.includes('cleaning') ||
+        name.includes('household') ||
+        name.includes('domestic') ||
+        name.includes('gardening') ||
+        name.includes('maintenance')) {
         return 'daily';
     }
     
@@ -5495,6 +5490,24 @@ function getEItemType(itemName) {
     
     // Default
     return 'standard';
+}
+    
+    // Item selection handler - FIXED VERSION
+    checkbox.onchange = (e) => {
+    if (e.target.checked) {
+        itemEl.classList.add('selected');
+    } else {
+        itemEl.classList.remove('selected');
+    }
+    
+    setTimeout(() => {
+        const cardEl = itemEl.closest('.budget-card');
+        updateCardFromDOM(cardEl);
+        saveState(); // Add this
+    }, 10);
+};
+  
+    return itemEl;
 }
 
 function createDailyCheckboxes(itemData) {
@@ -5568,12 +5581,47 @@ function createWeekdayInputGroup(itemData) {
     const container = document.createElement('div');
     container.className = 'hours-input-group';
     
-    const mainInput = createHoursInput('Weekday', itemData.hours?.weekday || 0);
-    container.appendChild(mainInput);
+    // Add a mode selector
+    const modeContainer = document.createElement('div');
+    modeContainer.className = 'input-mode-selector';
+    modeContainer.style.marginBottom = '0.5rem';
     
-    const toggle = document.createElement('div');
-    toggle.className = 'per-day-toggle';
-    toggle.textContent = 'Per-day breakdown';
+    // Generate a unique name for this radio group based on the item
+    // Use the item's support number or a timestamp to ensure uniqueness
+    const radioGroupName = 'hours-mode-' + (itemData.supportItemNumber || Date.now() + Math.random());
+    
+    // Radio buttons for mode selection
+    const modes = [
+        { value: 'weekday', label: 'Weekday Hours', checked: true },
+        { value: 'perday', label: 'Per-day Breakdown', checked: false },
+        { value: 'weekly', label: 'Weekly Total', checked: false }
+    ];
+    
+    modes.forEach(mode => {
+        const radioGroup = document.createElement('label');
+        radioGroup.style.display = 'inline-flex';
+        radioGroup.style.alignItems = 'center';
+        radioGroup.style.marginRight = '1rem';
+        radioGroup.style.fontSize = '0.75rem';
+        radioGroup.style.cursor = 'pointer';
+        
+        const radio = document.createElement('input');
+        radio.type = 'radio';
+        radio.name = radioGroupName; // Use the same name for all radios in this group
+        radio.value = mode.value;
+        radio.checked = mode.checked;
+        radio.style.marginRight = '0.25rem';
+        
+        radioGroup.appendChild(radio);
+        radioGroup.appendChild(document.createTextNode(mode.label));
+        modeContainer.appendChild(radioGroup);
+    });
+    
+    container.appendChild(modeContainer);
+    
+    // Create all three input containers
+    const weekdayInput = createHoursInput('Hours per Weekday', itemData.hours?.weekday || 0);
+    weekdayInput.classList.add('weekday-mode');
     
     const perDayContainer = document.createElement('div');
     perDayContainer.className = 'per-day-inputs hidden';
@@ -5582,22 +5630,52 @@ function createWeekdayInputGroup(itemData) {
         perDayContainer.appendChild(dayInput);
     });
     
-    toggle.onclick = () => {
-        if (perDayContainer.classList.contains('hidden')) {
-            perDayContainer.classList.remove('hidden');
-            mainInput.classList.add('hidden');
-            toggle.textContent = 'Single value';
-        } else {
-            perDayContainer.classList.add('hidden');
-            mainInput.classList.remove('hidden');
-            toggle.textContent = 'Per-day breakdown';
-        }
-        // Trigger update when switching modes
-        updateCardFromDOM(container.closest('.budget-card'));
-    };
+    const weeklyInput = createHoursInput('Total Weekly Hours', itemData.hours?.weekly || 0);
+    weeklyInput.classList.add('weekly-mode', 'hidden');
     
-    container.appendChild(toggle);
+    // Add help text for weekly mode
+    const weeklyHelp = document.createElement('div');
+    weeklyHelp.className = 'help-text hidden';
+    weeklyHelp.style.fontSize = '0.625rem';
+    weeklyHelp.style.color = 'var(--text-muted)';
+    weeklyHelp.style.marginTop = '0.25rem';
+    weeklyHelp.textContent = 'Hours will be scheduled flexibly throughout the week';
+    
+    // Mode switching logic
+    const radios = modeContainer.querySelectorAll('input[type="radio"]');
+    radios.forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            if (!e.target.checked) return;
+            
+            // Hide all modes
+            weekdayInput.classList.add('hidden');
+            perDayContainer.classList.add('hidden');
+            weeklyInput.classList.add('hidden');
+            weeklyHelp.classList.add('hidden');
+            
+            // Show selected mode
+            switch (e.target.value) {
+                case 'weekday':
+                    weekdayInput.classList.remove('hidden');
+                    break;
+                case 'perday':
+                    perDayContainer.classList.remove('hidden');
+                    break;
+                case 'weekly':
+                    weeklyInput.classList.remove('hidden');
+                    weeklyHelp.classList.remove('hidden');
+                    break;
+            }
+            
+            // Update the data
+            updateCardFromDOM(container.closest('.budget-card'));
+        });
+    });
+    
+    container.appendChild(weekdayInput);
     container.appendChild(perDayContainer);
+    container.appendChild(weeklyInput);
+    container.appendChild(weeklyHelp);
     
     return container;
 }
@@ -5746,11 +5824,18 @@ function getUnitPrice(item, card, date, { isPH, isSleepover }) {
 }
 
 function resolveQuantityForDate(item, date, dayOfWeek, { isPH, isSleepover, isFirstDay }) {
-  if (item.unit === 'H') {
-    // Hours logic
-    if (item.hours) {
-      // Skip if it's a PH and we're not a PH item
-      if (isPH && !item.flags.isPublicHoliday) return 0;
+    if (item.unit === 'H') {
+        // Hours logic
+        if (item.hours) {
+            // Handle weekly hours - distribute evenly across weekdays
+            if (item.hours.weekly !== undefined && isWeekday(date)) {
+                // Distribute weekly hours evenly across 5 weekdays
+                // This will work regardless of public holidays
+                return item.hours.weekly / 5;
+            }
+            
+            // Skip if it's a PH and we're not a PH item
+            if (isPH && !item.flags.isPublicHoliday) return 0;
       
       // First check for specific day-of-week value (Mon, Tue, etc.)
       if (item.hours[dayOfWeek] !== undefined) {
@@ -6871,23 +6956,32 @@ function updateCardFromDOM(cardEl) {
             if (isSelected) {
                 // Read hours/quantity from inputs
                 if (catalogueItem.unit === 'H') {
-                    if (catalogueItem.flags.isWeekday) {
-                        const perDayInputs = itemEl.querySelector('.per-day-inputs');
-                        if (perDayInputs && !perDayInputs.classList.contains('hidden')) {
-                            // Per-day values
-                            ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].forEach((day, i) => {
-                                const input = perDayInputs.children[i].querySelector('.hours-input');
-                                if (input) {
-                                    itemData.hours[day] = validateHours(input.value);
-                                }
-                            });
-                        } else {
-                            // Single weekday value
-                            const weekdayInput = itemEl.querySelector('.hours-input');
-                            if (weekdayInput) {
-                                itemData.hours.weekday = validateHours(weekdayInput.value);
-                            }
-                        }
+    if (catalogueItem.flags.isWeekday) {
+        // Check which mode is selected
+        const modeRadio = itemEl.querySelector('input[type="radio"]:checked');
+        const mode = modeRadio ? modeRadio.value : 'weekday';
+        
+        if (mode === 'weekly') {
+            // Weekly total mode
+            const weeklyInput = itemEl.querySelector('.weekly-mode .hours-input');
+            if (weeklyInput) {
+                itemData.hours.weekly = validateHours(weeklyInput.value);
+            }
+        } else if (mode === 'perday') {
+            // Per-day values
+            ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].forEach((day, i) => {
+                const input = perDayInputs.children[i].querySelector('.hours-input');
+                if (input) {
+                    itemData.hours[day] = validateHours(input.value);
+                }
+            });
+        } else {
+            // Single weekday value
+            const weekdayInput = itemEl.querySelector('.weekday-mode .hours-input');
+            if (weekdayInput) {
+                itemData.hours.weekday = validateHours(weekdayInput.value);
+            }
+        }
                     } else {
                         const input = itemEl.querySelector('.hours-input');
                         if (input) {
