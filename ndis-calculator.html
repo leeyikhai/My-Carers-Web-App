@@ -2418,6 +2418,8 @@ const state = {
 };
 let isSaving = false;
 
+const toC = n => Math.round(Number(n) * 100); // dollars -> integer cents
+const fmt = c => (c / 100).toLocaleString('en-AU', { style:'currency', currency:'AUD' });
 
 //REPORT START
 
@@ -2455,160 +2457,343 @@ function getItemUsageDescription(item) {
 }
 
 async function createSupportGroupTable(doc, group, card, x, y, width) {
+    const data = [];
     const totals = computeCardTotals(card);
-    const groupTotal = (totals.perGroupCents[group.regGroupNumber] || 0) / 100;
+    const groupTotalCents = totals.perGroupCents[group.regGroupNumber] || 0;
+    
+    // Get period info
+    const startDate = new Date(card.period.start + 'T00:00:00Z');
+    const endDate = new Date(card.period.end + 'T00:00:00Z');
+    const daysDiff = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+    const weeks = Math.ceil(daysDiff / 7);
     
     // Group header
     doc.setFontSize(11);
     doc.setFont(undefined, 'bold');
     doc.text(group.regGroupName, x, y);
-    doc.setFont(undefined, 'normal');
-    doc.setFontSize(9);
-    doc.text(`(${group.regGroupNumber}) - Total: ${formatCurrency(groupTotal)}`, x, y + 5);
-    y += 10;
+    y += 2;
     
-    // Calculate totals for each item using the same logic as computeCardTotals
-    const itemData = {};
-    const startDate = new Date(card.period.start + 'T00:00:00Z');
-    const endDate = new Date(card.period.end + 'T00:00:00Z');
-    
-    eachDateInclusive(card.period.start, card.period.end, (date) => {
-        const isPH = isPublicHoliday(date, card.state);
-        const dayOfWeek = getDayOfWeek(date);
-        
-        group.items.forEach(item => {
-            if (!item.selected) return;
-            
-            const itemKey = item.supportItemNumber;
-            if (!itemData[itemKey]) {
-                itemData[itemKey] = {
-                    item: item,
-                    totalQuantity: 0,
-                    totalCents: 0
-                };
-            }
-            
-            const isSleepover = isSleepoverItem(item);
-            
-            // Apply same gating logic as computeCardTotals
-            if (isPH && !card.settings.includePH) return;
-            
-            if (isPH) {
-                if (isSleepover) {
-                    // Sleepover allowed on PH at standard rate
-                } else {
-                    if (!item.flags.isPublicHoliday) return;
-                }
-            } else {
-                // Non-PH day
-                if (item.flags.isPublicHoliday) return;
-                if (item.flags.isWeekday && !isWeekday(date)) return;
-                if (item.flags.isSaturday && !isSaturday(date)) return;
-                if (item.flags.isSunday && !isSunday(date)) return;
-            }
-            
-            const quantity = resolveQuantityForDate(item, date, dayOfWeek, { 
-                isPH, 
-                isSleepover,
-                isFirstDay: date.getTime() === startDate.getTime()
-            });
-            
-            if (quantity > 0) {
-                // Get the price WITH UPLIFT for this specific date
-                const unitPrice = getUnitPrice(item, card, date, { isPH, isSleepover });
-                const lineCents = Math.round(quantity * Math.round(unitPrice * 100));
-                
-                itemData[itemKey].totalQuantity += quantity;
-                itemData[itemKey].totalCents += lineCents;
-            }
-        });
-    });
-    
-    // Add weekly fixed items after the date loop
-    const weeks = Math.max(1, Math.ceil(
-        (endDate - startDate) / (1000 * 60 * 60 * 24 * 7)
-    ));
+    // Iterate through items
+    let groupHasItems = false;
+    let groupSubtotalCents = 0;
     
     group.items.forEach(item => {
         if (!item.selected) return;
-        if (!item.hours?.weeklyFixed || item.hours.weeklyFixed <= 0) return;
         
-        const itemKey = item.supportItemNumber;
-        if (!itemData[itemKey]) {
-            itemData[itemKey] = {
-                item: item,
-                totalQuantity: 0,
-                totalCents: 0
-            };
+        const itemTotalCents = totals.perItemCents[item.supportItemNumber] || 0;
+        if (itemTotalCents === 0) return;
+        
+        // Get the actual quantity from calculations
+        const actualQuantity = totals.perItemQuantities[item.supportItemNumber] || 0;
+        const lineTotal = itemTotalCents / 100;
+        
+        // Calculate effective rate from total and quantity
+        let effectiveRate = 0;
+        if (actualQuantity > 0) {
+            effectiveRate = lineTotal / actualQuantity;
         }
         
-        const totalHours = weeks * item.hours.weeklyFixed;
-        const unitPrice = item.statePrice || 0;
+        // Determine pricing model and details
+        let pricingModel = '';
+        let unit = '';
+        let displayQuantity = actualQuantity;
+        let displayRate = effectiveRate;
+        let formula = '';
+        let dayType = '';
         
-        // Apply uplift if needed
-        let finalPrice = unitPrice;
-        if (card.settings.uplift.enabled) {
-            finalPrice = applyJulyUplift(unitPrice, endDate, item.effectiveTo, card.settings.uplift.percent);
-        }
-        
-        const totalCents = Math.round(totalHours * finalPrice * 100);
-        
-        itemData[itemKey].totalQuantity = totalHours;
-        itemData[itemKey].totalCents = totalCents;
-    });
-    
-    // Build table rows
-    const tableRows = [];
-    
-    Object.values(itemData).forEach(data => {
-        if (data.totalQuantity > 0) {
-            const usage = getItemUsageDescription(data.item);
-            const totalDollars = data.totalCents / 100;
-            // Calculate average rate (total dollars / total quantity)
-            const avgRate = data.totalQuantity > 0 ? totalDollars / data.totalQuantity : 0;
+        if (item.unit === 'H') {
+            unit = 'Hours';
             
-            tableRows.push([
-                data.item.supportItemName,
-                data.item.supportItemNumber,
-                usage,
-                data.totalQuantity.toString(),
-                formatCurrency(avgRate),
-                formatCurrency(totalDollars)
-            ]);
+            if (item.hours?.weeklyFixed > 0) {
+                pricingModel = 'Weekly Plan';
+                formula = `${weeks} weeks × ${item.hours.weeklyFixed}h`;
+                dayType = 'All';
+            } else if (item.hours?.weekday > 0) {
+                pricingModel = 'Hourly';
+                const weekdays = Math.round(actualQuantity / item.hours.weekday);
+                formula = `${weekdays} days × ${item.hours.weekday}h`;
+                dayType = 'Weekday';
+            } else if (item.flags.isSaturday || item.flags.isSunday || item.flags.isPublicHoliday) {
+                pricingModel = 'Hourly';
+                
+                if (item.flags.isSaturday) {
+                    dayType = 'Saturday';
+                    const sats = Math.round(actualQuantity / (item.hours.saturday || 1));
+                    formula = `${sats} days × ${item.hours.saturday || 0}h`;
+                } else if (item.flags.isSunday) {
+                    dayType = 'Sunday';
+                    const suns = Math.round(actualQuantity / (item.hours.sunday || 1));
+                    formula = `${suns} days × ${item.hours.sunday || 0}h`;
+                } else {
+                    dayType = 'Public Holiday';
+                    formula = `${actualQuantity.toFixed(1)}h on PH`;
+                }
+            } else {
+                pricingModel = 'Hourly';
+                dayType = 'Mixed';
+                
+                const dayParts = [];
+                ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach(day => {
+                    if (item.hours?.[day] > 0) {
+                        dayParts.push(`${day}:${item.hours[day]}h`);
+                    }
+                });
+                formula = dayParts.join(', ');
+            }
+        } else {
+            // Unit-based items
+            unit = 'Each';
+            
+            if (item.supportItemNumber.includes('_832_')) {
+                pricingModel = 'Each';
+                dayType = 'Overnight';
+                
+                if (item.days && Object.values(item.days).some(v => v)) {
+                    const selectedDays = [];
+                    ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach(day => {
+                        if (item.days[day]) selectedDays.push(day);
+                    });
+                    formula = `${selectedDays.join(',')}`;
+                } else {
+                    formula = `${Math.round(actualQuantity)} nights`;
+                }
+            } else if (item.supportItemName.toLowerCase().includes('establishment')) {
+                pricingModel = 'One-off';
+                dayType = 'Once';
+                formula = 'Setup fee';
+            } else {
+                pricingModel = 'Each';
+                dayType = 'Various';
+                formula = `${Math.round(actualQuantity)} occurrences`;
+            }
         }
+        
+        // Check if this is a partial period (crosses rate boundary)
+        const isPartial = getRateLabel(card.period.start, card.period.end) === 'Partial';
+        
+        // Format display values
+        let qtyDisplay = '';
+        let rateDisplay = '';
+        
+        if (unit === 'Hours') {
+            qtyDisplay = actualQuantity.toFixed(1);
+            rateDisplay = formatCurrency(effectiveRate);
+            
+            // If rate differs from base rate due to uplift, add indicator
+            if (isPartial && Math.abs(effectiveRate - item.statePrice) > 0.01) {
+                formula += ' *';
+            }
+        } else {
+            qtyDisplay = actualQuantity.toFixed(0);
+            rateDisplay = formatCurrency(effectiveRate);
+        }
+        
+        data.push([
+            item.supportItemName.substring(0, 40) + (item.supportItemName.length > 40 ? '...' : ''),
+            item.supportItemNumber,
+            pricingModel,
+            dayType,
+            qtyDisplay,
+            unit,
+            rateDisplay,
+            formula,
+            formatCurrency(lineTotal)
+        ]);
+        
+        groupHasItems = true;
+        groupSubtotalCents += itemTotalCents;
     });
     
-    if (tableRows.length === 0) {
+    // Add subtotal row
+    if (groupHasItems && groupSubtotalCents > 0) {
+        data.push([
+            'Subtotal',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            formatCurrency(groupSubtotalCents / 100)
+        ]);
+    }
+    
+    if (data.length === 0) {
         doc.setFontSize(10);
         doc.text('No support items with quantities entered', x, y);
         return;
     }
     
-    // Create the table
     doc.autoTable({
-        startY: y,
-        head: [['Support Item', 'Code', 'Usage', 'Qty', 'Rate', 'Total']],
-        body: tableRows,
-        margin: { left: x, right: 20 },
-        columnStyles: {
-            0: { cellWidth: 45 },
-            1: { cellWidth: 20 },
-            2: { cellWidth: 30 },
-            3: { cellWidth: 16, halign: 'right' },
-            4: { cellWidth: 20, halign: 'right' },
-            5: { cellWidth: 20, halign: 'right' }
-        },
-        styles: {
-            fontSize: 8,
-            cellPadding: 2
-        },
-        headStyles: {
-            fillColor: [37, 99, 235],
-            textColor: [255, 255, 255]
+    startY: y,
+    head: [['Support Item', 'Code', 'Type', 'Day Type', 'Qty', 'Unit', 'Rate', 'Formula', 'Total']],
+    body: data,
+    margin: { left: x, right: 5 },
+    tableWidth: 'auto',
+    columnStyles: {
+        0: { cellWidth: 38 },      // Support Item (increased)
+        1: { cellWidth: 16 },      // Code
+        2: { cellWidth: 16 },      // Type (was Model)
+        3: { cellWidth: 16 },      // Day Type
+        4: { cellWidth: 12, halign: 'right' },  // Qty
+        5: { cellWidth: 10 },      // Unit
+        6: { cellWidth: 18, halign: 'right' },  // Rate
+        7: { cellWidth: 28, fontSize: 6 },      // Formula (increased)
+        8: { cellWidth: 20, halign: 'right' }   // Total (increased)
+    },
+    styles: {
+        fontSize: 7,
+        cellPadding: 1.5
+    },
+    headStyles: {
+        fillColor: [37, 99, 235],
+        textColor: [255, 255, 255],
+        fontSize: 7
+    },
+    didDrawCell: (data) => {
+        // Bold subtotal row
+        if (data.row.index === data.table.body.length - 1 && 
+            data.table.body[data.row.index][0] === 'Subtotal') {
+            doc.setFont(undefined, 'bold');
+            doc.setFillColor(248, 249, 250);
         }
-    });
+    }
+});
+
+// Get the y position after table
+y = doc.lastAutoTable.finalY + 3;
+
+// Add rate blending note for transitional periods (only if last group)
+const isLastGroup = card.groups.filter(g => 
+    g.items.some(i => i.selected && totals.perItemCents[i.supportItemNumber] > 0)
+).pop() === group;
+
+if (isLastGroup) {
+    // Add transitional period note if applicable
+    if (getRateLabel(card.period.start, card.period.end) === 'Transitional') {
+        doc.setFontSize(6);
+        doc.setFont(undefined, 'italic');
+        doc.setTextColor(100, 100, 100);
+        
+        // Get the price increase percentage from settings
+        const increasePercent = parseFloat(card.settings.priceUpliftPercent) || 3.5;
+        
+        // Format the note with the actual percentage
+        doc.text(`* Blended rate shown (period crosses 1 Jul 2026)`, x, y);
+        y += 3;
+        doc.text(`  Assumes ${increasePercent}% annual price increase from 1 Jul 2026`, x, y);
+        y += 3;
+        doc.text(`  Based on historical NDIS pricing adjustments`, x, y);
+        y += 5;
+        
+        doc.setTextColor(0, 0, 0);
+    }
+    
+    // Add verification summary
+    doc.setFontSize(7);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(0, 150, 0);
+    doc.setTextColor(0, 0, 0);
+    y += 5;
+    
+    // Add single footer with report info
+    doc.setFontSize(6);
+    doc.setTextColor(100, 100, 100);
+    doc.setTextColor(0, 0, 0);
 }
 
+return y + 5;
+}
+
+async function generatePeriodSection(doc, card, periodNumber) {
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 20;
+    const contentWidth = pageWidth - (margin * 2);
+    
+    // Colors
+    const primaryColor = [37, 99, 235];
+    const grayColor = [128, 128, 128];
+    const lightGray = [248, 249, 250];
+    
+    let y = margin;
+    
+    // Period header with background
+    doc.setFillColor(...lightGray);
+    doc.roundedRect(margin - 5, y - 5, contentWidth + 10, 35, 3, 3, 'F');
+    
+    doc.setFontSize(20);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(...primaryColor);
+    doc.text(`Period ${periodNumber}`, margin, y + 5);
+    
+    doc.setFontSize(12);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(0, 0, 0);
+    const startDate = new Date(card.period.start);
+    const endDate = new Date(card.period.end);
+    const periodText = `${startDate.toLocaleDateString('en-AU', { 
+        day: 'numeric', month: 'long', year: 'numeric' 
+    })} to ${endDate.toLocaleDateString('en-AU', { 
+        day: 'numeric', month: 'long', year: 'numeric' 
+    })}`;
+    doc.text(periodText, margin, y + 15);
+    doc.text(`State: ${card.state}`, margin, y + 22);
+    
+    y += 45; // Move past header box
+    
+    // Budget summary section
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.text('BUDGET SUMMARY', margin, y);
+    y += 10;
+    
+    if (card.settings.calculateByGroup) {
+        await createGroupBudgetSummaryTable(doc, card, margin, y, contentWidth);
+    } else {
+        await createBudgetTable(doc, card, margin, y, contentWidth);
+    }
+    
+    y = doc.lastAutoTable.finalY + 20;
+    
+    // Day Type Summary
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.text('SERVICE SCHEDULE SUMMARY', margin, y);
+    y += 10;
+    
+    await createDayTypeSummaryTable(doc, card, margin, y, contentWidth);
+    
+    y = doc.lastAutoTable.finalY + 30; // Good spacing before support groups
+    
+    // Check if we need a new page for support groups
+    if (y > pageHeight - 100) {
+        doc.addPage();
+        y = margin;
+    }
+    
+    // Support groups section
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.text('SUPPORT GROUPS BREAKDOWN', margin, y);
+    y += 10;
+    
+    // Call the createSupportGroupTable for ALL groups with items
+    for (const group of card.groups) {
+        const groupTotal = (computeCardTotals(card).perGroupCents[group.regGroupNumber] || 0) / 100;
+        if (groupTotal > 0) {
+            await createSupportGroupTable(doc, group, card, margin, y, contentWidth);
+            y = doc.lastAutoTable ? doc.lastAutoTable.finalY + 15 : y + 20;
+            
+            // Check if we need a new page after each group
+            if (y > pageHeight - 50) {
+                doc.addPage();
+                y = margin;
+            }
+        }
+    }
+}
 
 async function getBase64FromUrl(url) {
     const response = await fetch(url);
@@ -3533,7 +3718,14 @@ async function createExecutiveSummaryTable(doc, x, y, width) {
         'en-AU', { day: 'numeric', month: 'short', year: 'numeric' }
     );
     
-    const baseAmount = parseFloat(state.cards[0].budget.total) || 0;
+    // Check if all periods have same base budget
+    let baseAmount = parseFloat(state.cards[0].budget.total) || 0;
+    let sameBase = true;
+    state.cards.forEach(card => {
+        if (Math.abs((parseFloat(card.budget.total) || 0) - baseAmount) > 0.01) {
+            sameBase = false;
+        }
+    });
     
     // Build notes for adjustments/exclusions
     const notes = [];
@@ -3545,42 +3737,45 @@ async function createExecutiveSummaryTable(doc, x, y, width) {
     });
     
     // Show base amount above table
-    doc.setFontSize(9);
-    doc.setFont(undefined, 'normal');
-    doc.setTextColor(100, 100, 100);
-    doc.text(`Base per period: ${formatCurrency(baseAmount)}`, x, y);
-    doc.setTextColor(0, 0, 0);
-    y += 8;
+    if (sameBase) {
+        doc.setFontSize(9);
+        doc.setFont(undefined, 'normal');
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Base per period: ${formatCurrency(baseAmount)}`, x, y);
+        doc.setTextColor(0, 0, 0);
+        y += 8;
+    }
     
-    // Calculate totals
-    let totalSpent = 0;
-    let finalRemaining = 0;
+    // Calculate totals in cents
+    let totalSpentCents = 0;
+    let finalRemainingCents = 0;
     
     const data = [];
     
-    // Prepare data rows with proper carry reconciliation
+    // Prepare data rows with cent-level precision
     state.cards.forEach((card, index) => {
         const totals = computeCardTotals(card);
-        const spent = totals.usedCents / 100;
-        const carryIn = parseFloat(card.budget.carryOver) || 0;
-        const excluded = parseFloat(card.budget.excluded) || 0;
-        const available = baseAmount + carryIn - excluded;
-        const remaining = available - spent;
+        const spentCents = totals.usedCents;
+        const budgetCents = Math.round((parseFloat(card.budget.total) || 0) * 100);
+        const carryInCents = Math.round((parseFloat(card.budget.carryOver) || 0) * 100);
+        const excludedCents = Math.round((parseFloat(card.budget.excluded) || 0) * 100);
+        const availableCents = budgetCents + carryInCents - excludedCents;
+        const remainingCents = availableCents - spentCents;
         
-        totalSpent += spent;
+        totalSpentCents += spentCents;
         if (index === state.cards.length - 1) {
-            finalRemaining = remaining;
+            finalRemainingCents = remainingCents;
         }
         
-        // Use the new rate label logic
+        // Use the rate label logic
         const rateStatus = getRateLabel(card.period.start, card.period.end);
         
         data.push([
             `${index + 1}`,
-            formatCurrency(carryIn),
-            formatCurrency(available),
-            formatCurrency(spent),
-            formatCurrency(remaining),
+            formatCurrency(carryInCents / 100),
+            formatCurrency(availableCents / 100),
+            formatCurrency(spentCents / 100),
+            formatCurrency(remainingCents / 100),
             rateStatus
         ]);
     });
@@ -3588,20 +3783,20 @@ async function createExecutiveSummaryTable(doc, x, y, width) {
     // Show totals above table
     doc.setFontSize(10);
     doc.setFont(undefined, 'bold');
-    doc.text(`Total Spent: ${formatCurrency(totalSpent)}     Final Balance: ${formatCurrency(finalRemaining)}`, x, y);
+    doc.text(`Total Spent: ${formatCurrency(totalSpentCents / 100)}     Final Balance: ${formatCurrency(finalRemainingCents / 100)}`, x, y);
     y += 8;
     
-    // Create the table - use auto width
+    // Create the table
     doc.autoTable({
         startY: y,
-        head: [['Period', 'Carryover', 'Available', 'Spent', 'Remain', 'Rates']],
+        head: [['Period', 'In', 'Avail', 'Spent', 'Remain', 'Rates']],
         body: data,
         margin: { left: x, right: 10 },
-        tableWidth: 'auto', // Let it auto-size
+        tableWidth: 'auto',
         styles: { 
             fontSize: 8,
             cellPadding: 2,
-            overflow: 'linebreak' // Allow text to wrap if needed
+            overflow: 'linebreak'
         },
         headStyles: { 
             fillColor: [37, 99, 235], 
@@ -3627,7 +3822,7 @@ async function createExecutiveSummaryTable(doc, x, y, width) {
     doc.setFontSize(8);
     doc.setFont(undefined, 'italic');
     doc.setTextColor(100, 100, 100);
-    doc.text('Available reflects carryover and adjustments. Support item rate updates apply from 1 Jul only.', x, y);
+    doc.text('Available reflects carry-in and adjustments. Support item rate updates apply from 1 Jul only.', x, y);
     y += 5;
     
     // Add notes if any
@@ -3641,6 +3836,7 @@ async function createExecutiveSummaryTable(doc, x, y, width) {
     
     return y + 5;
 }
+
 function getRateLabel(startDate, endDate) {
     const currentStart = new Date('2025-07-01');
     const currentEnd = new Date('2026-06-30');
@@ -3667,97 +3863,102 @@ function getRateLabel(startDate, endDate) {
     // Current: entirely within current catalogue
     return "Current";
 }
-// Day Type summary: Day Type | # of Days | Dates/Details (PH only)
 async function createDayTypeSummaryTable(doc, card, x, y, width) {
-  // Local midnight to avoid UTC skew
-  const startDate = new Date(`${card.period.start}T00:00:00`);
-  const endDate   = new Date(`${card.period.end}T00:00:00`);
-
-  // Use the same function you already have
-  const dayCounts = countDaysInPeriod(startDate, endDate, card);
-
-  // Collect PH dates for this period (from card.state)
-  const phDates = [];
-  (card.state.publicHolidays || []).forEach(ph => {
-    const phDate = new Date(`${ph.date}T00:00:00`);
-    if (phDate >= startDate && phDate <= endDate) {
-      phDates.push({ date: phDate, name: ph.name });
-    }
-  });
-
-  const phDateStrings = phDates.map(ph => {
-    const dateStr = ph.date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
-    return `${dateStr} (${ph.name})`;
-  });
-
-  // Weekday count (excluding PH)
-  const weekdayCount =
-    (dayCounts.excludingPH?.Mon || 0) +
-    (dayCounts.excludingPH?.Tue || 0) +
-    (dayCounts.excludingPH?.Wed || 0) +
-    (dayCounts.excludingPH?.Thu || 0) +
-    (dayCounts.excludingPH?.Fri || 0);
-
-  // Build table body (no hours/costs at all)
-  const data = [
-    ['Weekdays',        String(weekdayCount),                     '—'],
-    ['Saturdays',       String(dayCounts.excludingPH?.Sat || 0),  '—'],
-    ['Sundays',         String(dayCounts.excludingPH?.Sun || 0),  '—'],
-    ['Public Holidays', String(dayCounts.publicHolidays || 0),
-                        phDateStrings.length ? phDateStrings.join('; ') : '—']
-  ];
-
-  // Totals row (days only)
-  const totalDays =
-    weekdayCount +
-    (dayCounts.excludingPH?.Sat || 0) +
-    (dayCounts.excludingPH?.Sun || 0) +
-    (dayCounts.publicHolidays || 0);
-
-  data.push(['TOTAL', String(totalDays), '']);
-
-  // Render: 3 columns now
-  doc.autoTable({
-    startY: y,
-    head: [['Day Type', '# of Days', 'Dates/Details']],
-    body: data,
-    margin: { left: x, right: 10 },
-    columnStyles: {
-      0: { cellWidth: 35 },                   // Day Type
-      1: { cellWidth: 20, halign: 'center' }, // # of Days
-      2: { cellWidth: 105, fontSize: 7 }      // Dates/Details (PH list)
-    },
-    styles: { fontSize: 8, cellPadding: 2 },
-    headStyles: { fillColor: [37, 99, 235], textColor: [255, 255, 255] }
-  });
-
-  // Optional tiny caption
-  y = doc.lastAutoTable.finalY + 5;
-  doc.setFontSize(7);
-  doc.setFont(undefined, 'italic');
-  doc.setTextColor(100, 100, 100);
-  doc.text('Counts exclude public holidays from weekdays; PH dates shown in “Dates/Details”.', x, y);
-  doc.setTextColor(0, 0, 0);
-
-  return y + 10;
+    const startDate = new Date(card.period.start + 'T00:00:00Z');
+    const endDate = new Date(card.period.end + 'T00:00:00Z');
+    
+    // Use existing day count function
+    const dayCounts = countDaysInPeriod(startDate, endDate, card);
+    
+    // Get public holidays for display
+    const phDates = [];
+    state.publicHolidays.forEach(ph => {
+        const phDate = new Date(ph.date + 'T00:00:00Z');
+        if (phDate >= startDate && phDate <= endDate) {
+            phDates.push({
+                date: phDate,
+                name: ph.name
+            });
+        }
+    });
+    
+    const phDateStrings = phDates.map(ph => {
+        const dateStr = ph.date.toLocaleDateString('en-AU', {
+            day: 'numeric',
+            month: 'short'
+        });
+        return `${dateStr} (${ph.name})`;
+    });
+    
+    // Calculate weekday count
+    const weekdayCount = dayCounts.excludingPH.Mon + dayCounts.excludingPH.Tue +
+                        dayCounts.excludingPH.Wed + dayCounts.excludingPH.Thu +
+                        dayCounts.excludingPH.Fri;
+    
+    // Create table data
+    const data = [
+        ['Weekdays', weekdayCount.toString(), '—'],
+        ['Saturdays', dayCounts.excludingPH.Sat.toString(), '—'],
+        ['Sundays', dayCounts.excludingPH.Sun.toString(), '—'],
+        ['Public Holidays', dayCounts.publicHolidays.toString(), 
+         phDateStrings.length > 0 ? phDateStrings.join('; ') : '—']
+    ];
+    
+    // Add totals row
+    const totalDays = weekdayCount + dayCounts.excludingPH.Sat + dayCounts.excludingPH.Sun + dayCounts.publicHolidays;
+    
+    data.push([
+        'TOTAL',
+        totalDays.toString(),
+        ''
+    ]);
+    
+    // Create the table
+    doc.autoTable({
+        startY: y,
+        head: [['Day Type', '# of Days', 'Dates/Details']],
+        body: data,
+        margin: { left: x, right: 10 },
+        columnStyles: {
+            0: { cellWidth: 40 },
+            1: { cellWidth: 30, halign: 'center' },
+            2: { cellWidth: 110, fontSize: 7 }
+        },
+        styles: {
+            fontSize: 8,
+            cellPadding: 2
+        },
+        headStyles: {
+            fillColor: [37, 99, 235],
+            textColor: [255, 255, 255]
+        },
+        footStyles: {
+            fillColor: [248, 249, 250],
+            textColor: [0, 0, 0],
+            fontStyle: 'bold'
+        }
+    });
+    
+    return doc.lastAutoTable.finalY + 10;
 }
-
 
 async function createGrandSummarySection(doc, x, y, width) {
     // Calculate totals across all periods
     let totalFunding = 0;
     let totalUsed = 0;
     let totalWeeks = 0;
+    let totalExclusions = 0;
     let firstDate = null;
     let lastDate = null;
     
     state.cards.forEach((card, index) => {
         const totals = computeCardTotals(card);
         const budget = parseFloat(card.budget.total) || 0;
-        const carryOver = index === 0 ? 0 : parseFloat(card.budget.carryOver) || 0; // Don't double count carryover
+        const excluded = parseFloat(card.budget.excluded) || 0;
         totalFunding += budget;
         totalUsed += totals.usedCents / 100;
         totalWeeks += totals.weeks;
+        totalExclusions += excluded;
         
         if (!firstDate) firstDate = new Date(card.period.start);
         lastDate = new Date(card.period.end);
@@ -3765,6 +3966,7 @@ async function createGrandSummarySection(doc, x, y, width) {
     
     const percentUsed = totalFunding > 0 ? (totalUsed / totalFunding * 100) : 0;
     const remaining = totalFunding - totalUsed;
+    const netRemaining = remaining - totalExclusions; // Net out exclusions
     const avgWeeklySpend = totalWeeks > 0 ? totalUsed / totalWeeks : 0;
     
     // Title
@@ -3773,11 +3975,13 @@ async function createGrandSummarySection(doc, x, y, width) {
     doc.text('PLAN SUMMARY', x, y);
     y += 12;
     
-    // Create summary data
+    // Create summary data with exclusions row
     const data = [
         ['Total Plan Funding', formatCurrency(totalFunding), 'Core budget for all periods'],
         ['Total Expenditure', formatCurrency(totalUsed), `${percentUsed.toFixed(1)}% utilised`],
-        ['Remaining', formatCurrency(remaining), `${(100 - percentUsed).toFixed(1)}% remaining`],
+        ['Remaining (before exclusions)', formatCurrency(remaining), `${(100 - percentUsed).toFixed(1)}% remaining`],
+        ['Exclusions', formatCurrency(-totalExclusions), 'Manual adjustments'],
+        ['Net Remaining', formatCurrency(netRemaining), 'Final balance after exclusions'],
         ['Average Weekly Spend', formatCurrency(avgWeeklySpend), `Based on ${totalWeeks} weeks`],
         ['Plan Duration', `${totalWeeks} weeks`, `${firstDate.toLocaleDateString('en-AU')} to ${lastDate.toLocaleDateString('en-AU')}`]
     ];
@@ -3803,98 +4007,16 @@ async function createGrandSummarySection(doc, x, y, width) {
         },
         alternateRowStyles: {
             fillColor: [248, 249, 250]
+        },
+        didDrawCell: (data) => {
+            // Highlight the net remaining row
+            if (data.row.index === 4) {
+                doc.setFont(undefined, 'bold');
+            }
         }
     });
     
     return doc.lastAutoTable.finalY + 10;
-}
-async function generatePeriodSection(doc, card, periodNumber) {
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 20;
-    const contentWidth = pageWidth - (margin * 2);
-    
-    // Colors
-    const primaryColor = [37, 99, 235];
-    const grayColor = [128, 128, 128];
-    const lightGray = [248, 249, 250];
-    
-    let y = margin;
-    
-    // Period header with background
-    doc.setFillColor(...lightGray);
-    doc.roundedRect(margin - 5, y - 5, contentWidth + 10, 35, 3, 3, 'F');
-    
-    doc.setFontSize(20);
-    doc.setFont(undefined, 'bold');
-    doc.setTextColor(...primaryColor);
-    doc.text(`Period ${periodNumber}`, margin, y + 5);
-    
-    doc.setFontSize(12);
-    doc.setFont(undefined, 'normal');
-    doc.setTextColor(0, 0, 0);
-    const startDate = new Date(card.period.start);
-    const endDate = new Date(card.period.end);
-    const periodText = `${startDate.toLocaleDateString('en-AU', { 
-        day: 'numeric', month: 'long', year: 'numeric' 
-    })} to ${endDate.toLocaleDateString('en-AU', { 
-        day: 'numeric', month: 'long', year: 'numeric' 
-    })}`;
-    doc.text(periodText, margin, y + 15);
-    doc.text(`State: ${card.state}`, margin, y + 22);
-    
-    y += 45; // Move past header box
-    
-    // Budget summary section
-    doc.setFontSize(14);
-    doc.setFont(undefined, 'bold');
-    doc.text('BUDGET SUMMARY', margin, y);
-    y += 10;
-    
-    if (card.settings.calculateByGroup) {
-        await createGroupBudgetSummaryTable(doc, card, margin, y, contentWidth);
-    } else {
-        await createBudgetTable(doc, card, margin, y, contentWidth);
-    }
-    
-    y = doc.lastAutoTable.finalY + 20;
-    
-    // Day Type Summary
-    doc.setFontSize(14);
-    doc.setFont(undefined, 'bold');
-    doc.text('DAY TYPE BREAKDOWN', margin, y);
-    y += 10;
-    
-    await createDayTypeSummaryTable(doc, card, margin, y, contentWidth);
-    
-    y = doc.lastAutoTable.finalY + 30; // Good spacing before support groups
-    
-    // Check if we need a new page for support groups
-    if (y > pageHeight - 100) {
-        doc.addPage();
-        y = margin;
-    }
-    
-    // Support groups section
-    doc.setFontSize(14);
-    doc.setFont(undefined, 'bold');
-    doc.text('SUPPORT GROUPS BREAKDOWN', margin, y);
-    y += 10;
-    
-    // Call the createSupportGroupTable for ALL groups with items
-    for (const group of card.groups) {
-        const groupTotal = (computeCardTotals(card).perGroupCents[group.regGroupNumber] || 0) / 100;
-        if (groupTotal > 0) {
-            await createSupportGroupTable(doc, group, card, margin, y, contentWidth);
-            y = doc.lastAutoTable ? doc.lastAutoTable.finalY + 15 : y + 20;
-            
-            // Check if we need a new page after each group
-            if (y > pageHeight - 50) {
-                doc.addPage();
-                y = margin;
-            }
-        }
-    }
 }
 
 
@@ -4173,35 +4295,24 @@ async function generatePDFReport(card) {
     // Generate QR Code
     let qrCodeDataUrl = null;
 try {
-    // For multi-period, we need to create a combined data structure
-    const multiPeriodData = {
-        type: 'multi-period',
-        periods: state.cards.length,
-        participant: state.cards[0].participant,
-        cards: state.cards.map(card => ({
-            ...card,
-            // Include computed totals
-            totals: computeCardTotals(card)
-        }))
-    };
+    // First generate a token
+    const token = generateToken(8);
     
-    // Save to Supabase and get token
+    // For single period report, just save this card's data
     const { error } = await supabaseClient
         .from('funding_periods')
         .insert({
-            token: generateToken(8),
-            data: multiPeriodData,
-            participant_name: state.cards[0].participant.name || null,
-            ndis_number: state.cards[0].participant.ndisNumber || null,
-            period_start: state.cards[0].period.start || null,
-            period_end: state.cards[state.cards.length - 1].period.end || null,
-            total_amount: state.cards.reduce((sum, card) => {
-                const totals = computeCardTotals(card);
-                return sum + (totals.usedCents / 100);
-            }, 0)
+            token: token,
+            data: card, // Just this single card, not all cards
+            participant_name: card.participant.name || null,
+            ndis_number: card.participant.ndisNumber || null,
+            period_start: card.period.start || null,
+            period_end: card.period.end || null,
+            total_amount: used // The amount we already calculated
         });
     
     if (!error) {
+        // Generate QR code with the token
         qrCodeDataUrl = await generateQRCode(token);
     }
 } catch (error) {
@@ -6017,176 +6128,182 @@ function resolveQuantityForDate(item, date, dayOfWeek, { isPH, isSleepover, isFi
   return 0;
 }
 
-// Main calculation function
 function computeCardTotals(card) {
-  const result = {
-    usedCents: 0,
-    perGroupCents: {},
-    daysCount: 0,
-    phCount: 0,
-    weeks: 0,
-    groupBudgets: {}, // Add group budget tracking
-    totalAvailableCents: 0, // Track total available budget
-    totalRemainingCents: 0 // Track total remaining
-  };
-  
-  if (!card.period.start || !card.period.end) return result;
-  
-  // Parse dates - they're yyyy-mm-dd from HTML date inputs
-  const startDate = new Date(card.period.start + 'T00:00:00Z');
-  const endDate = new Date(card.period.end + 'T00:00:00Z');
-  
-  // Initialize group totals and budgets
-  card.groups.forEach(group => {
-    result.perGroupCents[group.regGroupNumber] = 0;
-    if (card.settings.calculateByGroup && group.budget) {
-      const groupTotal = (group.budget.total || 0);
-      const groupExcluded = (group.budget.excluded || 0);
-      const groupCarryOver = (group.budget.carryOver || 0);
-      const groupAvailable = groupTotal + groupCarryOver - groupExcluded;
-      
-      result.groupBudgets[group.regGroupNumber] = {
-        totalCents: groupTotal * 100,
-        excludedCents: groupExcluded * 100,
-        carryOverCents: groupCarryOver * 100,
-        availableCents: groupAvailable * 100
-      };
-      
-      result.totalAvailableCents += groupAvailable * 100;
-    }
-  });
-  
-  // Single pass through dates
-  eachDateInclusive(card.period.start, card.period.end, (date) => {
-    result.daysCount++;
+    let totalUsedCents = 0;
+    let totalAvailableCents = 0;
+    let totalRemainingCents = 0;
     
-    const isPH = isPublicHoliday(date, card.state);
-    const dayOfWeek = getDayOfWeek(date);
+    const perGroupCents = {};
+    const perItemCents = {};
+    const perItemQuantities = {};
     
-    if (isPH) result.phCount++;
+    // Calculate period info
+    const startDate = new Date(card.period.start + 'T00:00:00Z');
+    const endDate = new Date(card.period.end + 'T00:00:00Z');
+    const daysDiff = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+    const weeks = Math.ceil(daysDiff / 7); // Use ceiling for weekly calculations
     
+    // Process each group
     card.groups.forEach(group => {
-      group.items.forEach(item => {
-        if (!item.selected) return;
+        let groupTotalCents = 0;
         
-        const isSleepover = isSleepoverItem(item);
-        
-        // Main gating logic with sleepover exception
-        if (isPH && !card.settings.includePH) {
-          // If PH not included, skip ALL items on PH days (including sleepovers)
-          return;
-        }
-        
-        if (isPH) {
-          if (isSleepover) {
-            // Sleepover allowed on PH at standard rate when PH included
-          } else {
-            // For non-sleepover items on PH, only PH items apply
-            if (!item.flags.isPublicHoliday) return;
-          }
-        } else {
-          // Non-PH day
-          if (item.flags.isPublicHoliday) return;
-          if (item.flags.isWeekday && !isWeekday(date)) return;
-          if (item.flags.isSaturday && !isSaturday(date)) return;
-          if (item.flags.isSunday && !isSunday(date)) return;
-        }
-        
-        const quantity = resolveQuantityForDate(item, date, dayOfWeek, { 
-          isPH, 
-          isSleepover,
-          isFirstDay: date.getTime() === startDate.getTime()
+        group.items.forEach(item => {
+            if (!item.selected) {
+                perItemCents[item.supportItemNumber] = 0;
+                perItemQuantities[item.supportItemNumber] = 0;
+                return;
+            }
+            
+            let totalQuantity = 0;
+            let itemTotalCents = 0;
+            
+            // Calculate based on date iteration (same logic as before)
+            eachDateInclusive(card.period.start, card.period.end, (date) => {
+                const isPH = isPublicHoliday(date, card.state);
+                const dayOfWeek = getDayOfWeek(date);
+                const isSleepover = isSleepoverItem(item);
+                
+                // Gating logic
+                if (isPH && !card.settings.includePH) return;
+                
+                if (isPH) {
+                    if (isSleepover) {
+                        // Sleepover allowed on PH
+                    } else {
+                        if (!item.flags.isPublicHoliday) return;
+                    }
+                } else {
+                    if (item.flags.isPublicHoliday) return;
+                    if (item.flags.isWeekday && !isWeekday(date)) return;
+                    if (item.flags.isSaturday && !isSaturday(date)) return;
+                    if (item.flags.isSunday && !isSunday(date)) return;
+                }
+                
+                const quantity = resolveQuantityForDate(item, date, dayOfWeek, {
+                    isPH,
+                    isSleepover,
+                    isFirstDay: date.getTime() === startDate.getTime()
+                });
+                
+                if (quantity > 0) {
+                    totalQuantity += quantity;
+                    const unitPrice = getUnitPrice(item, card, date, { isPH, isSleepover });
+                    // Calculate in cents to avoid rounding errors
+                    itemTotalCents += Math.round(quantity * unitPrice * 100);
+                }
+            });
+            
+            // Handle weekly fixed items
+            if (item.hours?.weeklyFixed > 0) {
+                const weeklyQuantity = weeks * item.hours.weeklyFixed;
+                const unitPrice = item.statePrice || 0;
+                totalQuantity = weeklyQuantity;
+                itemTotalCents = Math.round(weeklyQuantity * unitPrice * 100);
+            }
+            
+            perItemCents[item.supportItemNumber] = itemTotalCents;
+            perItemQuantities[item.supportItemNumber] = totalQuantity;
+            groupTotalCents += itemTotalCents;
         });
-        if (quantity <= 0) return;
         
-        // Get unit price with uplift applied based on the service date
-        const unitPrice = getUnitPrice(item, card, date, { isPH, isSleepover });
-        
-        const lineCents = Math.round(quantity * Math.round(unitPrice * 100));
-        
-        result.usedCents += lineCents;
-        result.perGroupCents[group.regGroupNumber] += lineCents;
-      });
-    });
-  });
-  
-  card.groups.forEach(group => {
-    group.items.forEach(item => {
-        if (!item.selected || !item.hours?.weeklyFixed) return;
-        
-        // Weekly fixed items are calculated as: weeks × hours × rate
-        const weeks = result.weeks;
-        const totalHours = weeks * item.hours.weeklyFixed;
-        const unitPrice = item.statePrice || 0;
-        const totalCents = Math.round(totalHours * unitPrice * 100);
-        
-        result.usedCents += totalCents;
-        result.perGroupCents[group.regGroupNumber] += totalCents;
-    });
-});
-  // Calculate weeks
-  result.weeks = Math.max(1, Math.ceil(result.daysCount / 7));
-
-  card.groups.forEach(group => {
-    group.items.forEach(item => {
-        if (!item.selected) return;
-        if (!item.hours?.weeklyFixed || item.hours.weeklyFixed <= 0) return;
-        
-        // Weekly fixed items are calculated as: weeks × weeklyFixed hours × rate
-        const totalHours = result.weeks * item.hours.weeklyFixed;
-        const unitPrice = item.statePrice || 0;
-        
-        // Apply uplift if enabled (using end date for consistency)
-        let finalPrice = unitPrice;
-        if (card.settings.uplift.enabled && card.period.end) {
-            const endDate = new Date(card.period.end + 'T00:00:00Z');
-            finalPrice = applyJulyUplift(unitPrice, endDate, item.effectiveTo, card.settings.uplift.percent);
+        // Handle group-level budget if calculateByGroup is enabled
+        if (card.settings.calculateByGroup && group.budget) {
+            const groupBudget = parseFloat(group.budget.total) || 0;
+            const groupCarryOver = parseFloat(group.budget.carryOver) || 0;
+            const groupExcluded = parseFloat(group.budget.excluded) || 0;
+            const groupAvailable = groupBudget + groupCarryOver - groupExcluded;
+            
+            totalAvailableCents += Math.round(groupAvailable * 100);
+            totalRemainingCents += Math.round((groupAvailable * 100) - groupTotalCents);
         }
         
-        const totalCents = Math.round(totalHours * finalPrice * 100);
-        
-        result.usedCents += totalCents;
-        result.perGroupCents[group.regGroupNumber] = (result.perGroupCents[group.regGroupNumber] || 0) + totalCents;
+        perGroupCents[group.regGroupNumber] = groupTotalCents;
+        totalUsedCents += groupTotalCents;
     });
-});
-
-// Calculate total remaining if using group budgets
-if (card.settings.calculateByGroup) {
-    result.totalRemainingCents = result.totalAvailableCents - result.usedCents;
-}
-  return result;
+    
+    return {
+        usedCents: totalUsedCents,
+        totalAvailableCents: totalAvailableCents,
+        totalRemainingCents: totalRemainingCents,
+        perGroupCents: perGroupCents,
+        perItemCents: perItemCents,
+        perItemQuantities: perItemQuantities,
+        weeks: weeks
+    };
 }
 
 // Helper function to count days in period
 function countDaysInPeriod(startDate, endDate, card) {
-    const dayCount = { Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0, Sun: 0 };
-    const dayCountExcludingPH = { Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0, Sun: 0 };
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    let phCount = 0;
-    
-    let current = new Date(startDate);
-    while (current <= endDate) {
-        const dayName = days[current.getDay()];
-        const isPH = card ? isPublicHoliday(current, card.state) : false;
-        
-        // Always count raw days
-        dayCount[dayName]++;
-        
-        // Count excluding PH for display
-        if (!isPH) {
-            dayCountExcludingPH[dayName]++;
-        } else {
-            phCount++;
-        }
-        
-        current.setDate(current.getDate() + 1);
+  // --- helpers --------------------------------------------------------------
+  const toUTCDate = (v) => {
+    // v may be a Date or "YYYY-MM-DD"
+    if (v instanceof Date) {
+      // normalise to UTC midnight
+      return new Date(Date.UTC(v.getUTCFullYear(), v.getUTCMonth(), v.getUTCDate()));
     }
-    
-    return {
-        raw: dayCount,
-        excludingPH: dayCountExcludingPH,
-        publicHolidays: phCount
-    };
+    // assume "YYYY-MM-DD"
+    return new Date(v + 'T00:00:00Z');
+  };
+
+  const isoDay = (d) => d.toISOString().slice(0, 10); // "YYYY-MM-DD"
+  const dayNameUTC = (d) => {
+    // 0..6 => Sun..Sat
+    const wd = d.getUTCDay();
+    return wd === 0 ? 'Sun' :
+           wd === 1 ? 'Mon' :
+           wd === 2 ? 'Tue' :
+           wd === 3 ? 'Wed' :
+           wd === 4 ? 'Thu' :
+           wd === 5 ? 'Fri' : 'Sat';
+  };
+
+  const isPH = (d) => {
+    // Try with ISO string first (robust against tz), fallback to Date if needed
+    const iso = isoDay(d);
+    try { return card ? !!isPublicHoliday(iso, card.state) : false; }
+    catch { return card ? !!isPublicHoliday(new Date(iso + 'T00:00:00Z'), card.state) : false; }
+  };
+
+  const phNameLookup = (() => {
+    const list = (card?.state?.publicHolidays || card?.publicHolidays || []);
+    const map = new Map();
+    for (const ph of list) {
+      if (ph?.date) map.set(String(ph.date), ph.name || 'Public Holiday');
+    }
+    return (iso) => map.get(iso) || 'Public Holiday';
+  })();
+  // --------------------------------------------------------------------------
+
+  const startUTC = toUTCDate(startDate);
+  const endUTC   = toUTCDate(endDate);
+
+  const raw =       { Mon:0, Tue:0, Wed:0, Thu:0, Fri:0, Sat:0, Sun:0 };
+  const excludingPH = { Mon:0, Tue:0, Wed:0, Thu:0, Fri:0, Sat:0, Sun:0 };
+  let phCount = 0;
+  const phDisplay = []; // e.g. "25 Dec (Christmas Day)"
+
+  for (let cur = new Date(startUTC); cur.getTime() <= endUTC.getTime(); cur.setUTCDate(cur.getUTCDate() + 1)) {
+    const name = dayNameUTC(cur);
+    raw[name]++;
+
+    if (isPH(cur)) {
+      phCount++;
+      const iso = isoDay(cur);
+      // "25 Dec (Name)"
+      const label = new Date(iso + 'T00:00:00Z').toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+      phDisplay.push(`${label} (${phNameLookup(iso)})`);
+      // IMPORTANT: do NOT increment excludingPH for this day
+    } else {
+      excludingPH[name]++;
+    }
+  }
+
+  return {
+    raw,                // counts including PH by weekday/weekend
+    excludingPH,        // counts with PH removed from their day buckets
+    publicHolidays: phCount,
+    phDisplay           // array of strings for your "Dates/Details" column
+  };
 }
 
 function updateCardTotals(cardEl, card) {
