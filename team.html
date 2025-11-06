@@ -8203,7 +8203,7 @@ async function loadCurrentShift() {
         <div class="shift-card" id="shift-card-${shift.id}" data-shift-id="${shift.id}" style="${cardStyle}">
             <div class="shift-card-header" style="cursor: pointer;">
                 <div class="shift-time">
-                    ${isSleepover ? 'Sleepover (8PM - 9AM)' : 
+                    ${isSleepover ? 'Sleepover' : 
                       `${formatTime(shift.start_time)} - ${formatTime(shift.end_time)}`}
                 </div>
                 <div class="shift-participant">${participantName}</div>
