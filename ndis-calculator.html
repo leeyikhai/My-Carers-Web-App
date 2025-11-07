@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NDIS Budget Calculator</title>
+    <title>Funding Calculator</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="icon" type="image/png" sizes="16x16" href="https://gqchhsayqxttewthcsah.supabase.co/storage/v1/object/public/Branding/mc-favicon-16x16.png">
@@ -3057,6 +3057,179 @@ async function generateQRCode(data) {
     });
 }
 
+function updateCardFromState() {
+    const card = getActiveCard();
+    if (!card) return;
+    
+    // Update participant information
+    const participantNameInput = document.getElementById('participantName');
+    if (participantNameInput) {
+        participantNameInput.value = card.participant.name || '';
+    }
+    
+    const ndisNumberInput = document.getElementById('ndisNumber');
+    if (ndisNumberInput) {
+        ndisNumberInput.value = card.participant.ndisNumber || '';
+    }
+    
+    // Update period dates
+    const startDateInput = document.getElementById('startDate');
+    if (startDateInput) {
+        startDateInput.value = card.period.start || '';
+    }
+    
+    const endDateInput = document.getElementById('endDate');
+    if (endDateInput) {
+        endDateInput.value = card.period.end || '';
+    }
+    
+    // Update state selector
+    const stateSelect = document.getElementById('state');
+    if (stateSelect) {
+        stateSelect.value = card.state || 'NSW';
+    }
+    
+    // Update settings
+    if (card.settings) {
+        const includePHCheckbox = document.getElementById('includePH');
+        if (includePHCheckbox) {
+            includePHCheckbox.checked = card.settings.includePH || false;
+        }
+        
+        const priceUpliftCheckbox = document.getElementById('priceUplift');
+        if (priceUpliftCheckbox) {
+            priceUpliftCheckbox.checked = card.settings.priceUplift || false;
+        }
+        
+        const priceUpliftPercentInput = document.getElementById('priceUpliftPercent');
+        if (priceUpliftPercentInput) {
+            priceUpliftPercentInput.value = card.settings.priceUpliftPercent || 3.5;
+            priceUpliftPercentInput.disabled = !card.settings.priceUplift;
+        }
+        
+        const calculateByGroupCheckbox = document.getElementById('calculateByGroup');
+        if (calculateByGroupCheckbox) {
+            calculateByGroupCheckbox.checked = card.settings.calculateByGroup || false;
+        }
+    }
+    
+    // Update budget fields
+    updateBudgetSection();
+    
+    // Update support groups
+    updateSupportGroupsFromState();
+    
+    // Update totals display
+    updateTotalsDisplay();
+    
+    // Update any other UI elements that depend on the current card
+    const periodDisplay = document.querySelector('.current-period-display');
+    if (periodDisplay) {
+        const startDate = new Date(card.period.start);
+        const endDate = new Date(card.period.end);
+        periodDisplay.textContent = `Period ${state.activeCardIndex + 1}: ${startDate.toLocaleDateString('en-AU')} - ${endDate.toLocaleDateString('en-AU')}`;
+    }
+}
+
+// Helper function to update support groups display
+function updateSupportGroupsFromState() {
+    const card = getActiveCard();
+    const container = document.getElementById('supportGroupsContainer');
+    if (!container) return;
+    
+    // Clear existing groups
+    container.innerHTML = '';
+    
+    // Recreate groups from state
+    card.groups.forEach(group => {
+        const groupElement = createGroupElement(group);
+        container.appendChild(groupElement);
+    });
+}
+
+// Helper function to create a group element (you'll need to adapt this to your HTML structure)
+function createGroupElement(group) {
+    const groupDiv = document.createElement('div');
+    groupDiv.className = 'support-group';
+    
+    // Add group header
+    const header = document.createElement('div');
+    header.className = 'group-header';
+    header.innerHTML = `
+        <h3>${group.regGroupName}</h3>
+        <span class="group-number">${group.regGroupNumber}</span>
+    `;
+    groupDiv.appendChild(header);
+    
+    // Add items container
+    const itemsContainer = document.createElement('div');
+    itemsContainer.className = 'group-items';
+    
+    group.items.forEach(item => {
+        const itemElement = createItemElement(item, group);
+        itemsContainer.appendChild(itemElement);
+    });
+    
+    groupDiv.appendChild(itemsContainer);
+    
+    return groupDiv;
+}
+
+// Helper function to create an item element
+function createItemElement(item, group) {
+    const itemDiv = document.createElement('div');
+    itemDiv.className = 'support-item';
+    if (item.selected) {
+        itemDiv.classList.add('selected');
+    }
+    
+    // You'll need to build the item HTML based on your structure
+    // This is a simplified version
+    itemDiv.innerHTML = `
+        <div class="item-header">
+            <input type="checkbox" class="item-checkbox" ${item.selected ? 'checked' : ''}>
+            <span class="item-name">${item.supportItemName}</span>
+            <span class="item-number">${item.supportItemNumber}</span>
+        </div>
+        <div class="item-controls">
+            <!-- Add hours/days inputs based on item type -->
+        </div>
+    `;
+    
+    return itemDiv;
+}
+
+// Update totals display function
+function updateTotalsDisplay() {
+    const card = getActiveCard();
+    const totals = computeCardTotals(card);
+    
+    // Update total spent display
+    const totalSpentElement = document.getElementById('totalSpent');
+    if (totalSpentElement) {
+        totalSpentElement.textContent = formatCurrency(totals.usedCents / 100);
+    }
+    
+    // Update remaining budget display
+    const remainingElement = document.getElementById('remainingBudget');
+    if (remainingElement) {
+        const budget = parseFloat(card.budget.total) || 0;
+        const carryOver = parseFloat(card.budget.carryOver) || 0;
+        const excluded = parseFloat(card.budget.excluded) || 0;
+        const available = budget + carryOver - excluded;
+        const remaining = available - (totals.usedCents / 100);
+        
+        remainingElement.textContent = formatCurrency(remaining);
+        
+        // Add warning class if over budget
+        if (remaining < 0) {
+            remainingElement.classList.add('over-budget');
+        } else {
+            remainingElement.classList.remove('over-budget');
+        }
+    }
+}
+
 function parseQRData(qrString) {
     try {
         // Check if qrString is empty or not a string
@@ -3183,12 +3356,18 @@ function parseQRData(qrString) {
     }
 }
 
+// Add these functions to your code:
+
+
+function getActiveCard() {
+    // Return the currently active card
+    return state.cards[state.activeCardIndex] || state.cards[0];
+}
 
 // ===== QR Scanner Functions =====
 let html5QrCode = null;
 let scannedData = null;
 
-// 2. Updated initQRScanner function
 function initQRScanner() {
     const modal = document.getElementById('qr-scanner-modal');
     const actionsDiv = document.getElementById('qr-actions');
@@ -3197,7 +3376,7 @@ function initQRScanner() {
     // Reset UI
     actionsDiv.classList.add('hidden');
     scannerInfo.textContent = 'Position QR code within the frame';
-    scannedData = null; // Reset scanned data
+    scannedData = null;
     
     // Show the video element again
     const videoElement = document.getElementById('qr-reader');
@@ -3249,19 +3428,56 @@ function initQRScanner() {
             scannerInfo.textContent = 'Loading data from cloud...';
             
             try {
-                // Load the funding period using the token
-                const cardData = await loadFundingPeriod(decodedText);
+                // Load from Supabase using the token
+                const { data, error } = await supabaseClient
+                    .from('funding_periods')
+                    .select('*')
+                    .eq('token', decodedText)
+                    .single();
                 
-                if (!cardData) {
-                    throw new Error('No data returned from cloud');
+                if (error || !data) {
+                    throw new Error('Invalid QR code or data not found');
                 }
                 
-                // The loaded data is already a full card object
-                // We need to convert it to QR format for parseQRData
-                const qrData = buildQRData(cardData);
-                scannedData = JSON.stringify(qrData);
+                // Check if it's multi-period data
+                if (data.data.type === 'multi-period') {
+    // Handle multi-period import
+    const multiData = data.data;
+    
+    // Clear existing cards and import new ones
+    state.cards = [];
+    multiData.cards.forEach((cardData, index) => {
+        state.cards[index] = cardData;
+        // Basic structure ensure
+        if (!state.cards[index].participant) state.cards[index].participant = {};
+        if (!state.cards[index].period) state.cards[index].period = {};
+        if (!state.cards[index].budget) state.cards[index].budget = {};
+        if (!state.cards[index].settings) state.cards[index].settings = {};
+        if (!state.cards[index].groups) state.cards[index].groups = [];
+    });
+    
+    // Set first card as active
+    state.activeCardIndex = 0;
+    
+    // Save to localStorage
+    saveState();
+    
+    // Show success message briefly then reload
+    showNotification('Multi-period data imported successfully! Refreshing...', 'success');
+    
+    // Reload page after a short delay to show the message
+    setTimeout(() => {
+        window.location.reload();
+    }, 1000);
+    
+    return;
+}else {
+                    // Single period - convert to QR format
+                    const qrData = buildQRData(data.data);
+                    scannedData = JSON.stringify(qrData);
+                    scannerInfo.textContent = 'Data loaded successfully! Choose an action:';
+                }
                 
-                scannerInfo.textContent = 'Data loaded successfully! Choose an action:';
             } catch (loadError) {
                 console.error('Failed to load data from token:', loadError);
                 scannerInfo.textContent = 'Failed to load data. Invalid or expired code.';
@@ -3271,11 +3487,11 @@ function initQRScanner() {
                 if (videoElement) {
                     videoElement.style.display = 'none';
                 }
-                return; // Exit without showing action buttons
+                return;
             }
         }
         
-        // Show action buttons only if we have valid data
+        // Show action buttons only for single period data
         actionsDiv.classList.remove('hidden');
         
         // Hide the video element
@@ -3286,7 +3502,7 @@ function initQRScanner() {
     };
     
     const onScanFailure = (error) => {
-        // Handle scan failure silently - this is called continuously while scanning
+        // Handle scan failure silently
     };
     
     // Get camera permissions and start scanning
@@ -3304,7 +3520,7 @@ function initQRScanner() {
                 cameraId = backCamera.id;
             }
             
-            // Start scanning with selected camera
+            // Start scanning
             html5QrCode.start(
                 cameraId,
                 config,
@@ -3324,7 +3540,7 @@ function initQRScanner() {
         scannerInfo.textContent = 'Unable to access camera. Please check permissions.';
     });
     
-    // Action button handlers - THIS MUST BE INSIDE initQRScanner
+    // Action button handlers
     actionsDiv.querySelectorAll('.qr-action-btn').forEach(btn => {
         btn.onclick = async () => {
             const action = btn.dataset.action;
@@ -3403,6 +3619,220 @@ function importCardFromQR(card) {
     cardEl.scrollIntoView({ behavior: 'smooth' });
     saveState();
     showError('Funding period imported successfully!');
+}
+// Show notification function
+function showNotification(message, type = 'info') {
+    // Simple version - creates a temporary notification
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.textContent = message;
+    
+    // Style it
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 15px 25px;
+        background: ${type === 'success' ? '#4CAF50' : type === 'error' ? '#f44336' : '#2196F3'};
+        color: white;
+        border-radius: 5px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        z-index: 9999;
+        animation: slideIn 0.3s ease;
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+        notification.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
+}
+
+function createPublicHolidayWeekdayInput(item) {
+    const container = document.createElement('div');
+    container.className = 'ph-weekday-input-group';
+    
+    // Mode selector
+    const modeContainer = document.createElement('div');
+    modeContainer.className = 'input-mode-selector';
+    modeContainer.style.marginBottom = '0.5rem';
+    
+    const radioGroupName = 'ph-hours-mode-' + (item.supportItemNumber || Date.now());
+    
+    // Determine initial mode based on existing data
+    let initialMode = 'same-all-days';
+    if (item.hours?.phMon || item.hours?.phTue || item.hours?.phWed || 
+        item.hours?.phThu || item.hours?.phFri || item.hours?.phSat || item.hours?.phSun) {
+        initialMode = 'per-day';
+    }
+    
+    const modes = [
+        { value: 'same-all-days', label: 'Same hours all days', checked: initialMode === 'same-all-days' },
+        { value: 'per-day', label: 'Different per day', checked: initialMode === 'per-day' }
+    ];
+    
+    modes.forEach(mode => {
+        const radioGroup = document.createElement('label');
+        radioGroup.style.display = 'inline-flex';
+        radioGroup.style.alignItems = 'center';
+        radioGroup.style.marginRight = '1rem';
+        radioGroup.style.fontSize = '0.75rem';
+        radioGroup.style.cursor = 'pointer';
+        
+        const radio = document.createElement('input');
+        radio.type = 'radio';
+        radio.name = radioGroupName;
+        radio.value = mode.value;
+        radio.checked = mode.checked;
+        radio.style.marginRight = '0.25rem';
+        
+        radioGroup.appendChild(radio);
+        radioGroup.appendChild(document.createTextNode(mode.label));
+        modeContainer.appendChild(radioGroup);
+    });
+    
+    container.appendChild(modeContainer);
+    
+    // Same hours for all days input
+    const sameAllDaysInput = createHoursInput('Hours on Public Holidays', item.hours?.publicHoliday || 0);
+    sameAllDaysInput.classList.add('ph-same-all-days');
+    if (initialMode !== 'same-all-days') {
+        sameAllDaysInput.classList.add('hidden');
+    }
+    
+    // Per-day inputs for PH (Mon-Sun)
+    const perDayContainer = document.createElement('div');
+    perDayContainer.className = 'ph-per-day-inputs';
+    if (initialMode !== 'per-day') {
+        perDayContainer.classList.add('hidden');
+    }
+    
+    // Create inputs for Mon-Sun for PH
+    ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach(day => {
+        const dayInput = createHoursInput(`PH ${day}`, item.hours?.[`ph${day}`] || 0);
+        dayInput.dataset.phDay = day;
+        perDayContainer.appendChild(dayInput);
+    });
+    
+    // Mode switching logic
+    const radios = modeContainer.querySelectorAll('input[type="radio"]');
+    radios.forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            if (!e.target.checked) return;
+            
+            const mode = e.target.value;
+            
+            if (mode === 'same-all-days') {
+                sameAllDaysInput.classList.remove('hidden');
+                perDayContainer.classList.add('hidden');
+            } else {
+                sameAllDaysInput.classList.add('hidden');
+                perDayContainer.classList.remove('hidden');
+            }
+            
+            updateCardFromDOM(container.closest('.budget-card'));
+        });
+    });
+    
+    container.appendChild(sameAllDaysInput);
+    container.appendChild(perDayContainer);
+    
+    return container;
+}
+
+// If you need showError and showLoading too:
+function showError(message) {
+    showNotification(message, 'error');
+}
+
+function showLoading(message = 'Loading...') {
+    // Remove existing loader if any
+    hideLoading();
+    
+    const loader = document.createElement('div');
+    loader.id = 'loadingIndicator';
+    loader.className = 'loading-overlay';
+    loader.innerHTML = `
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <p>${message}</p>
+        </div>
+    `;
+    
+    // Basic styles
+    loader.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+    `;
+    
+    document.body.appendChild(loader);
+}
+
+function hideLoading() {
+    const loader = document.getElementById('loadingIndicator');
+    if (loader) {
+        loader.remove();
+    }
+}
+
+// Add CSS for animations if not already in your CSS
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+    
+    @keyframes slideOut {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(100%); opacity: 0; }
+    }
+    
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #3498db;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 15px;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    .loading-content {
+        background: white;
+        padding: 30px;
+        border-radius: 8px;
+        text-align: center;
+    }
+`;
+document.head.appendChild(style);
+
+function saveState() {
+    if (isSaving) return;
+    isSaving = true;
+    
+    localStorage.setItem(STORAGE_KEYS.CARDS, JSON.stringify(state.cards));
+    localStorage.setItem(STORAGE_KEYS.PREFERENCES, JSON.stringify(state.preferences));
+    if (state.catalogue) {
+        localStorage.setItem(STORAGE_KEYS.CATALOGUE, JSON.stringify(state.catalogue));
+    }
+    
+    isSaving = false;
 }
 
 function continueFromQR(card) {
@@ -3614,16 +4044,7 @@ async function generateMultiPeriodReport() {
         // Create summary table with enhanced columns
         y = await createExecutiveSummaryTable(doc, margin, y, contentWidth);
         
-        // Add page numbers to all pages
-        const totalPages = doc.internal.getNumberOfPages();
-        for (let i = 1; i <= totalPages; i++) {
-            doc.setPage(i);
-            doc.setFontSize(9);
-            doc.setFont(undefined, 'normal');
-            doc.setTextColor(128, 128, 128);
-            doc.text(`Page ${i} of ${totalPages}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
-            doc.setTextColor(0, 0, 0);
-        }
+        // REMOVED DUPLICATE PAGE NUMBERING HERE
         
         // Generate individual period reports
         doc.addPage();
@@ -3685,22 +4106,24 @@ async function generateMultiPeriodReport() {
             });
         }
         
-        // Update all page numbers
+        // Update all page numbers ONCE at the end
         const finalTotalPages = doc.internal.getNumberOfPages();
-for (let i = 1; i <= finalTotalPages; i++) {
-    doc.setPage(i);
-    doc.setFontSize(9);
-    doc.setFont(undefined, 'normal');
-    doc.setTextColor(128, 128, 128);
+        for (let i = 1; i <= finalTotalPages; i++) {
+            doc.setPage(i);
+            doc.setFontSize(9);
+            doc.setFont(undefined, 'normal');
+            doc.setTextColor(128, 128, 128);
+            
+            // Page number
+            doc.text(`Page ${i} of ${finalTotalPages}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+            
+            // Generated date
+            const genDate = new Date().toLocaleDateString('en-AU');
+            doc.text(`Generated: ${genDate}`, 10, pageHeight - 10);
+            
+            doc.setTextColor(0, 0, 0);
+        }
         
-    // Generated date
-    const genDate = new Date().toLocaleDateString('en-AU');
-    doc.text(`Generated: ${genDate}`, 10, pageHeight - 10);
-    
-    doc.setTextColor(0, 0, 0);
-}
-
-
         // Save with appropriate filename
         const safeName = participantName.replace(/[^a-zA-Z0-9]/g, '_');
         const dateStr = new Date().toISOString().split('T')[0];
@@ -3712,7 +4135,6 @@ for (let i = 1; i <= finalTotalPages; i++) {
         showError('Error generating multi-period report: ' + error.message);
     }
 }
-
 async function createExecutiveSummaryTable(doc, x, y, width) {
     const fmtDate = s => new Date(s + 'T00:00:00').toLocaleDateString(
         'en-AU', { day: 'numeric', month: 'short', year: 'numeric' }
@@ -4994,6 +5416,115 @@ function calculateUsedBudget(card) {
     return totals.usedCents / 100;
 }
 
+function createPublicHolidayHoursInput(item) {
+    const container = document.createElement('div');
+    container.className = 'ph-hours-container';
+    
+    // Add mode selector
+    const modeContainer = document.createElement('div');
+    modeContainer.className = 'ph-mode-selector';
+    modeContainer.style.marginBottom = '0.5rem';
+    
+    const radioName = 'ph-mode-' + (item.supportItemNumber || Date.now());
+    
+    // Determine initial mode
+    let initialMode = 'fixed';
+    if (item.hours?.phDays && Object.keys(item.hours.phDays).length > 0) {
+        initialMode = 'custom';
+    }
+    
+    const modes = [
+        { value: 'fixed', label: 'Same hours all PH', checked: initialMode === 'fixed' },
+        { value: 'custom', label: 'Custom per PH', checked: initialMode === 'custom' }
+    ];
+    
+    modes.forEach(mode => {
+        const label = document.createElement('label');
+        label.style.display = 'inline-flex';
+        label.style.alignItems = 'center';
+        label.style.marginRight = '1rem';
+        label.style.fontSize = '0.75rem';
+        label.style.cursor = 'pointer';
+        
+        const radio = document.createElement('input');
+        radio.type = 'radio';
+        radio.name = radioName;
+        radio.value = mode.value;
+        radio.checked = mode.checked;
+        radio.style.marginRight = '0.25rem';
+        
+        label.appendChild(radio);
+        label.appendChild(document.createTextNode(mode.label));
+        modeContainer.appendChild(label);
+    });
+    
+    container.appendChild(modeContainer);
+    
+    // Fixed hours input
+    const fixedInput = createHoursInput('Hours on Public Holidays', item.hours?.publicHoliday || 0);
+    fixedInput.classList.add('ph-fixed-mode');
+    if (initialMode !== 'fixed') {
+        fixedInput.classList.add('hidden');
+    }
+    
+    // Custom per-PH container
+    const customContainer = document.createElement('div');
+    customContainer.className = 'ph-custom-mode';
+    if (initialMode !== 'custom') {
+        customContainer.classList.add('hidden');
+    }
+    
+    // Get public holidays in the period
+    const card = getActiveCard();
+    const startDate = new Date(card.period.start);
+    const endDate = new Date(card.period.end);
+    
+    const phInPeriod = state.publicHolidays.filter(ph => {
+        const phDate = new Date(ph.date);
+        return phDate >= startDate && phDate <= endDate;
+    });
+    
+    // Create input for each PH
+    phInPeriod.forEach(ph => {
+        const phDate = new Date(ph.date);
+        const dateStr = phDate.toLocaleDateString('en-AU', { 
+            weekday: 'short',
+            day: 'numeric', 
+            month: 'short',
+            year: 'numeric' 
+        });
+        
+        const phInput = createHoursInput(
+            `${dateStr}: ${ph.name}`,
+            item.hours?.phDays?.[ph.date] || item.hours?.publicHoliday || 0
+        );
+        phInput.dataset.phDate = ph.date;
+        phInput.style.marginBottom = '0.5rem';
+        customContainer.appendChild(phInput);
+    });
+    
+    // Mode switching
+    modeContainer.addEventListener('change', (e) => {
+        if (e.target.type !== 'radio') return;
+        
+        const mode = e.target.value;
+        if (mode === 'fixed') {
+            fixedInput.classList.remove('hidden');
+            customContainer.classList.add('hidden');
+        } else {
+            fixedInput.classList.add('hidden');
+            customContainer.classList.remove('hidden');
+        }
+        
+        updateCardFromDOM(container.closest('.budget-card'));
+    });
+    
+    container.appendChild(fixedInput);
+    container.appendChild(customContainer);
+    
+    return container;
+}
+
 function calculateRemainingBudget(card) {
     const used = calculateUsedBudget(card);
     const available = card.budget.total + card.budget.carryOver - card.budget.excluded;
@@ -5662,7 +6193,8 @@ function renderItem(itemData) {
             const sundayInput = createHoursInput('Sunday', itemData.hours?.sunday || 0);
             inputsContainer.appendChild(sundayInput);
         } else if (itemData.flags.isPublicHoliday) {
-            const phInput = createHoursInput('PH', itemData.hours?.publicHoliday || 0);
+            // UPDATED: Use the new multi-day PH input
+            const phInput = createPublicHolidayWeekdayInput(itemData);
             inputsContainer.appendChild(phInput);
         } else {
             // Default for other hourly items without specific day flags
@@ -5670,7 +6202,6 @@ function renderItem(itemData) {
             inputsContainer.appendChild(weekdayGroup);
         }
     } else if (itemData.unit === 'E') {
-
         // Each-based items - new logic
         const eType = getEItemType(itemData.supportItemName);
         
@@ -5695,23 +6226,21 @@ function renderItem(itemData) {
     
     // Item selection handler - FIXED VERSION
     checkbox.onchange = (e) => {
-    if (e.target.checked) {
-        itemEl.classList.add('selected');
-    } else {
-        itemEl.classList.remove('selected');
-    }
-    
-    setTimeout(() => {
-        const cardEl = itemEl.closest('.budget-card');
-        updateCardFromDOM(cardEl);
-        saveState(); // Add this
-    }, 10);
-};
+        if (e.target.checked) {
+            itemEl.classList.add('selected');
+        } else {
+            itemEl.classList.remove('selected');
+        }
+        
+        setTimeout(() => {
+            const cardEl = itemEl.closest('.budget-card');
+            updateCardFromDOM(cardEl);
+            saveState(); // Add this
+        }, 10);
+    };
   
     return itemEl;
 }
-
-
 function getEItemType(itemName) {
     const name = itemName.toLowerCase();
     
@@ -6086,48 +6615,65 @@ function getUnitPrice(item, card, date, { isPH, isSleepover }) {
 }
 
 function resolveQuantityForDate(item, date, dayOfWeek, { isPH, isSleepover, isFirstDay }) {
-  if (item.unit === 'H') {
-    // Hours logic
-    if (item.hours) {
-      // Skip if it's a PH and we're not a PH item
-      if (isPH && !item.flags.isPublicHoliday) return 0;
-      
-      // First check for specific day-of-week value (Mon, Tue, etc.)
-      if (item.hours[dayOfWeek] !== undefined) {
-        return item.hours[dayOfWeek];
-      }
-      
-      // Then check for aggregated values
-      if (isPH && item.hours.publicHoliday !== undefined) {
-        return item.hours.publicHoliday;
-      } else if (isSaturday(date) && item.hours.saturday !== undefined) {
-        return item.hours.saturday;
-      } else if (isSunday(date) && item.hours.sunday !== undefined) {
-        return item.hours.sunday;
-      } else if (isWeekday(date) && item.hours.weekday !== undefined && !isPH) {
-        // Return weekday hours only if it's a weekday and NOT a public holiday
-        return item.hours.weekday;
-      }
+    if (item.unit === 'H') {
+        // Hours logic
+        if (item.hours) {
+            // Skip if it's a PH and we're not a PH item
+            if (isPH && !item.flags.isPublicHoliday) return 0;
+            
+            // First check for specific day-of-week value (Mon, Tue, etc.)
+            if (item.hours[dayOfWeek] !== undefined) {
+                return item.hours[dayOfWeek];
+            }
+            
+            // Then check for aggregated values
+            if (isPH) {
+                // Check for PH-specific day hours first
+                const phDayKey = `ph${dayOfWeek}`;
+                if (item.hours[phDayKey] !== undefined) {
+                    return item.hours[phDayKey];
+                }
+                
+                // Check for custom PH hours for specific date
+                if (item.hours.phDays) {
+                    const dateStr = date.toISOString().split('T')[0];
+                    const customHours = item.hours.phDays[dateStr];
+                    if (customHours !== undefined) {
+                        return customHours;
+                    }
+                }
+                
+                // Fall back to general PH hours
+                if (item.hours.publicHoliday !== undefined) {
+                    return item.hours.publicHoliday;
+                }
+            } else if (isSaturday(date) && item.hours.saturday !== undefined) {
+                return item.hours.saturday;
+            } else if (isSunday(date) && item.hours.sunday !== undefined) {
+                return item.hours.sunday;
+            } else if (isWeekday(date) && item.hours.weekday !== undefined && !isPH) {
+                // Return weekday hours only if it's a weekday and NOT a public holiday
+                return item.hours.weekday;
+            }
+        }
+    } else if (item.unit === 'E') {
+        if (isSleepover) {
+            // Sleepover uses days selection - return 1 for each selected day
+            return (item.days && item.days[dayOfWeek]) ? 1 : 0;
+        } else if (getEItemType(item.supportItemName) === 'one-time') {
+            // One-time items only on first day
+            if (isFirstDay) {
+                return item.quantity || 0;
+            }
+            return 0;
+        } else {
+            // Other E items - return quantity for each applicable day
+            return item.quantity || 0;
+        }
     }
-  } else if (item.unit === 'E') {
-    if (isSleepover) {
-      // Sleepover uses days selection - return 1 for each selected day
-      return (item.days && item.days[dayOfWeek]) ? 1 : 0;
-    } else if (getEItemType(item.supportItemName) === 'one-time') {
-      // One-time items only on first day
-      if (isFirstDay) {
-        return item.quantity || 0;
-      }
-      return 0;
-    } else {
-      // Other E items - return quantity for each applicable day
-      return item.quantity || 0;
-    }
-  }
-  
-  return 0;
+    
+    return 0;
 }
-
 function computeCardTotals(card) {
     let totalUsedCents = 0;
     let totalAvailableCents = 0;
@@ -6157,7 +6703,7 @@ function computeCardTotals(card) {
             let totalQuantity = 0;
             let itemTotalCents = 0;
             
-            // Calculate based on date iteration (same logic as before)
+            // Calculate based on date iteration
             eachDateInclusive(card.period.start, card.period.end, (date) => {
                 const isPH = isPublicHoliday(date, card.state);
                 const dayOfWeek = getDayOfWeek(date);
@@ -7295,8 +7841,37 @@ function updateCardFromDOM(cardEl) {
                             } else if (catalogueItem.flags.isSunday) {
                                 itemData.hours.sunday = validateHours(input.value);
                             } else if (catalogueItem.flags.isPublicHoliday) {
-                                itemData.hours.publicHoliday = validateHours(input.value);
-                            } else {
+    // Check if it's using the new PH weekday input
+    const phContainer = itemEl.querySelector('.ph-weekday-input-group');
+    if (phContainer) {
+        // Check which mode is active
+        const perDayInputs = phContainer.querySelector('.ph-per-day-inputs');
+        const perDayVisible = perDayInputs && !perDayInputs.classList.contains('hidden');
+        
+        if (perDayVisible) {
+            // Read per-day PH values (Mon-Sun)
+            ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach(day => {
+                const dayInput = perDayInputs.querySelector(`[data-ph-day="${day}"] .hours-input`);
+                if (dayInput) {
+                    itemData.hours[`ph${day}`] = validateHours(dayInput.value);
+                }
+            });
+        } else {
+            // Read single PH value
+            const phInput = phContainer.querySelector('.ph-same-all-days .hours-input');
+            if (phInput) {
+                itemData.hours.publicHoliday = validateHours(phInput.value);
+            }
+        }
+    } else {
+        // Fallback to old simple input if it exists
+        const input = itemEl.querySelector('.hours-input');
+        if (input) {
+            itemData.hours.publicHoliday = validateHours(input.value);
+        }
+    }
+}
+else {
                                 // Default hourly items without specific flags
                                 // Check for the three-mode system
                                 const hoursGroup = itemEl.querySelector('.hours-input-group');
@@ -7364,6 +7939,8 @@ function updateCardFromDOM(cardEl) {
     // Update the totals after reading all the data
     updateCardTotals(cardEl, card);
 }
+
+
 function generateFilename(card) {
     const parts = [];
     
@@ -7434,20 +8011,167 @@ function showPublicHolidaysModal(card) {
     modal.classList.add('show');
 }
 
-// ===== Storage Functions =====
-function saveState() {
-    if (isSaving) return;
-    isSaving = true;
+// Function to update the active card index
+function updateActiveCardIndex(index) {
+    state.activeCardIndex = index;
+    state.preferences.lastActiveCard = index;
     
-    localStorage.setItem(STORAGE_KEYS.CARDS, JSON.stringify(state.cards));
-    localStorage.setItem(STORAGE_KEYS.PREFERENCES, JSON.stringify(state.preferences));
-    if (state.catalogue) {
-        localStorage.setItem(STORAGE_KEYS.CATALOGUE, JSON.stringify(state.catalogue));
+    // Update any UI elements that show which card is active
+    const periodSelector = document.getElementById('periodSelector');
+    if (periodSelector) {
+        periodSelector.value = index;
     }
     
-    isSaving = false;
+    // Update active class on period tabs if they exist
+    const tabs = document.querySelectorAll('.period-tab');
+    tabs.forEach((tab, i) => {
+        if (i === index) {
+            tab.classList.add('active');
+        } else {
+            tab.classList.remove('active');
+        }
+    });
 }
 
+// Function to update the card selector dropdown
+function updateCardSelector() {
+    const periodSelector = document.getElementById('periodSelector');
+    if (!periodSelector) return;
+    
+    // Clear existing options
+    periodSelector.innerHTML = '';
+    
+    // Add option for each card
+    state.cards.forEach((card, index) => {
+        const option = document.createElement('option');
+        option.value = index;
+        
+        // Format the period dates for display
+        const startDate = new Date(card.period.start);
+        const endDate = new Date(card.period.end);
+        const startStr = startDate.toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' });
+        const endStr = endDate.toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' });
+        
+        option.textContent = `Period ${index + 1}: ${startStr} - ${endStr}`;
+        
+        if (index === state.activeCardIndex) {
+            option.selected = true;
+        }
+        
+        periodSelector.appendChild(option);
+    });
+}
+
+// Function to update period tabs
+function updatePeriodTabs() {
+    const tabsContainer = document.getElementById('periodTabs');
+    if (!tabsContainer) return;
+    
+    // Clear existing tabs
+    tabsContainer.innerHTML = '';
+    
+    // Create tab for each period
+    state.cards.forEach((card, index) => {
+        const tab = document.createElement('button');
+        tab.className = 'period-tab';
+        tab.setAttribute('data-period', index);
+        
+        // Add active class to current period
+        if (index === state.activeCardIndex) {
+            tab.classList.add('active');
+        }
+        
+        // Create tab content
+        const periodNum = document.createElement('div');
+        periodNum.className = 'period-number';
+        periodNum.textContent = `Period ${index + 1}`;
+        
+        const periodDates = document.createElement('div');
+        periodDates.className = 'period-dates';
+        const startDate = new Date(card.period.start);
+        const endDate = new Date(card.period.end);
+        periodDates.textContent = `${startDate.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })} - ${endDate.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+        
+        tab.appendChild(periodNum);
+        tab.appendChild(periodDates);
+        
+        // Add click handler
+        tab.onclick = () => {
+            updateActiveCardIndex(index);
+            updateCardFromState();
+            updateBudgetSection();
+            saveState(); // This will use your existing saveState function
+        };
+        
+        tabsContainer.appendChild(tab);
+    });
+    
+    // Add "Add Period" button if less than 10 periods
+    if (state.cards.length < 10) {
+        const addButton = document.createElement('button');
+        addButton.className = 'period-tab add-period-btn';
+        addButton.innerHTML = '<span class="material-icons">add</span><span>Add Period</span>';
+        addButton.onclick = addNewPeriod;
+        tabsContainer.appendChild(addButton);
+    }
+}
+
+// Function to update budget section
+function updateBudgetSection() {
+    const card = getActiveCard();
+    if (!card) return;
+    
+    // Update total budget input
+    const totalBudgetInput = document.getElementById('totalBudget');
+    if (totalBudgetInput) {
+        totalBudgetInput.value = card.budget.total || '';
+    }
+    
+    // Update carry over input
+    const carryOverInput = document.getElementById('carryOver');
+    if (carryOverInput) {
+        carryOverInput.value = card.budget.carryOver || '';
+    }
+    
+    // Update excluded amount input
+    const excludedInput = document.getElementById('excludedAmount');
+    if (excludedInput) {
+        excludedInput.value = card.budget.excluded || '';
+    }
+    
+    // Update budget summary display if you have one
+    const budgetSummary = document.querySelector('.budget-summary');
+    if (budgetSummary) {
+        updateBudgetSummaryDisplay();
+    }
+}
+
+// Ensure card structure function
+function ensureCardStructure(card) {
+    // Ensure all required properties exist
+    if (!card.participant) card.participant = {};
+    if (!card.period) card.period = {};
+    if (!card.budget) card.budget = {};
+    if (!card.settings) card.settings = {};
+    if (!card.groups) card.groups = [];
+    
+    // Ensure budget properties
+    if (!card.budget.total) card.budget.total = 0;
+    if (!card.budget.carryOver) card.budget.carryOver = 0;
+    if (!card.budget.excluded) card.budget.excluded = 0;
+    
+    // Ensure each group has proper structure
+    card.groups.forEach(group => {
+        if (!group.items) group.items = [];
+        group.items.forEach(item => {
+            if (!item.hours) item.hours = {};
+            if (!item.days) item.days = {};
+            if (!item.flags) item.flags = {};
+        });
+    });
+    
+    return card;
+}
 
 
 async function loadState() {
