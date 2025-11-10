@@ -2457,7 +2457,6 @@ function getItemUsageDescription(item) {
 }
 
 async function createSupportGroupTable(doc, group, card, x, y, width) {
-    const data = [];
     const totals = computeCardTotals(card);
     const groupTotalCents = totals.perGroupCents[group.regGroupNumber] || 0;
     
@@ -2467,15 +2466,83 @@ async function createSupportGroupTable(doc, group, card, x, y, width) {
     const daysDiff = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
     const weeks = Math.ceil(daysDiff / 7);
     
+    // Define colors
+    const primaryColor = [37, 99, 235];
+    const lightGray = [248, 249, 250];
+    
     // Group header
     doc.setFontSize(11);
     doc.setFont(undefined, 'bold');
     doc.text(group.regGroupName, x, y);
-    y += 2;
+    y += 8;
     
-    // Iterate through items
-    let groupHasItems = false;
-    let groupSubtotalCents = 0;
+    // Calculate item data with day counts
+    const itemData = {};
+    
+    eachDateInclusive(card.period.start, card.period.end, (date) => {
+        const isPH = isPublicHoliday(date, card.state);
+        const dayOfWeek = getDayOfWeek(date);
+        
+        group.items.forEach(item => {
+            if (!item.selected) return;
+            
+            const itemKey = item.supportItemNumber;
+            if (!itemData[itemKey]) {
+                itemData[itemKey] = {
+                    item: item,
+                    totalQuantity: 0,
+                    totalCents: 0,
+                    phDaysWorked: 0,
+                    regularDaysWorked: 0,
+                    saturdaysWorked: 0,
+                    sundaysWorked: 0
+                };
+            }
+            
+            const isSleepover = isSleepoverItem(item);
+            
+            // Apply same gating logic as computeCardTotals
+            if (isPH && !card.settings.includePH) return;
+            
+            if (isPH) {
+                if (isSleepover) {
+                    // Sleepover allowed on PH at standard rate
+                } else {
+                    if (!item.flags.isPublicHoliday) return;
+                }
+            } else {
+                // Non-PH day
+                if (item.flags.isPublicHoliday) return;
+                if (item.flags.isWeekday && !isWeekday(date)) return;
+                if (item.flags.isSaturday && !isSaturday(date)) return;
+                if (item.flags.isSunday && !isSunday(date)) return;
+            }
+            
+            const quantity = resolveQuantityForDate(item, date, dayOfWeek, { 
+                isPH, 
+                isSleepover,
+                isFirstDay: date.getTime() === startDate.getTime()
+            });
+            
+            if (quantity > 0) {
+                // Track which type of day this was
+                if (isPH && item.flags.isPublicHoliday) {
+                    itemData[itemKey].phDaysWorked++;
+                } else if (item.flags.isSaturday) {
+                    itemData[itemKey].saturdaysWorked++;
+                } else if (item.flags.isSunday) {
+                    itemData[itemKey].sundaysWorked++;
+                } else {
+                    itemData[itemKey].regularDaysWorked++;
+                }
+                
+                itemData[itemKey].totalQuantity += quantity;
+            }
+        });
+    });
+    
+    // Build table rows
+    const tableRows = [];
     
     group.items.forEach(item => {
         if (!item.selected) return;
@@ -2483,235 +2550,118 @@ async function createSupportGroupTable(doc, group, card, x, y, width) {
         const itemTotalCents = totals.perItemCents[item.supportItemNumber] || 0;
         if (itemTotalCents === 0) return;
         
-        // Get the actual quantity from calculations
-        const actualQuantity = totals.perItemQuantities[item.supportItemNumber] || 0;
+        const data = itemData[item.supportItemNumber];
+        if (!data) return;
+        
+        const actualQuantity = data.totalQuantity;
         const lineTotal = itemTotalCents / 100;
         
-        // Calculate effective rate from total and quantity
-        let effectiveRate = 0;
-        if (actualQuantity > 0) {
-            effectiveRate = lineTotal / actualQuantity;
-        }
+        // Calculate effective rate
+        let effectiveRate = actualQuantity > 0 ? lineTotal / actualQuantity : 0;
         
-        // Determine pricing model and details
-        let pricingModel = '';
-        let unit = '';
-        let displayQuantity = actualQuantity;
-        let displayRate = effectiveRate;
+        // Build formula description with accurate counts
         let formula = '';
-        let dayType = '';
         
         if (item.unit === 'H') {
-            unit = 'Hours';
-            
             if (item.hours?.weeklyFixed > 0) {
-                pricingModel = 'Weekly Plan';
                 formula = `${weeks} weeks × ${item.hours.weeklyFixed}h`;
-                dayType = 'All';
-            } else if (item.hours?.weekday > 0) {
-                pricingModel = 'Hourly';
-                const weekdays = Math.round(actualQuantity / item.hours.weekday);
-                formula = `${weekdays} days × ${item.hours.weekday}h`;
-                dayType = 'Weekday';
-            } else if (item.flags.isSaturday || item.flags.isSunday || item.flags.isPublicHoliday) {
-                pricingModel = 'Hourly';
-                
-                if (item.flags.isSaturday) {
-                    dayType = 'Saturday';
-                    const sats = Math.round(actualQuantity / (item.hours.saturday || 1));
-                    formula = `${sats} days × ${item.hours.saturday || 0}h`;
-                } else if (item.flags.isSunday) {
-                    dayType = 'Sunday';
-                    const suns = Math.round(actualQuantity / (item.hours.sunday || 1));
-                    formula = `${suns} days × ${item.hours.sunday || 0}h`;
-                } else {
-                    dayType = 'Public Holiday';
-                    formula = `${actualQuantity.toFixed(1)}h on PH`;
-                }
+            } else if (item.flags.isPublicHoliday && data.phDaysWorked > 0) {
+                // Use actual PH days worked
+                const avgHours = actualQuantity / data.phDaysWorked;
+                formula = `${data.phDaysWorked} PH × ${avgHours.toFixed(1)}h`;
+            } else if (item.flags.isSaturday && data.saturdaysWorked > 0) {
+                formula = `${data.saturdaysWorked} Sat × ${item.hours.saturday || 0}h`;
+            } else if (item.flags.isSunday && data.sundaysWorked > 0) {
+                formula = `${data.sundaysWorked} Sun × ${item.hours.sunday || 0}h`;
+            } else if (item.hours?.weekday > 0 && data.regularDaysWorked > 0) {
+                formula = `${data.regularDaysWorked} days × ${item.hours.weekday}h`;
             } else {
-                pricingModel = 'Hourly';
-                dayType = 'Mixed';
-                
+                // Per-day breakdown
                 const dayParts = [];
                 ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach(day => {
                     if (item.hours?.[day] > 0) {
-                        dayParts.push(`${day}:${item.hours[day]}h`);
+                        dayParts.push(`${day}: ${item.hours[day]}h`);
                     }
                 });
-                formula = dayParts.join(', ');
+                formula = dayParts.join(', ') || `${actualQuantity}h`;
             }
         } else {
-            // Unit-based items
-            unit = 'Each';
-            
-            if (item.supportItemNumber.includes('_832_')) {
-                pricingModel = 'Each';
-                dayType = 'Overnight';
-                
+            // Each items
+            if (isSleepoverItem(item)) {
                 if (item.days && Object.values(item.days).some(v => v)) {
                     const selectedDays = [];
                     ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach(day => {
                         if (item.days[day]) selectedDays.push(day);
                     });
-                    formula = `${selectedDays.join(',')}`;
+                    formula = selectedDays.join(', ');
                 } else {
                     formula = `${Math.round(actualQuantity)} nights`;
                 }
-            } else if (item.supportItemName.toLowerCase().includes('establishment')) {
-                pricingModel = 'One-off';
-                dayType = 'Once';
-                formula = 'Setup fee';
+            } else if (getEItemType(item.supportItemName) === 'one-time') {
+                formula = 'One-time';
             } else {
-                pricingModel = 'Each';
-                dayType = 'Various';
-                formula = `${Math.round(actualQuantity)} occurrences`;
+                formula = `${Math.round(actualQuantity)} units`;
             }
         }
         
-        // Check if this is a partial period (crosses rate boundary)
-        const isPartial = getRateLabel(card.period.start, card.period.end) === 'Partial';
-        
-        // Format display values
-        let qtyDisplay = '';
-        let rateDisplay = '';
-        
-        if (unit === 'Hours') {
-            qtyDisplay = actualQuantity.toFixed(1);
-            rateDisplay = formatCurrency(effectiveRate);
-            
-            // If rate differs from base rate due to uplift, add indicator
-            if (isPartial && Math.abs(effectiveRate - item.statePrice) > 0.01) {
-                formula += ' *';
-            }
-        } else {
-            qtyDisplay = actualQuantity.toFixed(0);
-            rateDisplay = formatCurrency(effectiveRate);
-        }
-        
-        data.push([
-            item.supportItemName.substring(0, 40) + (item.supportItemName.length > 40 ? '...' : ''),
+        // Don't truncate - let autoTable handle wrapping
+        tableRows.push([
+            item.supportItemName, // Full name, no truncation
             item.supportItemNumber,
-            pricingModel,
-            dayType,
-            qtyDisplay,
-            unit,
-            rateDisplay,
             formula,
+            item.unit === 'H' ? `${actualQuantity.toFixed(1)}h` : `${actualQuantity}`,
+            formatCurrency(effectiveRate),
             formatCurrency(lineTotal)
         ]);
-        
-        groupHasItems = true;
-        groupSubtotalCents += itemTotalCents;
     });
     
-    // Add subtotal row
-    if (groupHasItems && groupSubtotalCents > 0) {
-        data.push([
-            'Subtotal',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            formatCurrency(groupSubtotalCents / 100)
-        ]);
-    }
-    
-    if (data.length === 0) {
+    if (tableRows.length === 0) {
         doc.setFontSize(10);
+        doc.setFont(undefined, 'normal');
         doc.text('No support items with quantities entered', x, y);
-        return;
+        return y + 10;
     }
     
+    // Create table with correct structure
     doc.autoTable({
         startY: y,
-        head: [['Support Item', 'Code', 'Type', 'Day Type', 'Qty', 'Unit', 'Rate', 'Formula', 'Total']],
-        body: data,
-        margin: { left: x, right: 5 },
-        tableWidth: 'auto',
+        head: [['Support Item', 'Code', 'Formula', 'Total', 'Rate', 'Cost']],
+        body: tableRows,
+        foot: [['', '', 'Group Total:', '', '', formatCurrency(groupTotalCents / 100)]],
+        margin: { left: x },
         columnStyles: {
             0: { 
-                cellWidth: 38,
-                overflow: 'linebreak'  // Enable text wrapping for Support Item
+                cellWidth: 60,
+                overflow: 'linebreak' // Wrap text within fixed width
             },
-            1: { cellWidth: 16 },
-            2: { cellWidth: 16 },
-            3: { cellWidth: 16 },
-            4: { cellWidth: 12, halign: 'right' },
-            5: { cellWidth: 10 },
-            6: { cellWidth: 18, halign: 'right' },
-            7: { 
-                cellWidth: 28, 
-                fontSize: 6,
-                overflow: 'linebreak'  // Enable text wrapping for Formula
+            1: { cellWidth: 18 },
+            2: { 
+                cellWidth: 45,
+                overflow: 'linebreak' // Wrap formula text
             },
-            8: { cellWidth: 20, halign: 'right' }
+            3: { cellWidth: 15, halign: 'center' },
+            4: { cellWidth: 18, halign: 'right' },
+            5: { cellWidth: 20, halign: 'right' }
         },
         styles: {
-            fontSize: 7,
+            fontSize: 8,
             cellPadding: 1.5
         },
         headStyles: {
-            fillColor: [37, 99, 235],
-            textColor: [255, 255, 255],
-            fontSize: 7
+            fillColor: primaryColor,
+            textColor: [255, 255, 255]
         },
-        didDrawCell: (data) => {
-            // Bold subtotal row
-            if (data.row.index === data.table.body.length - 1 && 
-                data.table.body[data.row.index][0] === 'Subtotal') {
-                doc.setFont(undefined, 'bold');
-                doc.setFillColor(248, 249, 250);
-            }
+        footStyles: {
+            fillColor: lightGray,
+            textColor: [0, 0, 0],
+            fontStyle: 'bold'
         }
     });
-
-    // Get the y position after table
-    y = doc.lastAutoTable.finalY + 3;
-
-    // Add rate blending note for transitional periods (only if last group)
-    const isLastGroup = card.groups.filter(g => 
-        g.items.some(i => i.selected && totals.perItemCents[i.supportItemNumber] > 0)
-    ).pop() === group;
-
-    if (isLastGroup) {
-        // Add transitional period note if applicable
-        if (getRateLabel(card.period.start, card.period.end) === 'Transitional') {
-            doc.setFontSize(6);
-            doc.setFont(undefined, 'italic');
-            doc.setTextColor(100, 100, 100);
-            
-            // Get the price increase percentage from settings
-            const increasePercent = parseFloat(card.settings.priceUpliftPercent) || 3.5;
-            
-            // Format the note with the actual percentage
-            doc.text(`* Blended rate shown (period crosses 1 Jul 2026)`, x, y);
-            y += 3;
-            doc.text(`  Assumes ${increasePercent}% annual price increase from 1 Jul 2026`, x, y);
-            y += 3;
-            doc.text(`  Based on historical NDIS pricing adjustments`, x, y);
-            y += 5;
-            
-            doc.setTextColor(0, 0, 0);
-        }
-        
-        // Add verification summary
-        doc.setFontSize(7);
-        doc.setFont(undefined, 'normal');
-        doc.setTextColor(0, 150, 0);
-        doc.setTextColor(0, 0, 0);
-        y += 5;
-        
-        // Add single footer with report info
-        doc.setFontSize(6);
-        doc.setTextColor(100, 100, 100);
-        doc.setTextColor(0, 0, 0);
-    }
-
-    return y + 5;
+    
+    return doc.lastAutoTable.finalY + 5;
 }
+
+
 async function getBase64FromUrl(url) {
     const response = await fetch(url);
     const blob = await response.blob();
