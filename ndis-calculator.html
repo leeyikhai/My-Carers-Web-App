@@ -2542,78 +2542,114 @@ async function createSupportGroupTable(doc, group, card, x, y, width) {
     });
     
     // Build table rows
-    const tableRows = [];
+const tableRows = [];
+
+group.items.forEach(item => {
+    if (!item.selected) return;
     
-    group.items.forEach(item => {
-        if (!item.selected) return;
-        
-        const itemTotalCents = totals.perItemCents[item.supportItemNumber] || 0;
-        if (itemTotalCents === 0) return;
-        
-        const data = itemData[item.supportItemNumber];
-        if (!data) return;
-        
-        const actualQuantity = data.totalQuantity;
-        const lineTotal = itemTotalCents / 100;
-        
-        // Calculate effective rate
-        let effectiveRate = actualQuantity > 0 ? lineTotal / actualQuantity : 0;
-        
-        // Build formula description with accurate counts
-        let formula = '';
-        
-        if (item.unit === 'H') {
-            if (item.hours?.weeklyFixed > 0) {
-                formula = `${weeks} weeks × ${item.hours.weeklyFixed}h`;
-            } else if (item.flags.isPublicHoliday && data.phDaysWorked > 0) {
-                // Use actual PH days worked
-                const avgHours = actualQuantity / data.phDaysWorked;
-                formula = `${data.phDaysWorked} PH × ${avgHours.toFixed(1)}h`;
-            } else if (item.flags.isSaturday && data.saturdaysWorked > 0) {
-                formula = `${data.saturdaysWorked} Sat × ${item.hours.saturday || 0}h`;
-            } else if (item.flags.isSunday && data.sundaysWorked > 0) {
-                formula = `${data.sundaysWorked} Sun × ${item.hours.sunday || 0}h`;
-            } else if (item.hours?.weekday > 0 && data.regularDaysWorked > 0) {
-                formula = `${data.regularDaysWorked} days × ${item.hours.weekday}h`;
-            } else {
-                // Per-day breakdown
-                const dayParts = [];
-                ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach(day => {
-                    if (item.hours?.[day] > 0) {
-                        dayParts.push(`${day}: ${item.hours[day]}h`);
+    const itemTotalCents = totals.perItemCents[item.supportItemNumber] || 0;
+    if (itemTotalCents === 0) return;
+    
+    const data = itemData[item.supportItemNumber];
+    if (!data) return;
+    
+    const actualQuantity = data.totalQuantity;
+    const lineTotal = itemTotalCents / 100;
+    
+    // Calculate effective rate
+    let effectiveRate = actualQuantity > 0 ? lineTotal / actualQuantity : 0;
+    
+    // Build formula description with accurate counts
+    let formula = '';
+    
+    if (item.unit === 'H') {
+        if (item.hours?.weeklyFixed > 0) {
+            formula = `${weeks} weeks × ${item.hours.weeklyFixed}h`;
+        } else if (item.flags.isPublicHoliday && data.phDaysWorked > 0) {
+            // Check if using custom PH hours per day
+            if (item.hours?.phMon || item.hours?.phTue || item.hours?.phWed || 
+                item.hours?.phThu || item.hours?.phFri || item.hours?.phSat || item.hours?.phSun) {
+                
+                // Get actual PH dates and their hours
+                const phDetails = [];
+                const phInPeriod = state.publicHolidays.filter(ph => {
+                    const phDate = new Date(ph.date);
+                    return phDate >= startDate && phDate <= endDate;
+                });
+                
+                phInPeriod.forEach(ph => {
+                    const phDate = new Date(ph.date);
+                    const dayOfWeek = getDayOfWeek(phDate);
+                    const hours = item.hours[`ph${dayOfWeek}`];
+                    
+                    if (hours > 0) {
+                        // Format date as "25 Dec"
+                        const shortDate = phDate.toLocaleDateString('en-AU', { 
+                            day: 'numeric', 
+                            month: 'short' 
+                        });
+                        phDetails.push(`${shortDate}(${dayOfWeek}): ${hours}h`);
                     }
                 });
-                formula = dayParts.join(', ') || `${actualQuantity}h`;
-            }
-        } else {
-            // Each items
-            if (isSleepoverItem(item)) {
-                if (item.days && Object.values(item.days).some(v => v)) {
-                    const selectedDays = [];
-                    ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach(day => {
-                        if (item.days[day]) selectedDays.push(day);
-                    });
-                    formula = selectedDays.join(', ');
+                
+                // If we have specific days, show them
+                if (phDetails.length > 0) {
+                    formula = phDetails.join(', ');
                 } else {
-                    formula = `${Math.round(actualQuantity)} nights`;
+                    // Fallback to general formula
+                    const avgHours = actualQuantity / data.phDaysWorked;
+                    formula = `${data.phDaysWorked} PH × ${avgHours.toFixed(1)}h`;
                 }
-            } else if (getEItemType(item.supportItemName) === 'one-time') {
-                formula = 'One-time';
             } else {
-                formula = `${Math.round(actualQuantity)} units`;
+                // Simple average for non-custom PH hours
+                const avgHours = actualQuantity / data.phDaysWorked;
+                formula = `${data.phDaysWorked} PH × ${avgHours.toFixed(1)}h`;
             }
+        } else if (item.flags.isSaturday && data.saturdaysWorked > 0) {
+            formula = `${data.saturdaysWorked} Sat × ${item.hours.saturday || 0}h`;
+        } else if (item.flags.isSunday && data.sundaysWorked > 0) {
+            formula = `${data.sundaysWorked} Sun × ${item.hours.sunday || 0}h`;
+        } else if (item.hours?.weekday > 0 && data.regularDaysWorked > 0) {
+            formula = `${data.regularDaysWorked} days × ${item.hours.weekday}h`;
+        } else {
+            // Per-day breakdown
+            const dayParts = [];
+            ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach(day => {
+                if (item.hours?.[day] > 0) {
+                    dayParts.push(`${day}: ${item.hours[day]}h`);
+                }
+            });
+            formula = dayParts.join(', ') || `${actualQuantity}h`;
         }
-        
-        // Don't truncate - let autoTable handle wrapping
-        tableRows.push([
-            item.supportItemName, // Full name, no truncation
-            item.supportItemNumber,
-            formula,
-            item.unit === 'H' ? `${actualQuantity.toFixed(1)}h` : `${actualQuantity}`,
-            formatCurrency(effectiveRate),
-            formatCurrency(lineTotal)
-        ]);
-    });
+    } else {
+        // Each items
+        if (isSleepoverItem(item)) {
+            if (item.days && Object.values(item.days).some(v => v)) {
+                const selectedDays = [];
+                ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach(day => {
+                    if (item.days[day]) selectedDays.push(day);
+                });
+                formula = selectedDays.join(', ');
+            } else {
+                formula = `${Math.round(actualQuantity)} nights`;
+            }
+        } else if (getEItemType(item.supportItemName) === 'one-time') {
+            formula = 'One-time';
+        } else {
+            formula = `${Math.round(actualQuantity)} units`;
+        }
+    }
+    
+    // Don't truncate - let autoTable handle wrapping
+    tableRows.push([
+        item.supportItemName, // Full name, no truncation
+        item.supportItemNumber,
+        formula,
+        item.unit === 'H' ? `${actualQuantity.toFixed(1)}h` : `${actualQuantity}`,
+        formatCurrency(effectiveRate),
+        formatCurrency(lineTotal)
+    ]);
+});
     
     if (tableRows.length === 0) {
         doc.setFontSize(10);
@@ -2661,6 +2697,94 @@ async function createSupportGroupTable(doc, group, card, x, y, width) {
     return doc.lastAutoTable.finalY + 5;
 }
 
+async function generatePeriodSection(doc, card, periodNumber) {
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 20;
+    const contentWidth = pageWidth - (margin * 2);
+    
+    // Colors
+    const primaryColor = [37, 99, 235];
+    const grayColor = [128, 128, 128];
+    const lightGray = [248, 249, 250];
+    
+    let y = margin;
+    
+    // Period header with background
+    doc.setFillColor(...lightGray);
+    doc.roundedRect(margin - 5, y - 5, contentWidth + 10, 35, 3, 3, 'F');
+    
+    doc.setFontSize(20);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(...primaryColor);
+    doc.text(`Period ${periodNumber}`, margin, y + 5);
+    
+    doc.setFontSize(12);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(0, 0, 0);
+    const startDate = new Date(card.period.start);
+    const endDate = new Date(card.period.end);
+    const periodText = `${startDate.toLocaleDateString('en-AU', { 
+        day: 'numeric', month: 'long', year: 'numeric' 
+    })} to ${endDate.toLocaleDateString('en-AU', { 
+        day: 'numeric', month: 'long', year: 'numeric' 
+    })}`;
+    doc.text(periodText, margin, y + 15);
+    doc.text(`State: ${card.state}`, margin, y + 22);
+    
+    y += 45; // Move past header box
+    
+    // Budget summary section
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.text('BUDGET SUMMARY', margin, y);
+    y += 10;
+    
+    if (card.settings.calculateByGroup) {
+        await createGroupBudgetSummaryTable(doc, card, margin, y, contentWidth);
+    } else {
+        await createBudgetTable(doc, card, margin, y, contentWidth);
+    }
+    
+    y = doc.lastAutoTable.finalY + 20;
+    
+    // Day Type Summary
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.text('SERVICE SCHEDULE SUMMARY', margin, y);
+    y += 10;
+    
+    await createDayTypeSummaryTable(doc, card, margin, y, contentWidth);
+    
+    y = doc.lastAutoTable.finalY + 30; // Good spacing before support groups
+    
+    // Check if we need a new page for support groups
+    if (y > pageHeight - 100) {
+        doc.addPage();
+        y = margin;
+    }
+    
+    // Support groups section
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.text('SUPPORT GROUPS BREAKDOWN', margin, y);
+    y += 10;
+    
+    // Call the createSupportGroupTable for ALL groups with items
+    for (const group of card.groups) {
+        const groupTotal = (computeCardTotals(card).perGroupCents[group.regGroupNumber] || 0) / 100;
+        if (groupTotal > 0) {
+            await createSupportGroupTable(doc, group, card, margin, y, contentWidth);
+            y = doc.lastAutoTable ? doc.lastAutoTable.finalY + 15 : y + 20;
+            
+            // Check if we need a new page after each group
+            if (y > pageHeight - 50) {
+                doc.addPage();
+                y = margin;
+            }
+        }
+    }
+}
 
 async function getBase64FromUrl(url) {
     const response = await fetch(url);
@@ -4041,6 +4165,9 @@ async function createExecutiveSummaryTable(doc, x, y, width) {
     
     const data = [];
     
+    // Check if any card has uplift enabled
+    const anyUpliftEnabled = state.cards.some(card => card.settings.uplift.enabled);
+    
     // Prepare data rows with cent-level precision
     state.cards.forEach((card, index) => {
         const totals = computeCardTotals(card);
@@ -4056,8 +4183,8 @@ async function createExecutiveSummaryTable(doc, x, y, width) {
             finalRemainingCents = remainingCents;
         }
         
-        // Use the rate label logic
-        const rateStatus = getRateLabel(card.period.start, card.period.end);
+        // FIXED: Check this specific card's uplift setting
+        const rateStatus = card.settings.uplift.enabled ? getRateLabel(card.period.start, card.period.end) : 'N/A';
         
         data.push([
             `${index + 1}`,
@@ -4076,34 +4203,35 @@ async function createExecutiveSummaryTable(doc, x, y, width) {
     y += 8;
     
     // Create the table
-    doc.autoTable({
-        startY: y,
-        head: [['Period', 'In', 'Avail', 'Spent', 'Remain', 'Rates']],
-        body: data,
-        margin: { left: x, right: 10 },
-        tableWidth: 'auto',
-        styles: { 
-            fontSize: 8,
-            cellPadding: 2,
-            overflow: 'linebreak'
-        },
-        headStyles: { 
-            fillColor: [37, 99, 235], 
-            textColor: [255, 255, 255],
-            fontStyle: 'bold'
-        },
-        columnStyles: {
-            0: { cellWidth: 15, halign: 'center' },
-            1: { cellWidth: 'auto', halign: 'right' },
-            2: { cellWidth: 'auto', halign: 'right' },
-            3: { cellWidth: 'auto', halign: 'right' },
-            4: { cellWidth: 'auto', halign: 'right' },
-            5: { cellWidth: 20, halign: 'center' }
-        },
-        alternateRowStyles: {
-            fillColor: [248, 249, 250]
-        }
-    });
+// In createExecutiveSummaryTable, update the autoTable configuration:
+doc.autoTable({
+    startY: y,
+    head: [['Period', 'In', 'Avail', 'Spent', 'Remain', 'Increase (%)']],
+    body: data,
+    margin: { left: x, right: 10 },
+    tableWidth: 'auto',
+    styles: { 
+        fontSize: 8,
+        cellPadding: 2,
+        overflow: 'linebreak'
+    },
+    headStyles: { 
+        fillColor: [37, 99, 235], 
+        textColor: [255, 255, 255],
+        fontStyle: 'bold'
+    },
+    columnStyles: {
+        0: { cellWidth: 15, halign: 'center' },  // Period number - keep centered
+        1: { cellWidth: 'auto', halign: 'left' }, // Changed from 'right' to 'left'
+        2: { cellWidth: 'auto', halign: 'left' }, // Changed from 'right' to 'left'
+        3: { cellWidth: 'auto', halign: 'left' }, // Changed from 'right' to 'left'
+        4: { cellWidth: 'auto', halign: 'left' }, // Changed from 'right' to 'left'
+        5: { cellWidth: 20, halign: 'left' }     // Changed from 'center' to 'left'
+    },
+    alternateRowStyles: {
+        fillColor: [248, 249, 250]
+    }
+});
     
     y = doc.lastAutoTable.finalY + 5;
     
@@ -4111,7 +4239,12 @@ async function createExecutiveSummaryTable(doc, x, y, width) {
     doc.setFontSize(8);
     doc.setFont(undefined, 'italic');
     doc.setTextColor(100, 100, 100);
-    doc.text('Available reflects carry-in and adjustments. Support item rate updates apply from 1 Jul only.', x, y);
+    
+    // FIXED: Update caption based on whether ANY card has uplift enabled
+    const captionText = anyUpliftEnabled 
+        ? 'Available reflects carry-in and adjustments. Support item rate updates apply from 1 Jul only.'
+        : 'Available reflects carry-in and adjustments.';
+    doc.text(captionText, x, y);
     y += 5;
     
     // Add notes if any
