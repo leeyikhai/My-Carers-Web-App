@@ -2589,35 +2589,39 @@ async function createSupportGroupTable(doc, group, card, x, y, width) {
     
     // Create table with correct structure
     doc.autoTable({
-        startY: y,
-        head: [['Support Item', 'Code', 'Formula', 'Total', 'Rate', 'Cost']],
-        body: tableRows,
-        foot: [['', '', 'Group Total:', '', '', formatCurrency(groupTotalCents / 100)]],
-        margin: { left: x },
-        columnStyles: {
-            0: { cellWidth: 55 },
-            1: { cellWidth: 18 },
-            2: { cellWidth: 40 },
-            3: { cellWidth: 18, halign: 'center' },
-            4: { cellWidth: 20, halign: 'right' },
-            5: { cellWidth: 20, halign: 'right' }
-        },
-        styles: {
-            fontSize: 8,
-            cellPadding: 1.5,
-            overflow: 'linebreak'
-        },
-        headStyles: {
-            fillColor: primaryColor,
-            textColor: [255, 255, 255]
-        },
-        footStyles: {
-            fillColor: lightGray,
-            textColor: [0, 0, 0],
-            fontStyle: 'bold'
-        }
-    });
-    
+    startY: y,
+    head: [['Support Item', 'Code', 'Formula', 'Total', 'Rate', 'Cost']],
+    body: tableRows,
+    foot: [['', '', 'Group Total:', '', '', formatCurrency(groupTotalCents / 100)]],
+    margin: { left: x },
+    columnStyles: {
+        0: { cellWidth: 'auto', minCellWidth: 50 }, // Auto width with minimum
+        1: { cellWidth: 18 }, // Code stays fixed
+        2: { cellWidth: 'auto', minCellWidth: 30 }, // Formula auto width
+        3: { cellWidth: 15, halign: 'center' }, // Total stays fixed
+        4: { cellWidth: 18, halign: 'right' }, // Rate stays fixed
+        5: { cellWidth: 20, halign: 'right' } // Cost stays fixed
+    },
+    styles: {
+        fontSize: 8,
+        cellPadding: 1.5,
+        overflow: 'linebreak',
+        cellWidth: 'wrap' // Enable wrapping for all cells
+    },
+    headStyles: {
+        fillColor: primaryColor,
+        textColor: [255, 255, 255]
+    },
+    footStyles: {
+        fillColor: lightGray,
+        textColor: [0, 0, 0],
+        fontStyle: 'bold'
+    },
+    // Use table width to fit content better
+    tableWidth: 'auto',
+    // Alternative: prevent splitting cells across pages
+    rowPageBreak: 'avoid'
+});
     return doc.lastAutoTable.finalY + 5;
 }
 
