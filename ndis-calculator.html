@@ -2588,7 +2588,7 @@ function generateInvoiceCSV(card, startDate, endDate, invoiceNumber = '') {
     // Build CSV rows in NDIS format
     const rows = [];
     
-    // NDIS standard headers
+    // NDIS standard headers - INCLUDING 'Unnamed: 16'
     rows.push([
         'RegistrationNumber',
         'NDISNumber',
@@ -2605,7 +2605,8 @@ function generateInvoiceCSV(card, startDate, endDate, invoiceNumber = '') {
         'InKindFundingProgram',
         'ClaimType',
         'CancellationReason',
-        'ABN of Support Provider'
+        'ABN of Support Provider',
+        'Unnamed: 16'  // Added the missing header
     ]);
     
     // Data rows
@@ -2637,7 +2638,8 @@ function generateInvoiceCSV(card, startDate, endDate, invoiceNumber = '') {
             '', // InKindFundingProgram
             '', // ClaimType
             '', // CancellationReason
-            card.providerABN || '' // ABN of Support Provider - needs to be added to card data
+            card.providerABN || '', // ABN of Support Provider - needs to be added to card data
+            ''  // Unnamed: 16 - empty field
         ]);
         
         lineNumber++;
@@ -2658,7 +2660,6 @@ function generateInvoiceCSV(card, startDate, endDate, invoiceNumber = '') {
         }).join(',')
     ).join('\n');
 }
-
 
 // Show invoice modal
 function showInvoiceModal(card) {
