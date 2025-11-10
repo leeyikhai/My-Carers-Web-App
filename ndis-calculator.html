@@ -15,6 +15,23 @@
     <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/minified/html5-qrcode.min.js"></script>
     <style>
 
+.quick-select-buttons {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e0e0e0;
+}
+
+.quick-select-buttons p {
+    margin-bottom: 0.5rem;
+    font-size: 0.9em;
+    color: #666;
+}
+
+.quick-select-buttons button {
+    margin-right: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
 .card-actions {
     display: flex;
     flex-direction: column;
@@ -2023,6 +2040,7 @@ body {
                         Import CSV
                     </button>
                 </div>
+                        
             </div>
             <input type="file" id="csv-import" accept=".csv" style="display: none;">
             <button id="multi-period-report-btn" class="btn btn-primary">
@@ -2251,6 +2269,10 @@ body {
                         <button class="dropdown-item generate-report-btn">Generate PDF Report</button>
                         <button class="dropdown-item export-btn">Export to CSV</button>
                     </div>
+                    <button class="dropdown-item generate-invoice-btn">
+                        <span class="material-icons">receipt</span>
+                        Generate Invoice
+                    </button>        
                 </div>
                 
                 <button class="btn-icon-only delete-btn danger" aria-label="Delete period">
@@ -2393,7 +2415,43 @@ body {
         </div>
     </div>
 
-
+    <div id="invoice-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Generate Invoice</h3>
+                <button class="modal-close" onclick="closeInvoiceModal()">&times;</button>
+            </div>
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Invoice Start Date</label>
+                    <input type="date" id="invoice-start" class="form-control">
+                </div>
+                
+                <div class="form-group">
+                    <label>Invoice End Date</label>
+                    <input type="date" id="invoice-end" class="form-control">
+                </div>
+                
+                <div class="form-group">
+                    <label>Invoice Number (optional)</label>
+                    <input type="text" id="invoice-number" class="form-control" placeholder="Auto-generate if blank">
+                </div>
+                
+                <div class="quick-select-buttons">
+                    <p>Quick select:</p>
+                    <button class="btn-secondary" onclick="setInvoicePeriod('currentFortnight')">Current Fortnight</button>
+                    <button class="btn-secondary" onclick="setInvoicePeriod('lastFortnight')">Last Fortnight</button>
+                    <button class="btn-secondary" onclick="setInvoicePeriod('currentMonth')">This Month</button>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button class="btn-primary" onclick="generateInvoice()">Generate Invoice</button>
+                <button class="btn-secondary" onclick="closeInvoiceModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
     <!-- Supabase library -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
@@ -2454,6 +2512,272 @@ function getItemUsageDescription(item) {
         return item.quantity ? `Quantity: ${item.quantity}` : 'No quantity set';
     }
     return '';
+}
+
+// Function to generate invoice CSV in NDIS format for a specific date range
+function generateInvoiceCSV(card, startDate, endDate, invoiceNumber = '') {
+    // Parse dates
+    const invoiceStart = new Date(startDate + 'T00:00:00Z');
+    const invoiceEnd = new Date(endDate + 'T00:00:00Z');
+    
+    // Validate date range is within card period
+    const cardStart = new Date(card.period.start + 'T00:00:00Z');
+    const cardEnd = new Date(card.period.end + 'T00:00:00Z');
+    
+    if (invoiceStart < cardStart || invoiceEnd > cardEnd) {
+        throw new Error('Invoice date range must be within funding period');
+    }
+    
+    // Calculate aggregated data
+    const aggregatedItems = {};
+    
+    // Process each date in the invoice period
+    eachDateInclusive(startDate, endDate, (date) => {
+        const isPH = isPublicHoliday(date, card.state);
+        const dayOfWeek = getDayOfWeek(date);
+        
+        card.groups.forEach(group => {
+            group.items.forEach(item => {
+                if (!item.selected) return;
+                
+                const isSleepover = isSleepoverItem(item);
+                
+                // Apply gating logic
+                if (isPH && !card.settings.includePH) return;
+                
+                if (isPH) {
+                    if (isSleepover) {
+                        // Sleepover allowed on PH
+                    } else {
+                        if (!item.flags.isPublicHoliday) return;
+                    }
+                } else {
+                    if (item.flags.isPublicHoliday) return;
+                    if (item.flags.isWeekday && !isWeekday(date)) return;
+                    if (item.flags.isSaturday && !isSaturday(date)) return;
+                    if (item.flags.isSunday && !isSunday(date)) return;
+                }
+                
+                const quantity = resolveQuantityForDate(item, date, dayOfWeek, { 
+                    isPH, 
+                    isSleepover,
+                    isFirstDay: date.getTime() === invoiceStart.getTime()
+                });
+                
+                if (quantity > 0) {
+                    const unitPrice = getUnitPrice(item, card, date, { isPH, isSleepover });
+                    const key = `${item.supportItemNumber}|${unitPrice}`;
+                    
+                    if (!aggregatedItems[key]) {
+                        aggregatedItems[key] = {
+                            item: item,
+                            group: group,
+                            rate: unitPrice,
+                            totalQuantity: 0,
+                            totalCost: 0
+                        };
+                    }
+                    
+                    aggregatedItems[key].totalQuantity += quantity;
+                    aggregatedItems[key].totalCost += quantity * unitPrice;
+                }
+            });
+        });
+    });
+    
+    // Build CSV rows in NDIS format
+    const rows = [];
+    
+    // NDIS standard headers
+    rows.push([
+        'RegistrationNumber',
+        'NDISNumber',
+        'SupportsDeliveredFrom',
+        'SupportsDeliveredTo',
+        'SupportNumber',
+        'ClaimReference',
+        'Quantity',
+        'Hours',
+        'UnitPrice',
+        'GSTCode',
+        'AuthorisedBy',
+        'ParticipantApproved',
+        'InKindFundingProgram',
+        'ClaimType',
+        'CancellationReason',
+        'ABN of Support Provider'
+    ]);
+    
+    // Data rows
+    let lineNumber = 1;
+    const sortedItems = Object.values(aggregatedItems).sort((a, b) => {
+        if (a.group.regGroupName !== b.group.regGroupName) {
+            return a.group.regGroupName.localeCompare(b.group.regGroupName);
+        }
+        return a.item.supportItemName.localeCompare(b.item.supportItemName);
+    });
+    
+    sortedItems.forEach(data => {
+        const isHourly = data.item.unit === 'H';
+        const claimRef = invoiceNumber || `INV-${formatDateDDMMYYYY(invoiceStart)}-${lineNumber}`;
+        
+        rows.push([
+            card.providerRegistration || '', // RegistrationNumber - needs to be added to card data
+            card.participant.ndisNumber || '',
+            formatDateDDMMYYYY(invoiceStart), // SupportsDeliveredFrom
+            formatDateDDMMYYYY(invoiceEnd), // SupportsDeliveredTo
+            data.item.supportItemNumber,
+            claimRef,
+            isHourly ? data.totalQuantity.toFixed(1) : Math.round(data.totalQuantity).toString(), // Quantity
+            isHourly ? data.totalQuantity.toFixed(1) : '', // Hours (only if hourly)
+            data.rate.toFixed(2), // UnitPrice - numeric only
+            'P2', // GSTCode - standard NDIS code
+            '', // AuthorisedBy
+            '', // ParticipantApproved
+            '', // InKindFundingProgram
+            '', // ClaimType
+            '', // CancellationReason
+            card.providerABN || '' // ABN of Support Provider - needs to be added to card data
+        ]);
+        
+        lineNumber++;
+    });
+    
+    // Convert to CSV string
+    return rows.map(row => 
+        row.map(cell => {
+            // Handle null/undefined
+            if (cell === null || cell === undefined) return '';
+            
+            // Escape quotes and wrap in quotes if contains comma, quote, or newline
+            const cellStr = String(cell);
+            if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
+                return `"${cellStr.replace(/"/g, '""')}"`;
+            }
+            return cellStr;
+        }).join(',')
+    ).join('\n');
+}
+
+
+// Show invoice modal
+function showInvoiceModal(card) {
+    const modal = document.getElementById('invoice-modal');
+    const startInput = document.getElementById('invoice-start');
+    const endInput = document.getElementById('invoice-end');
+    
+    // Set min/max dates based on card period
+    startInput.min = card.period.start;
+    startInput.max = card.period.end;
+    endInput.min = card.period.start;
+    endInput.max = card.period.end;
+    
+    // Default to full period
+    startInput.value = card.period.start;
+    endInput.value = card.period.end;
+    
+    // Store card reference for later
+    modal.dataset.cardId = card.id;
+    
+    modal.classList.add('show');
+}
+
+// Close invoice modal
+function closeInvoiceModal() {
+    document.getElementById('invoice-modal').classList.remove('show');
+}
+
+// Generate invoice handler
+function generateInvoice() {
+    const modal = document.getElementById('invoice-modal');
+    const cardId = modal.dataset.cardId;
+    const card = state.cards.find(c => c.id === cardId);
+    
+    if (!card) {
+        showError('Card not found');
+        return;
+    }
+    
+    const startDate = document.getElementById('invoice-start').value;
+    const endDate = document.getElementById('invoice-end').value;
+    const invoiceNumber = document.getElementById('invoice-number').value;
+    
+    if (!startDate || !endDate) {
+        showError('Please select start and end dates');
+        return;
+    }
+    
+    exportInvoiceCSV(card, startDate, endDate, invoiceNumber);
+    closeInvoiceModal();
+}
+
+// Quick period selector
+function setInvoicePeriod(type) {
+    const today = new Date();
+    let start, end;
+    
+    switch(type) {
+        case 'currentFortnight':
+            // Find Monday of current week
+            const monday = new Date(today);
+            const day = monday.getDay();
+            const diff = monday.getDate() - day + (day === 0 ? -6 : 1);
+            monday.setDate(diff);
+            
+            // Check if we're in first or second week of fortnight
+            const weekNumber = Math.floor((monday.getTime() - new Date(monday.getFullYear(), 0, 1).getTime()) / 604800000);
+            if (weekNumber % 2 === 0) {
+                start = monday;
+            } else {
+                start = new Date(monday);
+                start.setDate(monday.getDate() - 7);
+            }
+            end = new Date(start);
+            end.setDate(start.getDate() + 13);
+            break;
+            
+        case 'lastFortnight':
+            // Previous fortnight
+            const lastMonday = new Date(today);
+            const lastDay = lastMonday.getDay();
+            const lastDiff = lastMonday.getDate() - lastDay + (lastDay === 0 ? -6 : 1);
+            lastMonday.setDate(lastDiff - 14);
+            start = lastMonday;
+            end = new Date(start);
+            end.setDate(start.getDate() + 13);
+            break;
+            
+        case 'currentMonth':
+            start = new Date(today.getFullYear(), today.getMonth(), 1);
+            end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+            break;
+    }
+    
+    // Format and set values
+    document.getElementById('invoice-start').value = formatDateYYYYMMDD(start);
+    document.getElementById('invoice-end').value = formatDateYYYYMMDD(end);
+}
+
+// Updated filename generator
+function generateInvoiceFilename(card, startDate, endDate) {
+    const participantName = (card.participant.name || 'Unknown').replace(/[^a-zA-Z0-9]/g, '_');
+    const start = formatDateDDMMYYYY(new Date(startDate));
+    const end = formatDateDDMMYYYY(new Date(endDate));
+    
+    return `NDIS_Invoice_${participantName}_${start}_${end}.csv`;
+}
+
+// Updated export function
+function exportInvoiceCSV(card, startDate, endDate, invoiceNumber) {
+    try {
+        const csv = generateInvoiceCSV(card, startDate, endDate, invoiceNumber);
+        const filename = generateInvoiceFilename(card, startDate, endDate);
+        downloadCsv(filename, csv);
+        
+        showNotification(`Invoice exported: ${filename}`, 'success');
+    } catch (error) {
+        showError(`Error generating invoice: ${error.message}`);
+    }
 }
 
 async function createSupportGroupTable(doc, group, card, x, y, width) {
@@ -7367,7 +7691,6 @@ function attachCardEventHandlers(cardEl, card) {
         downloadCsv(filename, csv);
     };
     
-    // Generate report button (now in dropdown)
     const reportBtn = cardEl.querySelector('.generate-report-btn');
 if (reportBtn) {
     reportBtn.onclick = async function() {
@@ -7391,8 +7714,24 @@ if (reportBtn) {
     };
 }
 
-    // Delete button (now in dropdown)
-    cardEl.querySelector('.delete-btn').onclick = () => {
+// ADD THIS: Invoice button handler
+const invoiceBtn = cardEl.querySelector('.generate-invoice-btn');
+if (invoiceBtn) {
+    invoiceBtn.onclick = () => {
+        // Hide dropdown first
+        actionsDropdown.classList.add('hidden');
+        
+        // Update and save current state
+        updateCardFromDOM(cardEl);
+        saveState();
+        
+        // Show the invoice modal
+        showInvoiceModal(card);
+    };
+}
+
+// Delete button (now in dropdown)
+cardEl.querySelector('.delete-btn').onclick = () => {
     if (confirm('Delete this funding period? This cannot be undone.')) {
         const index = state.cards.findIndex(c => c.id === card.id);
         if (index >= 0) {
@@ -7403,50 +7742,49 @@ if (reportBtn) {
     }
 };
 
+// Continue button
+cardEl.querySelector('.continue-btn').onclick = () => {
+    const newCard = createCard(card);
+    state.cards.push(newCard);
+    const newCardEl = renderCard(newCard);
+    document.getElementById('cards-container').appendChild(newCardEl);
+    newCardEl.scrollIntoView({ behavior: 'smooth' });
+    saveState();
+};
 
-    // Continue button
-    cardEl.querySelector('.continue-btn').onclick = () => {
-        const newCard = createCard(card);
-        state.cards.push(newCard);
-        const newCardEl = renderCard(newCard);
-        document.getElementById('cards-container').appendChild(newCardEl);
-        newCardEl.scrollIntoView({ behavior: 'smooth' });
-        saveState();
+// Settings accordion
+const settingsAccordion = cardEl.querySelector('.settings-accordion');
+if (settingsAccordion) {
+    settingsAccordion.querySelector('.accordion-header').onclick = () => {
+        settingsAccordion.classList.toggle('collapsed');
     };
+}
 
-    // Settings accordion
-    const settingsAccordion = cardEl.querySelector('.settings-accordion');
-    if (settingsAccordion) {
-        settingsAccordion.querySelector('.accordion-header').onclick = () => {
-            settingsAccordion.classList.toggle('collapsed');
-        };
-    }
+// Global hide/show buttons
+const globalHide = cardEl.querySelector('.global-hide-unselected');
+const globalShow = cardEl.querySelector('.global-show-all');
 
-    // Global hide/show buttons
-    const globalHide = cardEl.querySelector('.global-hide-unselected');
-    const globalShow = cardEl.querySelector('.global-show-all');
-    
-    // Calculate by group toggle handler
-    const calculateByGroupToggle = cardEl.querySelector('.calculate-by-group');
-    if (calculateByGroupToggle) {
-        calculateByGroupToggle.addEventListener('change', (e) => {
-            if (e.target.checked) {
-                cardEl.classList.add('calculate-by-group-active');
-                // Show all group budget sections
-                cardEl.querySelectorAll('.group-budget-section').forEach(section => {
-                    section.style.display = 'block';
-                });
-            } else {
-                cardEl.classList.remove('calculate-by-group-active');
-                // Hide all group budget sections
-                cardEl.querySelectorAll('.group-budget-section').forEach(section => {
-                    section.style.display = 'none';
-                });
-            }
-            updateCardFromDOM(cardEl);
-            saveState();
-        });
-    }
+// Calculate by group toggle handler
+const calculateByGroupToggle = cardEl.querySelector('.calculate-by-group');
+if (calculateByGroupToggle) {
+    calculateByGroupToggle.addEventListener('change', (e) => {
+        if (e.target.checked) {
+            cardEl.classList.add('calculate-by-group-active');
+            // Show all group budget sections
+            cardEl.querySelectorAll('.group-budget-section').forEach(section => {
+                section.style.display = 'block';
+            });
+        } else {
+            cardEl.classList.remove('calculate-by-group-active');
+            // Hide all group budget sections
+            cardEl.querySelectorAll('.group-budget-section').forEach(section => {
+                section.style.display = 'none';
+            });
+        }
+        updateCardFromDOM(cardEl);
+        saveState();
+    });
+}
 
     if (globalHide) {
         globalHide.onclick = () => {
