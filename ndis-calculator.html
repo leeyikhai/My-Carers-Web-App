@@ -2585,37 +2585,39 @@ async function createSupportGroupTable(doc, group, card, x, y, width) {
     
     // Create table with CORRECTED settings
     doc.autoTable({
-        startY: y,
-        head: [['Support Item', 'Code', 'Formula', 'Total', 'Rate', 'Cost']],
-        body: tableRows,
-        foot: [['', '', 'Group Total:', '', '', formatCurrency(groupTotalCents / 100)]],
-        margin: { left: x, right: 14 }, // Add right margin
-        columnStyles: {
-            0: { cellWidth: 95 },  // Support Item - specific width for wrapping
-            1: { cellWidth: 18 },  // Code - fixed
-            2: { cellWidth: 55 },  // Formula - specific width for wrapping
-            3: { cellWidth: 15, halign: 'center' }, // Total - fixed
-            4: { cellWidth: 18, halign: 'right' },  // Rate - fixed
-            5: { cellWidth: 20, halign: 'right' }   // Cost - fixed
+    startY: y,
+    head: [['Support Item', 'Code', 'Formula', 'Total', 'Rate', 'Cost']],
+    body: tableRows,
+    foot: [['', '', 'Group Total:', '', '', formatCurrency(groupTotalCents / 100)]],
+    margin: { left: x },
+    columnStyles: {
+        0: { 
+            cellWidth: 60,  // Fixed width
+            overflow: 'linebreak' // Wrap within this width
         },
-        styles: {
-            fontSize: 8,
-            cellPadding: 1.5,
-            overflow: 'linebreak' // Enable text wrapping
-            // REMOVED cellWidth: 'wrap' - conflicts with column settings
+        1: { cellWidth: 18 }, // Code
+        2: { 
+            cellWidth: 45,  // Fixed width
+            overflow: 'linebreak' // Wrap within this width
         },
-        headStyles: {
-            fillColor: primaryColor,
-            textColor: [255, 255, 255]
-        },
-        footStyles: {
-            fillColor: lightGray,
-            textColor: [0, 0, 0],
-            fontStyle: 'bold'
-        },
-        tableWidth: 'wrap' // Use wrap, not auto
-        // REMOVED rowPageBreak: 'avoid' - let rows split if needed
-    });
+        3: { cellWidth: 15, halign: 'center' }, // Total
+        4: { cellWidth: 18, halign: 'right' },  // Rate
+        5: { cellWidth: 20, halign: 'right' }   // Cost
+    },
+    styles: {
+        fontSize: 8,
+        cellPadding: 1.5
+    },
+    headStyles: {
+        fillColor: primaryColor,
+        textColor: [255, 255, 255]
+    },
+    footStyles: {
+        fillColor: lightGray,
+        textColor: [0, 0, 0],
+        fontStyle: 'bold'
+    }
+});
     
     return doc.lastAutoTable.finalY + 5;
 }
