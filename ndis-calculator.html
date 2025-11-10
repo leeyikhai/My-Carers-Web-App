@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Funding Calculator</title>
+    <title>NDIS Budget Calculator</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="icon" type="image/png" sizes="16x16" href="https://gqchhsayqxttewthcsah.supabase.co/storage/v1/object/public/Branding/mc-favicon-16x16.png">
@@ -2627,39 +2627,42 @@ async function createSupportGroupTable(doc, group, card, x, y, width) {
     
     doc.autoTable({
     startY: y,
-    head: [['Support Item', 'Code', 'Type', 'Day Type', 'Qty', 'Unit', 'Rate', 'Formula', 'Total']],
-    body: data,
-    margin: { left: x, right: 5 },
-    tableWidth: 'auto',
+    head: [['Support Item', 'Code', 'Formula', 'Total', 'Rate', 'Cost']],
+    body: tableRows,
+    foot: [['', '', 'Group Total:', '', '', formatCurrency(groupTotalDollars)]],
+    margin: { left: x },
     columnStyles: {
-        0: { cellWidth: 38 },      // Support Item (increased)
-        1: { cellWidth: 16 },      // Code
-        2: { cellWidth: 16 },      // Type (was Model)
-        3: { cellWidth: 16 },      // Day Type
-        4: { cellWidth: 12, halign: 'right' },  // Qty
-        5: { cellWidth: 10 },      // Unit
-        6: { cellWidth: 18, halign: 'right' },  // Rate
-        7: { cellWidth: 28, fontSize: 6 },      // Formula (increased)
-        8: { cellWidth: 20, halign: 'right' }   // Total (increased)
+        0: { cellWidth: 60 }, // Increased from 45 to 60 for Support Item
+        1: { cellWidth: 18 }, // Code
+        2: { cellWidth: 40 }, // Reduced Formula to make room
+        3: { cellWidth: 15, halign: 'center' }, // Total
+        4: { cellWidth: 18, halign: 'right' }, // Rate
+        5: { cellWidth: 20, halign: 'right' } // Cost
     },
     styles: {
-        fontSize: 7,
-        cellPadding: 1.5
+        fontSize: 8,
+        cellPadding: 1.5,
+        lineHeight: 1.2 // Allow text to wrap better
     },
     headStyles: {
-        fillColor: [37, 99, 235],
-        textColor: [255, 255, 255],
-        fontSize: 7
+        fillColor: [...primaryColor],
+        textColor: [255, 255, 255]
     },
-    didDrawCell: (data) => {
-        // Bold subtotal row
-        if (data.row.index === data.table.body.length - 1 && 
-            data.table.body[data.row.index][0] === 'Subtotal') {
-            doc.setFont(undefined, 'bold');
-            doc.setFillColor(248, 249, 250);
+    footStyles: {
+        fillColor: [...lightGray],
+        textColor: [0, 0, 0],
+        fontStyle: 'bold'
+    },
+    // Allow text wrapping for long names
+    willDrawCell: function(data) {
+        if (data.column.index === 0 && data.section === 'body') {
+            // Enable text wrapping for support item names
+            data.cell.styles.overflow = 'linebreak';
+            data.cell.styles.cellWidth = 'wrap';
         }
     }
 });
+
 
 // Get the y position after table
 y = doc.lastAutoTable.finalY + 3;
@@ -4936,22 +4939,24 @@ try {
     y += 10;
     
     const weeklyData = [];
-    let weeklyTotal = 0;
-    
-    card.groups.forEach(group => {
-        group.items.forEach(item => {
-            if (!item.selected || item.unit !== 'H' || !item.hours) return;
-            
-            let itemWeeklyTotal = 0;
-            let hoursDetail = [];
-            
+let weeklyTotal = 0;
+
+card.groups.forEach(group => {
+    group.items.forEach(item => {
+        if (!item.selected) return;
+        
+        let itemWeeklyTotal = 0;
+        let hoursDetail = [];
+        
+        if (item.unit === 'H' && item.hours) {
+            // Hourly items
             if (item.hours.weeklyFixed > 0) {
-    itemWeeklyTotal = item.hours.weeklyFixed;
-    hoursDetail.push(`${item.hours.weeklyFixed}h fixed per week`);
-} else if (item.hours.weekday > 0) {
-    itemWeeklyTotal += item.hours.weekday * 5;
-    hoursDetail.push(`Mon-Fri: ${item.hours.weekday}h each`);
-} else {
+                itemWeeklyTotal = item.hours.weeklyFixed;
+                hoursDetail.push(`${item.hours.weeklyFixed}h fixed per week`);
+            } else if (item.hours.weekday > 0) {
+                itemWeeklyTotal += item.hours.weekday * 5;
+                hoursDetail.push(`Mon-Fri: ${item.hours.weekday}h each`);
+            } else {
                 ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach(day => {
                     if (item.hours[day] > 0) {
                         itemWeeklyTotal += item.hours[day];
@@ -4984,41 +4989,83 @@ try {
                     formatCurrency(weeklyItemCost)
                 ]);
             }
-        });
-    });
-    
-    if (weeklyData.length > 0) {
-        doc.autoTable({
-            startY: y,
-            head: [['Service', 'Code', 'Schedule', 'Total Hrs', 'Rate', 'Weekly Cost']],
-            body: weeklyData,
-            foot: [['', '', '', 'Total:', '', formatCurrency(weeklyTotal)]],
-            margin: { left: margin },
-            columnStyles: {
-                0: { cellWidth: 45 },
-                1: { cellWidth: 20 },
-                2: { cellWidth: 45 },
-                3: { cellWidth: 18, halign: 'center' },
-                4: { cellWidth: 18, halign: 'right' },
-                5: { cellWidth: 22, halign: 'right' }
-            },
-            styles: {
-                fontSize: 8,
-                cellPadding: 2
-            },
-            headStyles: {
-                fillColor: [...primaryColor],
-                textColor: [255, 255, 255]
-            },
-            footStyles: {
-                fillColor: [...lightGray],
-                textColor: [0, 0, 0],
-                fontStyle: 'bold'
+        } else if (item.unit === 'E') {
+            // Each items (including sleepovers)
+            let schedule = '';
+            let units = '';
+            
+            if (isSleepoverItem(item) && item.days) {
+                // Count selected days for sleepover
+                const selectedDays = Object.keys(item.days).filter(day => item.days[day]);
+                itemWeeklyTotal = selectedDays.length;
+                schedule = selectedDays.length > 0 ? selectedDays.join(', ') : 'No days selected';
+                units = `${itemWeeklyTotal} nights`;
+            } else if (getEItemType(item.supportItemName) === 'daily' && item.days) {
+                // Other daily items
+                const selectedDays = Object.keys(item.days).filter(day => item.days[day]);
+                itemWeeklyTotal = selectedDays.length;
+                schedule = selectedDays.length > 0 ? selectedDays.join(', ') : 'No days selected';
+                units = `${itemWeeklyTotal} days`;
+            } else if (getEItemType(item.supportItemName) === 'one-time') {
+                // Skip one-time items in weekly breakdown
+                return;
+            } else if (item.quantity > 0) {
+                // Per-occurrence items
+                itemWeeklyTotal = item.quantity * 7;
+                schedule = `${item.quantity} per day`;
+                units = `${itemWeeklyTotal}`;
             }
-        });
-        y = doc.lastAutoTable.finalY + 15;
-    }
-    
+            
+            if (itemWeeklyTotal > 0) {
+                const rate = item.statePrice || 0;
+                const weeklyItemCost = itemWeeklyTotal * rate;
+                weeklyTotal += weeklyItemCost;
+                
+                weeklyData.push([
+                    item.supportItemName,
+                    item.supportItemNumber,
+                    schedule,
+                    units,
+                    formatCurrency(rate),
+                    formatCurrency(weeklyItemCost)
+                ]);
+            }
+        }
+    });
+});
+
+if (weeklyData.length > 0) {
+    doc.autoTable({
+        startY: y,
+        head: [['Service', 'Code', 'Schedule', 'Units/Week', 'Rate', 'Weekly Cost']],
+        body: weeklyData,
+        foot: [['', '', '', 'Total:', '', formatCurrency(weeklyTotal)]],
+        margin: { left: margin },
+        columnStyles: {
+            0: { cellWidth: 60 }, // Increased for longer service names
+            1: { cellWidth: 20 },
+            2: { cellWidth: 40 }, // Reduced slightly
+            3: { cellWidth: 20, halign: 'center' }, // Changed from "Total Hrs" to "Units/Week"
+            4: { cellWidth: 18, halign: 'right' },
+            5: { cellWidth: 22, halign: 'right' }
+        },
+        styles: {
+            fontSize: 8,
+            cellPadding: 2,
+            overflow: 'linebreak' // Allow text wrapping
+        },
+        headStyles: {
+            fillColor: [...primaryColor],
+            textColor: [255, 255, 255]
+        },
+        footStyles: {
+            fillColor: [...lightGray],
+            textColor: [0, 0, 0],
+            fontStyle: 'bold'
+        }
+    });
+    y = doc.lastAutoTable.finalY + 15;
+}
     // SUPPORT GROUPS SECTION (Enhanced with tables)
     ensureSpace(30);
     doc.setFontSize(12);
